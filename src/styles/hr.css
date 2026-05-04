@@ -1,0 +1,477 @@
+.hr-workspace-page,
+.hr-workspace-page *,
+.hr-workspace-page *::before,
+.hr-workspace-page *::after {
+  min-width: 0;
+}
+
+.hr-workspace-page {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+.hr-workspace-page .employee-section {
+  gap: 16px;
+}
+
+.hr-workspace-page .employee-section__header h1 {
+  margin: 10px 0 6px;
+  font-size: clamp(1.55rem, 2.2vw, 2.05rem);
+  letter-spacing: 0;
+}
+
+.hr-workspace-page .dashboard-panel {
+  width: 100%;
+  max-width: 100%;
+  padding: 20px;
+  overflow: hidden;
+}
+
+.hr-workspace-page .dashboard-content,
+.hr-workspace-page .dashboard-content__main,
+.hr-workspace-page .dashboard-content__side {
+  min-width: 0;
+}
+
+.hr-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 14px;
+}
+
+.hr-stat-card {
+  min-height: 136px;
+  padding: 18px;
+}
+
+.hr-stat-card--info .dashboard-stat-card__icon {
+  color: #316fd8;
+  background: rgba(110, 168, 254, 0.18);
+}
+
+.hr-stat-card--success .dashboard-stat-card__icon {
+  color: #2e7d5a;
+  background: rgba(142, 217, 182, 0.22);
+}
+
+.hr-stat-card--warning .dashboard-stat-card__icon {
+  color: #a86c1f;
+  background: rgba(242, 194, 123, 0.22);
+}
+
+.hr-stat-card--neutral .dashboard-stat-card__icon {
+  color: var(--text-soft);
+  background: rgba(238, 244, 248, 0.9);
+}
+
+.hr-panel-actions,
+.hr-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.hr-panel-actions {
+  justify-content: flex-end;
+}
+
+.hr-task-copy {
+  display: grid;
+  gap: 6px;
+}
+
+.hr-small-button,
+.hr-action-button,
+.hr-button--danger,
+.hr-button--success {
+  display: inline-flex;
+  min-height: 34px;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 0 10px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+
+.hr-action-button svg,
+.hr-button--danger svg,
+.hr-button--success svg {
+  flex-shrink: 0;
+}
+
+.hr-button--danger {
+  background: rgba(243, 183, 210, 0.24);
+  border-color: rgba(243, 183, 210, 0.36);
+  color: #b8547b;
+}
+
+.hr-button--success {
+  background: rgba(142, 217, 182, 0.22);
+  border-color: rgba(142, 217, 182, 0.34);
+  color: #2e7d5a;
+}
+
+.hr-button--danger:disabled,
+.hr-button--success:disabled,
+.hr-action-button:disabled {
+  opacity: 0.48;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.hr-table-panel {
+  overflow: hidden;
+}
+
+.table-scroll {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: visible;
+  -webkit-overflow-scrolling: touch;
+}
+
+.hr-table {
+  width: 100%;
+  min-width: 940px;
+  border-collapse: collapse;
+  table-layout: auto;
+}
+
+.hr-table--employees {
+  min-width: 1120px;
+}
+
+.hr-table--policies {
+  min-width: 980px;
+}
+
+.hr-table th,
+.hr-table td {
+  padding: 12px 10px;
+  border-bottom: 1px solid rgba(220, 231, 242, 0.9);
+  color: var(--text-main);
+  font-size: 0.88rem;
+  line-height: 1.35;
+  text-align: left;
+  vertical-align: middle;
+  white-space: normal;
+  word-break: break-word;
+}
+
+.hr-table th {
+  color: var(--text-soft);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.hr-table tbody tr:hover {
+  background: rgba(234, 243, 255, 0.46);
+}
+
+.hr-table strong {
+  color: var(--text-main);
+}
+
+.hr-table small,
+.hr-cell-stack small {
+  color: #a86c1f;
+  font-weight: 600;
+}
+
+.cell-nowrap {
+  white-space: nowrap;
+}
+
+.hr-actions-cell {
+  min-width: 210px;
+}
+
+.hr-table-empty {
+  padding: 18px 10px;
+  color: var(--text-soft);
+  text-align: center;
+}
+
+.hr-cell-stack {
+  display: grid;
+  gap: 4px;
+}
+
+.hr-toolbar,
+.hr-report-filter {
+  display: flex;
+  align-items: end;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.hr-toolbar {
+  margin-bottom: 16px;
+}
+
+.hr-toolbar select,
+.hr-report-filter select,
+.hr-report-filter input,
+.hr-form-grid input,
+.hr-form-grid select,
+.hr-form-grid textarea {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(220, 231, 242, 0.92);
+  background: rgba(255, 255, 255, 0.88);
+  color: var(--text-main);
+  outline: none;
+}
+
+.hr-search {
+  width: min(420px, 100%);
+}
+
+.hr-toolbar select {
+  width: min(210px, 100%);
+}
+
+.hr-report-filter label,
+.hr-form-grid label {
+  display: grid;
+  gap: 8px;
+}
+
+.hr-report-filter label {
+  flex: 1 1 180px;
+}
+
+.hr-report-filter label span,
+.hr-form-grid label span {
+  color: var(--text-soft);
+}
+
+.hr-report-filter .dashboard-button {
+  flex: 0 0 auto;
+}
+
+.hr-inline-alert {
+  margin-top: 14px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: rgba(242, 194, 123, 0.22);
+  color: #a86c1f;
+  font-weight: 600;
+}
+
+.hr-tabs {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.hr-tabs button {
+  min-height: 40px;
+  padding: 0 16px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid rgba(220, 231, 242, 0.92);
+  color: var(--text-soft);
+  font-weight: 700;
+}
+
+.hr-tabs button.is-active {
+  background: linear-gradient(135deg, rgba(79, 140, 255, 0.14), rgba(142, 217, 182, 0.14), rgba(243, 183, 210, 0.14));
+  color: var(--primary-strong);
+  border-color: rgba(170, 196, 224, 0.92);
+}
+
+.hr-modal {
+  width: min(100%, 820px);
+  max-height: min(86vh, 720px);
+  overflow-y: auto;
+}
+
+.hr-modal__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.hr-modal__header h2 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.hr-modal__close {
+  display: inline-flex;
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.86);
+  border: 1px solid rgba(220, 231, 242, 0.92);
+  color: var(--text-main);
+}
+
+.hr-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.hr-form-grid textarea {
+  min-height: 110px;
+  padding: 12px;
+  resize: vertical;
+}
+
+.hr-form-grid small {
+  color: #b8547b;
+  font-weight: 600;
+}
+
+.hr-form-full,
+.hr-form-actions {
+  grid-column: 1 / -1;
+}
+
+.hr-form-actions {
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+.hr-detail-grid {
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+}
+
+.hr-modal-section {
+  display: grid;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.hr-modal-section h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.hr-modal-note {
+  margin: 0 0 18px;
+  color: var(--text-soft);
+}
+
+.hr-feedback {
+  margin: 0;
+}
+
+.hr-feedback.is-info {
+  background: rgba(110, 168, 254, 0.18);
+  color: #316fd8;
+}
+
+.hr-workspace-page .dashboard-status-badge {
+  min-height: 26px;
+  padding: 0 9px;
+  font-size: 0.72rem;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+@media (max-width: 1200px) {
+  .hr-workspace-page .dashboard-panel {
+    padding: 18px;
+  }
+
+  .hr-table-carded {
+    min-width: 0;
+  }
+
+  .hr-table-carded thead {
+    display: none;
+  }
+
+  .hr-table-carded,
+  .hr-table-carded tbody,
+  .hr-table-carded tr,
+  .hr-table-carded td {
+    display: block;
+    width: 100%;
+  }
+
+  .hr-table-carded tr {
+    margin-bottom: 12px;
+    padding: 12px;
+    border: 1px solid rgba(220, 231, 242, 0.9);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.72);
+  }
+
+  .hr-table-carded td {
+    display: grid;
+    grid-template-columns: 132px minmax(0, 1fr);
+    gap: 10px;
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(220, 231, 242, 0.72);
+  }
+
+  .hr-table-carded td:last-child {
+    border-bottom: 0;
+  }
+
+  .hr-table-carded td::before {
+    content: attr(data-label);
+    color: var(--text-soft);
+    font-size: 0.78rem;
+    font-weight: 700;
+  }
+
+  .hr-actions-cell {
+    min-width: 0;
+  }
+}
+
+@media (max-width: 900px) {
+  .hr-panel-actions,
+  .hr-toolbar,
+  .hr-report-filter {
+    justify-content: flex-start;
+  }
+
+  .hr-search,
+  .hr-toolbar select,
+  .hr-report-filter label,
+  .hr-report-filter .dashboard-button {
+    width: 100%;
+  }
+
+  .hr-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .hr-table-carded td {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+
+  .hr-row-actions {
+    width: 100%;
+  }
+
+  .hr-action-button,
+  .hr-button--danger,
+  .hr-button--success {
+    flex: 1 1 120px;
+    white-space: normal;
+  }
+}

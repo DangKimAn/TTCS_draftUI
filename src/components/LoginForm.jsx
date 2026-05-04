@@ -97,9 +97,13 @@ function LoginForm({ mode = 'default' }) {
 
       const session = {
         token: result.token,
+        id: result.user.id,
         email: result.user.email,
         name: result.user.name,
         role: result.user.role,
+        departmentId: result.user.departmentId,
+        managedEmployeeIds: result.user.managedEmployeeIds || [],
+        permissions: result.user.permissions || [],
         isActive: result.user.isActive,
         provider: result.provider,
         loggedInAt: new Date().toISOString(),

@@ -71,7 +71,7 @@ function EmployeeDashboardView() {
             <div className="dashboard-header__profile">
               <div className="dashboard-header__avatar">ND</div>
               <div>
-                <strong>Nguyễn Ngọc Duyên</strong>
+                <strong>Nguyễn Trần Ngọc Duyên</strong>
                 <span>Xin chào, chúc bạn một ngày làm việc hiệu quả</span>
               </div>
             </div>

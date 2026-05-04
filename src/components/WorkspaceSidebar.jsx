@@ -1,4 +1,4 @@
-﻿import { FiChevronLeft, FiChevronRight } from 'react-icons/fi';
+import { FiChevronLeft, FiChevronRight } from 'react-icons/fi';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { clearAuthSession, getAuthSession } from '../utils/storage';
 import {
@@ -7,13 +7,26 @@ import {
   employeeMenu,
   getEmployeeSectionHref,
 } from '../config/employeeMenu';
+import {
+  DEFAULT_MANAGER_SECTION,
+  getManagerSectionHref,
+  managerLogoutItem,
+  managerMenu,
+  normalizeManagerSection,
+} from '../config/managerMenu';
+import { getHrSectionHref, hrLogoutItem, hrMenu, normalizeHrSection } from '../config/hrMenu';
 
 function WorkspaceSidebar({ isCollapsed, onToggleCollapse }) {
   const navigate = useNavigate();
   const location = useLocation();
   const session = getAuthSession();
-  const currentSection = new URLSearchParams(location.search).get('section') || DEFAULT_EMPLOYEE_SECTION;
-  const LogoutIcon = employeeLogoutItem.icon;
+  const roleConfig = getRoleConfig(session?.role);
+  const rawCurrentSection =
+    new URLSearchParams(location.search).get('section') || roleConfig.defaultSection;
+  const currentSection = roleConfig.normalizeSection
+    ? roleConfig.normalizeSection(rawCurrentSection)
+    : rawCurrentSection;
+  const LogoutIcon = roleConfig.logoutItem.icon;
 
   const handleLogout = () => {
     clearAuthSession();
@@ -31,7 +44,7 @@ function WorkspaceSidebar({ isCollapsed, onToggleCollapse }) {
           {!isCollapsed ? (
             <div className="sidebar__brand-copy">
               <strong>TimeSheet Pro</strong>
-              <small>Khu vực nhân viên</small>
+              <small>{roleConfig.brandLabel}</small>
             </div>
           ) : null}
         </div>
@@ -48,10 +61,14 @@ function WorkspaceSidebar({ isCollapsed, onToggleCollapse }) {
       </div>
 
       <div className="sidebar__content">
+        {!isCollapsed ? (
+          <span className="sidebar__section-label">{roleConfig.sectionLabel}</span>
+        ) : null}
+
         <nav className="sidebar__nav sidebar__nav--scrollbar">
-          {employeeMenu.map((item) => {
+          {roleConfig.menu.map((item) => {
             const Icon = item.icon;
-            const isActive = location.pathname === '/dashboard/employee' && currentSection === item.key;
+            const isActive = location.pathname === roleConfig.path && currentSection === item.key;
 
             return (
               <button
@@ -59,7 +76,7 @@ function WorkspaceSidebar({ isCollapsed, onToggleCollapse }) {
                 type="button"
                 className={`sidebar__item sidebar__item--button${isCollapsed ? ' sidebar__item--collapsed' : ''}${isActive ? ' is-active' : ''}`}
                 aria-current={isActive ? 'page' : undefined}
-                onClick={() => navigate(getEmployeeSectionHref(item.key))}
+                onClick={() => navigate(roleConfig.getHref(item.key))}
                 title={isCollapsed ? item.label : undefined}
               >
                 <span className="sidebar__item-icon">
@@ -81,15 +98,15 @@ function WorkspaceSidebar({ isCollapsed, onToggleCollapse }) {
             type="button"
             className={`sidebar__item sidebar__item--button sidebar__item--danger${isCollapsed ? ' sidebar__item--collapsed' : ''}`}
             onClick={handleLogout}
-            title={isCollapsed ? employeeLogoutItem.label : undefined}
+            title={isCollapsed ? roleConfig.logoutItem.label : undefined}
           >
             <span className="sidebar__item-icon">
               <LogoutIcon />
             </span>
             {!isCollapsed ? (
               <span className="sidebar__item-copy">
-                <strong>{employeeLogoutItem.label}</strong>
-                <small>{employeeLogoutItem.description}</small>
+                <strong>{roleConfig.logoutItem.label}</strong>
+                <small>{roleConfig.logoutItem.description}</small>
               </span>
             ) : null}
           </button>
@@ -98,15 +115,57 @@ function WorkspaceSidebar({ isCollapsed, onToggleCollapse }) {
             <div className="sidebar__footer">
               <span>Trạng thái phiên</span>
               <strong>{session?.token ? 'Đã xác thực' : 'Khách'}</strong>
-              <p>
-                Mục mặc định: Tổng quan. Người dùng: {session?.name || 'Không xác định'}.
-              </p>
+              <p>{roleConfig.footerText(session)}</p>
             </div>
           ) : null}
         </div>
       </div>
     </aside>
   );
+}
+
+function getRoleConfig(role) {
+  if (role === 'manager') {
+    return {
+      path: '/dashboard/manager',
+      defaultSection: DEFAULT_MANAGER_SECTION,
+      menu: managerMenu,
+      logoutItem: managerLogoutItem,
+      getHref: getManagerSectionHref,
+      normalizeSection: normalizeManagerSection,
+      brandLabel: 'Khu vực quản lý',
+      sectionLabel: 'Điều hướng quản lý',
+      footerText: (session) =>
+        `Phạm vi hiển thị: nhân sự trực thuộc. Người dùng: ${session?.name || 'Không xác định'}.`,
+    };
+  }
+
+  if (role === 'hr') {
+    return {
+      path: '/dashboard/hr',
+      defaultSection: 'overview',
+      menu: hrMenu,
+      logoutItem: hrLogoutItem,
+      getHref: getHrSectionHref,
+      normalizeSection: normalizeHrSection,
+      brandLabel: 'Khu vực HR',
+      sectionLabel: 'Điều hướng nhân sự',
+      footerText: (session) =>
+        `Workspace HR đang mở cho ${session?.name || 'Không xác định'}.`,
+    };
+  }
+
+  return {
+    path: '/dashboard/employee',
+    defaultSection: DEFAULT_EMPLOYEE_SECTION,
+    menu: employeeMenu,
+    logoutItem: employeeLogoutItem,
+    getHref: getEmployeeSectionHref,
+    brandLabel: 'Khu vực nhân viên',
+    sectionLabel: 'Điều hướng cá nhân',
+    footerText: (session) =>
+      `Mục mặc định: Tổng quan. Người dùng: ${session?.name || 'Không xác định'}.`,
+  };
 }
 
 export default WorkspaceSidebar;

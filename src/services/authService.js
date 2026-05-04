@@ -37,9 +37,13 @@ export async function login({ email, password, provider = 'password' }) {
     token: buildToken(matchedUser.email, matchedUser.role),
     provider,
     user: {
+      id: matchedUser.id,
       email: matchedUser.email,
       name: matchedUser.name,
       role: matchedUser.role,
+      departmentId: matchedUser.departmentId,
+      managedEmployeeIds: matchedUser.managedEmployeeIds || [],
+      permissions: matchedUser.permissions || [],
       isActive: matchedUser.isActive,
     },
   };

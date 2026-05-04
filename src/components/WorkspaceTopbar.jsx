@@ -1,4 +1,4 @@
-﻿import { FiBell, FiSearch } from 'react-icons/fi';
+import { FiBell, FiSearch } from 'react-icons/fi';
 import { getAuthSession } from '../utils/storage';
 
 function WorkspaceTopbar() {
@@ -20,7 +20,7 @@ function WorkspaceTopbar() {
           <input
             id="workspace-search"
             type="search"
-            placeholder="Tìm kiếm bảng công, đơn nghỉ, thông báo..."
+            placeholder={getSearchPlaceholder(session?.role)}
           />
         </label>
       </div>
@@ -28,7 +28,7 @@ function WorkspaceTopbar() {
       <div className="topbar__actions">
         <button className="topbar__icon" type="button" aria-label="Thông báo">
           <FiBell />
-          <span>3</span>
+          <span>{getNotificationCount(session?.role)}</span>
         </button>
 
         <div className="topbar__profile">
@@ -36,15 +36,49 @@ function WorkspaceTopbar() {
           <div className="topbar__profile-copy">
             <strong>{session?.name || 'Khách truy cập'}</strong>
             <span>
-              {session?.role
-                ? `Vai trò: ${session.role} | Hình thức đăng nhập: ${session.provider || 'password'}`
-                : 'Xin chào, chúc bạn một ngày làm việc hiệu quả'}
+              {session?.role ? getRoleSubtitle(session) : 'Xin chào, chúc bạn một ngày làm việc hiệu quả'}
             </span>
           </div>
         </div>
       </div>
     </header>
   );
+}
+
+function getSearchPlaceholder(role) {
+  if (role === 'manager') {
+    return 'Tìm nhân viên, bảng công, đơn nghỉ phép, thông báo...';
+  }
+
+  if (role === 'hr') {
+    return 'Tìm nhân sự, chính sách, báo cáo, thông báo...';
+  }
+
+  return 'Tìm kiếm bảng công, đơn nghỉ, thông báo...';
+}
+
+function getNotificationCount(role) {
+  switch (role) {
+    case 'manager':
+      return 5;
+    case 'hr':
+      return 4;
+    default:
+      return 3;
+  }
+}
+
+function getRoleSubtitle(session) {
+  switch (session.role) {
+    case 'manager':
+      return 'Vai trò: Manager | Phạm vi: nhân sự trực thuộc';
+    case 'hr':
+      return 'Vai trò: HR | Quản trị nhân sự và chính sách';
+    case 'employee':
+      return `Vai trò: Employee | Hình thức đăng nhập: ${session.provider || 'password'}`;
+    default:
+      return `Vai trò: ${session.role}`;
+  }
 }
 
 export default WorkspaceTopbar;
