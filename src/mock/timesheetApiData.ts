@@ -1,4 +1,6 @@
-export const mockEmployees = [
+import type { ApiEmployee, ApiTimesheet } from '../types';
+
+export const mockEmployees: ApiEmployee[] = [
   {
     id: 'EMP-001',
     name: 'Nguyen Minh Anh',
@@ -31,7 +33,7 @@ export const mockEmployees = [
   },
 ];
 
-export const mockTimesheets = [
+export const mockTimesheets: ApiTimesheet[] = [
   {
     id: 'TS-1001',
     employeeId: 'EMP-001',
@@ -113,4 +115,3 @@ export const mockTimesheets = [
     note: 'Updated design review screens.',
   },
 ];
-

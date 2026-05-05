@@ -1,4 +1,12 @@
-import { mockEmployees, mockTimesheets } from '../src/mock/timesheetApiData.js';
+import { mockEmployees, mockTimesheets } from '../src/mock/timesheetApiData';
+
+interface TimesheetApiPayload {
+  employeeId?: string;
+  date?: string;
+  checkIn?: string;
+  checkOut?: string;
+  note?: string;
+}
 
 function createState() {
   return {
@@ -17,7 +25,7 @@ function sendJson(response, body, status = 200) {
   response.end(createJsonResponse(body, status));
 }
 
-function parseRequestBody(request) {
+function parseRequestBody(request): Promise<TimesheetApiPayload> {
   return new Promise((resolve, reject) => {
     let body = '';
 
@@ -62,7 +70,7 @@ function getStatusByTime(checkIn, checkOut) {
   return 'On Time';
 }
 
-function validatePayload(payload) {
+function validatePayload(payload: TimesheetApiPayload) {
   if (!payload.employeeId || !payload.date || !payload.checkIn) {
     return 'employeeId, date va checkIn la cac truong bat buoc.';
   }
@@ -181,4 +189,3 @@ export function timesheetApiPlugin() {
     },
   };
 }
-

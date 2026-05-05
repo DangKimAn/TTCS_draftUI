@@ -139,7 +139,7 @@ function LeaveRequestSection({ summary, requests, onSubmitRequest }) {
                 <textarea
                   id="leave-reason"
                   name="reason"
-                  rows="4"
+                  rows={4}
                   value={form.reason}
                   onChange={handleChange}
                   placeholder="Nhập lý do xin nghỉ phép..."

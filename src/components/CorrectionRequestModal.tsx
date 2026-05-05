@@ -1,5 +1,11 @@
 import { useEffect, useState } from 'react';
 
+type CorrectionFormErrors = {
+  date?: string;
+  requestedCheckOut?: string;
+  reason?: string;
+};
+
 function CorrectionRequestModal({ isOpen, selectedRow, onClose, onSubmit }) {
   const [form, setForm] = useState({
     date: '',
@@ -7,7 +13,7 @@ function CorrectionRequestModal({ isOpen, selectedRow, onClose, onSubmit }) {
     requestedCheckOut: '',
     reason: '',
   });
-  const [errors, setErrors] = useState({});
+  const [errors, setErrors] = useState<CorrectionFormErrors>({});
 
   useEffect(() => {
     if (!selectedRow) {
@@ -35,7 +41,7 @@ function CorrectionRequestModal({ isOpen, selectedRow, onClose, onSubmit }) {
   }
 
   const validate = () => {
-    const nextErrors = {};
+    const nextErrors: CorrectionFormErrors = {};
 
     if (!form.date) {
       nextErrors.date = 'Vui lòng chọn ngày.';
@@ -113,7 +119,7 @@ function CorrectionRequestModal({ isOpen, selectedRow, onClose, onSubmit }) {
           <label>
             <span>Lý do chỉnh sửa</span>
             <textarea
-              rows="4"
+              rows={4}
               value={form.reason}
               onChange={(event) => setForm((prev) => ({ ...prev, reason: event.target.value }))}
               placeholder="Ví dụ: Quên Check-out vì họp khẩn với khách hàng."

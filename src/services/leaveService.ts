@@ -1,8 +1,17 @@
 import { mockLeavePolicy, mockLeaveRequests } from '../data/mockLeave';
+import type { LeaveRequest } from '../types';
 
 const LEAVE_STORAGE_KEY = 'timesheet_pro_leave_requests';
 
-function parseStoredLeaveRequests() {
+type LeaveRequestPayload = Pick<
+  LeaveRequest,
+  'type' | 'startDate' | 'endDate' | 'totalDays' | 'reason'
+> & {
+  userEmail: string;
+  isUnpaid?: boolean;
+};
+
+function parseStoredLeaveRequests(): LeaveRequest[] | null {
   const rawValue = localStorage.getItem(LEAVE_STORAGE_KEY);
 
   if (!rawValue) {
@@ -17,7 +26,7 @@ function parseStoredLeaveRequests() {
   }
 }
 
-function ensureLeaveRequests() {
+function ensureLeaveRequests(): LeaveRequest[] {
   const parsed = parseStoredLeaveRequests();
 
   if (parsed) {
@@ -28,11 +37,11 @@ function ensureLeaveRequests() {
   return [...mockLeaveRequests];
 }
 
-function writeLeaveRequests(nextRequests) {
+function writeLeaveRequests(nextRequests: LeaveRequest[]): void {
   localStorage.setItem(LEAVE_STORAGE_KEY, JSON.stringify(nextRequests));
 }
 
-export function calculateLeaveDays(startDate, endDate) {
+export function calculateLeaveDays(startDate: string, endDate: string): number {
   if (!startDate || !endDate) {
     return 0;
   }
@@ -47,13 +56,18 @@ export function calculateLeaveDays(startDate, endDate) {
   return Math.floor((end.getTime() - start.getTime()) / 86400000) + 1;
 }
 
-export function getLeaveRequestsByUser(userEmail) {
+export function getLeaveRequestsByUser(userEmail: string): LeaveRequest[] {
   return ensureLeaveRequests()
     .filter((item) => item.userEmail === userEmail)
-    .sort((left, right) => new Date(right.createdAt) - new Date(left.createdAt));
+    .sort((left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime());
 }
 
-export function getLeaveSummary(userEmail) {
+export function getLeaveSummary(userEmail: string): {
+  totalAnnualDays: number;
+  usedDays: number;
+  pendingDays: number;
+  remainingDays: number;
+} {
   const requests = getLeaveRequestsByUser(userEmail);
   const approved = requests
     .filter((item) => item.status === 'Approved' && !item.isUnpaid)
@@ -70,9 +84,9 @@ export function getLeaveSummary(userEmail) {
   };
 }
 
-export function createLeaveRequest(payload) {
+export function createLeaveRequest(payload: LeaveRequestPayload): LeaveRequest {
   const requests = ensureLeaveRequests();
-  const nextRequest = {
+  const nextRequest: LeaveRequest = {
     id: `leave-${payload.userEmail}-${Date.now()}`,
     userEmail: payload.userEmail,
     type: payload.type,
@@ -89,4 +103,3 @@ export function createLeaveRequest(payload) {
   writeLeaveRequests(nextRequests);
   return nextRequest;
 }
-

@@ -113,7 +113,7 @@ function TimesheetForm({ employees, onSubmit, isSubmitting }) {
             value={formData.note}
             onChange={handleChange}
             placeholder="Vi du: Hoan thanh bao cao, hop client, di onsite..."
-            rows="4"
+            rows={4}
           />
         </label>
 

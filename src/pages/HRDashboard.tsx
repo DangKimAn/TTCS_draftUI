@@ -60,6 +60,10 @@ const emptyLeaveTypeForm = {
   status: 'Active',
 };
 
+type EmployeeForm = typeof emptyEmployeeForm;
+type LeaveTypeForm = typeof emptyLeaveTypeForm;
+type FormErrors = Record<string, string>;
+
 function HRDashboard() {
   const navigate = useNavigate();
   const session = getAuthSession();
@@ -635,7 +639,7 @@ function HREmployees({
                 ))
               ) : (
                 <tr>
-                  <td colSpan="9" className="hr-table-empty">Không tìm thấy nhân viên phù hợp.</td>
+                  <td colSpan={9} className="hr-table-empty">Không tìm thấy nhân viên phù hợp.</td>
                 </tr>
               )}
             </tbody>
@@ -830,7 +834,7 @@ function PayrollReportTab({ employees, departments, leaveTypes, leaveRequests, t
                 ))
               ) : (
                 <tr>
-                  <td colSpan="8" className="hr-table-empty">Không có dữ liệu để xuất.</td>
+                  <td colSpan={8} className="hr-table-empty">Không có dữ liệu để xuất.</td>
                 </tr>
               )}
             </tbody>
@@ -992,7 +996,7 @@ function TimesheetReportTab({ employees, departments, timesheets, onFeedback }) 
                 })
               ) : (
                 <tr>
-                  <td colSpan="8" className="hr-table-empty">Không có dữ liệu để xuất.</td>
+                  <td colSpan={8} className="hr-table-empty">Không có dữ liệu để xuất.</td>
                 </tr>
               )}
             </tbody>
@@ -1088,8 +1092,8 @@ function HRPolicies({ leaveTypes, feedback, onOpenPolicyModal, onToggleLeaveType
 
 function EmployeeModal({ modal, employees, departments, leaveRequests, timesheets, onClose, onSave }) {
   const employee = modal?.employeeId ? getEmployeeById(employees, modal.employeeId) : null;
-  const [form, setForm] = useState(emptyEmployeeForm);
-  const [errors, setErrors] = useState({});
+  const [form, setForm] = useState<EmployeeForm>(emptyEmployeeForm);
+  const [errors, setErrors] = useState<FormErrors>({});
 
   useEffect(() => {
     if (modal?.mode === 'edit' && employee) {
@@ -1247,8 +1251,8 @@ function ConfirmModal({ employee, onClose, onConfirm }) {
 
 function LeaveTypeModal({ modal, leaveTypes, onClose, onSave }) {
   const leaveType = modal?.leaveTypeId ? leaveTypes.find((type) => type.id === modal.leaveTypeId) : null;
-  const [form, setForm] = useState(emptyLeaveTypeForm);
-  const [errors, setErrors] = useState({});
+  const [form, setForm] = useState<LeaveTypeForm>(emptyLeaveTypeForm);
+  const [errors, setErrors] = useState<FormErrors>({});
 
   useEffect(() => {
     if (modal?.mode === 'edit' && leaveType) {
@@ -1310,7 +1314,7 @@ function LeaveTypeModal({ modal, leaveTypes, onClose, onSave }) {
         </label>
         <label className="hr-form-full">
           <span>Ghi chú</span>
-          <textarea name="note" rows="4" value={form.note} onChange={handleChange} />
+          <textarea name="note" rows={4} value={form.note} onChange={handleChange} />
         </label>
         <div className="dashboard-panel__actions hr-form-actions">
           <button type="button" className="dashboard-button dashboard-button--ghost" onClick={onClose}>Hủy</button>
@@ -1340,7 +1344,7 @@ function ModalShell({ title, children, onClose }) {
   );
 }
 
-function FormField({ label, name, type = 'text', step, value, error, onChange }) {
+function FormField({ label, name, type = 'text', step = undefined, value, error, onChange }) {
   return (
     <label>
       <span>{label}</span>
@@ -1381,8 +1385,8 @@ function buildCurrentHr(session) {
   };
 }
 
-function validateEmployeeForm(form, employees, currentEmployeeId) {
-  const errors = {};
+function validateEmployeeForm(form: EmployeeForm, employees, currentEmployeeId) {
+  const errors: FormErrors = {};
   const normalizedEmail = form.email.trim().toLowerCase();
 
   if (!form.fullName.trim()) {
@@ -1420,8 +1424,8 @@ function validateEmployeeForm(form, employees, currentEmployeeId) {
   return errors;
 }
 
-function validateLeaveTypeForm(form, leaveTypes, currentLeaveTypeId) {
-  const errors = {};
+function validateLeaveTypeForm(form: LeaveTypeForm, leaveTypes, currentLeaveTypeId) {
+  const errors: FormErrors = {};
   const normalizedCode = form.code.trim().toUpperCase();
 
   if (!normalizedCode) {

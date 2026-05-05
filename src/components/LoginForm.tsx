@@ -13,6 +13,11 @@ import { getDashboardPathByRole, saveAuthSession } from '../utils/storage';
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+type LoginErrors = {
+  email?: string;
+  password?: string;
+};
+
 function getErrorMessage(code) {
   switch (code) {
     case 'INVALID_CREDENTIALS':
@@ -45,7 +50,7 @@ function LoginForm({ mode = 'default' }) {
   const [password, setPassword] = useState('');
   const [remember, setRemember] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
-  const [errors, setErrors] = useState({});
+  const [errors, setErrors] = useState<LoginErrors>({});
   const [serverError, setServerError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -63,7 +68,7 @@ function LoginForm({ mode = 'default' }) {
   const copy = loginCopyByMode[mode] || loginCopyByMode.default;
 
   const validateForm = () => {
-    const nextErrors = {};
+    const nextErrors: LoginErrors = {};
 
     if (!email.trim()) {
       nextErrors.email = 'Vui lòng nhập email';

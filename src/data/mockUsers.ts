@@ -1,4 +1,10 @@
-export const mockUsers = [
+import type { User } from '../types';
+
+interface MockUser extends User {
+  password: string;
+}
+
+export const mockUsers: MockUser[] = [
   {
     id: 'emp-001',
     email: 'employee@timesheet.com',

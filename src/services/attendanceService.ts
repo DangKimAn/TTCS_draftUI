@@ -1,4 +1,5 @@
 import { createMockAttendanceSeed } from '../data/mockAttendance';
+import type { AppError, Attendance, User } from '../types';
 import { getCurrentDeviceInfo as readCurrentDeviceInfo } from '../utils/deviceInfo';
 import {
   calculateWorkingHours as calculateWorkingHoursValue,
@@ -11,7 +12,9 @@ const ATTENDANCE_IP_KEY = 'timesheet_pro_mock_ip';
 const DEFAULT_IP = '192.168.1.20';
 const ALTERNATE_IP = '10.0.0.15';
 
-function parseStoredRecords() {
+type AttendanceUser = Pick<User, 'email' | 'role'>;
+
+function parseStoredRecords(): Attendance[] | null {
   const storedValue = localStorage.getItem(ATTENDANCE_STORAGE_KEY);
 
   if (!storedValue) {
@@ -26,7 +29,7 @@ function parseStoredRecords() {
   }
 }
 
-function writeRecords(nextRecords) {
+function writeRecords(nextRecords: Attendance[]): void {
   const previousRaw = localStorage.getItem(ATTENDANCE_STORAGE_KEY);
 
   try {
@@ -36,13 +39,13 @@ function writeRecords(nextRecords) {
       localStorage.setItem(ATTENDANCE_STORAGE_KEY, previousRaw);
     }
 
-    const saveError = new Error('Attendance save failed');
+    const saveError = new Error('Attendance save failed') as AppError;
     saveError.code = 'ATTENDANCE_SAVE_FAILED';
     throw saveError;
   }
 }
 
-function ensureSeedRecords() {
+function ensureSeedRecords(): Attendance[] {
   const parsedRecords = parseStoredRecords();
 
   if (parsedRecords) {
@@ -54,62 +57,68 @@ function ensureSeedRecords() {
   return seedRecords;
 }
 
-function getAllRecords() {
+function getAllRecords(): Attendance[] {
   return ensureSeedRecords();
 }
 
-function createAttendanceId(userEmail, dateKey) {
+function createAttendanceId(userEmail: string, dateKey: string): string {
   return `attendance-${userEmail}-${dateKey}`;
 }
 
-function createUnauthorizedError() {
-  const error = new Error('Attendance is only available for employee role');
+function createUnauthorizedError(): AppError {
+  const error = new Error('Attendance is only available for employee role') as AppError;
   error.code = 'ATTENDANCE_UNAUTHORIZED';
   return error;
 }
 
-function ensureEmployeeUser(user) {
+function ensureEmployeeUser(user: AttendanceUser | null | undefined): asserts user is AttendanceUser {
   if (!user?.email || user?.role !== 'employee') {
     throw createUnauthorizedError();
   }
 }
 
-export function getCurrentMockIp() {
+export function getCurrentMockIp(): string {
   return localStorage.getItem(ATTENDANCE_IP_KEY) || DEFAULT_IP;
 }
 
-export function toggleMockIp() {
+export function toggleMockIp(): string {
   const nextIp = getCurrentMockIp() === DEFAULT_IP ? ALTERNATE_IP : DEFAULT_IP;
   localStorage.setItem(ATTENDANCE_IP_KEY, nextIp);
   return nextIp;
 }
 
-export function getCurrentDeviceInfo() {
+export function getCurrentDeviceInfo(): string {
   return getCurrentDeviceInfoFromBrowser();
 }
 
-function getCurrentDeviceInfoFromBrowser() {
+function getCurrentDeviceInfoFromBrowser(): string {
   return readCurrentDeviceInfo();
 }
 
-export function calculateWorkingHoursForRecord(checkInIso, checkOutIso) {
+export function calculateWorkingHoursForRecord(
+  checkInIso: string | null,
+  checkOutIso: string | null,
+): number | null {
   return calculateWorkingHoursValue(checkInIso, checkOutIso);
 }
 
 export { calculateWorkingHoursForRecord as calculateWorkingHours };
 
-export function getUserAttendanceRecords(userEmail) {
+export function getUserAttendanceRecords(userEmail: string): Attendance[] {
   return getAllRecords()
     .filter((record) => record.userEmail === userEmail)
     .sort((left, right) => right.date.localeCompare(left.date));
 }
 
-export function markMissingCheckoutRecords(userEmail) {
+export function markMissingCheckoutRecords(userEmail: string): {
+  updatedCount: number;
+  records: Attendance[];
+} {
   const records = getAllRecords();
   const todayKey = getTodayDateKey();
   let updatedCount = 0;
 
-  const nextRecords = records.map((record) => {
+  const nextRecords = records.map((record): Attendance => {
     const shouldMarkMissing =
       record.userEmail === userEmail &&
       record.date < todayKey &&
@@ -142,7 +151,7 @@ export function markMissingCheckoutRecords(userEmail) {
   };
 }
 
-export function getTodayAttendance(userEmail) {
+export function getTodayAttendance(userEmail: string): Attendance | null {
   const todayKey = getTodayDateKey();
 
   return getAllRecords().find(
@@ -150,11 +159,11 @@ export function getTodayAttendance(userEmail) {
   ) || null;
 }
 
-export function getAttendanceHistory(userEmail, limit = 7) {
+export function getAttendanceHistory(userEmail: string, limit = 7): Attendance[] {
   return getUserAttendanceRecords(userEmail).slice(0, limit);
 }
 
-export async function checkIn(user) {
+export async function checkIn(user: AttendanceUser): Promise<Attendance> {
   ensureEmployeeUser(user);
 
   await new Promise((resolve) => {
@@ -168,13 +177,13 @@ export async function checkIn(user) {
   );
 
   if (existingRecord?.status === 'Working' || (existingRecord?.checkInTime && !existingRecord?.checkOutTime)) {
-    const error = new Error('Already checked in');
+    const error = new Error('Already checked in') as AppError;
     error.code = 'ALREADY_CHECKED_IN';
     throw error;
   }
 
   if (existingRecord?.checkInTime && existingRecord?.checkOutTime) {
-    const error = new Error('Attendance already completed');
+    const error = new Error('Attendance already completed') as AppError;
     error.code = 'ALREADY_COMPLETED';
     throw error;
   }
@@ -183,7 +192,7 @@ export async function checkIn(user) {
   const ipAddress = getCurrentMockIp();
   const deviceInfo = getCurrentDeviceInfoFromBrowser();
 
-  const nextRecord = {
+  const nextRecord: Attendance = {
     id: createAttendanceId(user.email, todayKey),
     userEmail: user.email,
     date: todayKey,
@@ -209,7 +218,7 @@ export async function checkIn(user) {
   return nextRecord;
 }
 
-export async function checkOut(user) {
+export async function checkOut(user: AttendanceUser): Promise<Attendance> {
   ensureEmployeeUser(user);
 
   await new Promise((resolve) => {
@@ -223,13 +232,13 @@ export async function checkOut(user) {
   );
 
   if (!currentRecord?.checkInTime) {
-    const error = new Error('Not checked in yet');
+    const error = new Error('Not checked in yet') as AppError;
     error.code = 'NOT_CHECKED_IN';
     throw error;
   }
 
   if (currentRecord.checkOutTime) {
-    const error = new Error('Attendance already completed');
+    const error = new Error('Attendance already completed') as AppError;
     error.code = 'ALREADY_COMPLETED';
     throw error;
   }
@@ -250,7 +259,7 @@ export async function checkOut(user) {
     ? 'IP thay doi bat thuong, quan ly se xem xet.'
     : currentRecord.note || '';
 
-  const updatedRecord = {
+  const updatedRecord: Attendance = {
     ...currentRecord,
     checkOutTime: formatTimeFromIso(serverTime),
     totalHours: normalizedTotalHours,

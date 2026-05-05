@@ -1,18 +1,20 @@
+import type { AuthSession, Role } from '../types';
+
 const AUTH_STORAGE_KEY = 'timesheet_pro_auth';
 
-function parseStoredValue(value) {
+function parseStoredValue(value: string | null): AuthSession | null {
   if (!value) {
     return null;
   }
 
   try {
-    return JSON.parse(value);
+    return JSON.parse(value) as AuthSession;
   } catch {
     return null;
   }
 }
 
-export function getAuthSession() {
+export function getAuthSession(): AuthSession | null {
   const localValue = parseStoredValue(localStorage.getItem(AUTH_STORAGE_KEY));
 
   if (localValue?.token) {
@@ -28,7 +30,7 @@ export function getAuthSession() {
   return null;
 }
 
-export function saveAuthSession(session, remember = true) {
+export function saveAuthSession(session: AuthSession, remember = true): void {
   const storage = remember ? localStorage : sessionStorage;
   const otherStorage = remember ? sessionStorage : localStorage;
 
@@ -36,12 +38,12 @@ export function saveAuthSession(session, remember = true) {
   storage.setItem(AUTH_STORAGE_KEY, JSON.stringify(session));
 }
 
-export function clearAuthSession() {
+export function clearAuthSession(): void {
   localStorage.removeItem(AUTH_STORAGE_KEY);
   sessionStorage.removeItem(AUTH_STORAGE_KEY);
 }
 
-export function getDashboardPathByRole(role) {
+export function getDashboardPathByRole(role: Role | string): string {
   switch (role) {
     case 'employee':
       return '/dashboard/employee';

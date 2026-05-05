@@ -1,4 +1,6 @@
-function getDateKey(offsetDays) {
+import type { Attendance } from '../types';
+
+function getDateKey(offsetDays: number): string {
   const date = new Date();
   date.setDate(date.getDate() + offsetDays);
 
@@ -9,11 +11,17 @@ function getDateKey(offsetDays) {
   return `${year}-${month}-${day}`;
 }
 
-function createIsoForDate(dateKey, timeValue) {
+function createIsoForDate(dateKey: string, timeValue: string): string {
   return `${dateKey}T${timeValue}:00`;
 }
 
-function createCompletedRecord(index, offsetDays, checkIn, checkOut, note = '') {
+function createCompletedRecord(
+  index: number,
+  offsetDays: number,
+  checkIn: string,
+  checkOut: string,
+  note = '',
+): Attendance {
   const date = getDateKey(offsetDays);
 
   return {
@@ -35,7 +43,7 @@ function createCompletedRecord(index, offsetDays, checkIn, checkOut, note = '') 
   };
 }
 
-export function createMockAttendanceSeed() {
+export function createMockAttendanceSeed(): Attendance[] {
   const missingOutDate = getDateKey(-1);
 
   return [

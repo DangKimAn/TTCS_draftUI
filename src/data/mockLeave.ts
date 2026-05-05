@@ -1,4 +1,6 @@
-export const mockLeaveRequests = [
+import type { LeaveRequest } from '../types';
+
+export const mockLeaveRequests: LeaveRequest[] = [
   {
     id: 'leave-001',
     userEmail: 'employee@timesheet.com',
@@ -37,7 +39,6 @@ export const mockLeaveRequests = [
   },
 ];
 
-export const mockLeavePolicy = {
+export const mockLeavePolicy: { totalAnnualDays: number } = {
   totalAnnualDays: 12,
 };
-

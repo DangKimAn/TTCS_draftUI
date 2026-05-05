@@ -1,3 +1,5 @@
+import type { LeaveRequest, Timesheet } from '../types';
+
 export const departments = [
   {
     id: 'dept-engineering',
@@ -182,7 +184,7 @@ export const employees = [
   },
 ];
 
-export const timesheets = [
+export const timesheets: Timesheet[] = [
   {
     id: 'ts-001',
     code: 'TS-20260504-001',
@@ -327,7 +329,7 @@ export const timesheets = [
   },
 ];
 
-export const leaveRequests = [
+export const leaveRequests: LeaveRequest[] = [
   {
     id: 'lv-001',
     code: 'LV-202605-001',

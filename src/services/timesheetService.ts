@@ -1,4 +1,12 @@
 import { mockTimesheetSummaries } from '../data/mockTimesheet';
+import type {
+  AppError,
+  Attendance,
+  CorrectionRequest,
+  TimesheetPeriodData,
+  TimesheetRow,
+  TimesheetSummary,
+} from '../types';
 import { getUserAttendanceRecords } from './attendanceService';
 import {
   getCorrectionByAttendanceId,
@@ -14,7 +22,9 @@ import {
 
 const TIMESHEET_STORAGE_KEY = 'timesheet_pro_timesheet_summaries';
 
-function parseStoredSummaries() {
+type PeriodType = 'week' | 'month' | string;
+
+function parseStoredSummaries(): TimesheetSummary[] | null {
   const rawValue = localStorage.getItem(TIMESHEET_STORAGE_KEY);
 
   if (!rawValue) {
@@ -29,7 +39,7 @@ function parseStoredSummaries() {
   }
 }
 
-function ensureTimesheetSummaries() {
+function ensureTimesheetSummaries(): TimesheetSummary[] {
   const parsed = parseStoredSummaries();
 
   if (parsed) {
@@ -40,15 +50,21 @@ function ensureTimesheetSummaries() {
   return [...mockTimesheetSummaries];
 }
 
-function writeTimesheetSummaries(nextSummaries) {
+function writeTimesheetSummaries(nextSummaries: TimesheetSummary[]): void {
   localStorage.setItem(TIMESHEET_STORAGE_KEY, JSON.stringify(nextSummaries));
 }
 
-function getPeriodKey(periodType, periodConfig) {
+function getPeriodKey(
+  periodType: PeriodType,
+  periodConfig: { startKey: string; endKey: string },
+): string {
   return `${periodType}-${periodConfig.startKey}-${periodConfig.endKey}`;
 }
 
-export function getAttendanceWarnings(record, correction) {
+export function getAttendanceWarnings(
+  record: Attendance | null | undefined,
+  correction: CorrectionRequest | null | undefined,
+): string[] {
   const warnings = [];
 
   if (isLate(record?.checkInTime)) {
@@ -74,7 +90,11 @@ export function getAttendanceWarnings(record, correction) {
   return warnings;
 }
 
-export function getTimesheetStatus(userEmail, periodType, anchorDate = new Date()) {
+export function getTimesheetStatus(
+  userEmail: string,
+  periodType: PeriodType,
+  anchorDate = new Date(),
+): TimesheetSummary | null {
   const periodConfig = getPeriodConfig(periodType, anchorDate);
   const periodKey = getPeriodKey(periodType, periodConfig);
 
@@ -85,7 +105,11 @@ export function getTimesheetStatus(userEmail, periodType, anchorDate = new Date(
   );
 }
 
-export function getTimesheetByPeriod(userEmail, periodType, anchorDate = new Date()) {
+export function getTimesheetByPeriod(
+  userEmail: string,
+  periodType: PeriodType,
+  anchorDate = new Date(),
+): TimesheetPeriodData {
   const periodConfig = getPeriodConfig(periodType, anchorDate);
   const attendanceRecords = getUserAttendanceRecords(userEmail).filter((record) =>
     isDateWithinRange(record.date, periodConfig.startKey, periodConfig.endKey),
@@ -94,7 +118,7 @@ export function getTimesheetByPeriod(userEmail, periodType, anchorDate = new Dat
   const corrections = getCorrectionsByUser(userEmail);
   const summary = getTimesheetStatus(userEmail, periodType, anchorDate);
 
-  const rows = attendanceRecords.map((record) => {
+  const rows = attendanceRecords.map((record): TimesheetRow => {
     const correction = getCorrectionByAttendanceId(record.id);
     const warnings = getAttendanceWarnings(record, correction);
 
@@ -148,7 +172,11 @@ export function getTimesheetByPeriod(userEmail, periodType, anchorDate = new Dat
   };
 }
 
-export function canSubmitTimesheet(records, corrections, summary) {
+export function canSubmitTimesheet(
+  records: Attendance[],
+  corrections: CorrectionRequest[],
+  summary: TimesheetSummary | null,
+): { allowed: boolean; reason: string } {
   if (!records.length) {
     return {
       allowed: false,
@@ -192,7 +220,11 @@ export function canSubmitTimesheet(records, corrections, summary) {
   };
 }
 
-export function submitTimesheet(userEmail, periodType, anchorDate = new Date()) {
+export function submitTimesheet(
+  userEmail: string,
+  periodType: PeriodType,
+  anchorDate = new Date(),
+): TimesheetSummary {
   const periodConfig = getPeriodConfig(periodType, anchorDate);
   const periodKey = getPeriodKey(periodType, periodConfig);
   const records = getUserAttendanceRecords(userEmail).filter((record) =>
@@ -205,13 +237,13 @@ export function submitTimesheet(userEmail, periodType, anchorDate = new Date()) 
   const submitState = canSubmitTimesheet(records, corrections, currentSummary);
 
   if (!submitState.allowed) {
-    const error = new Error(submitState.reason);
+    const error = new Error(submitState.reason) as AppError;
     error.code = 'TIMESHEET_SUBMIT_BLOCKED';
     throw error;
   }
 
   const summaries = ensureTimesheetSummaries();
-  const nextSummary = {
+  const nextSummary: TimesheetSummary = {
     id: currentSummary?.id || `timesheet-${userEmail}-${periodType}-${periodConfig.startKey}`,
     userEmail,
     periodType,
@@ -238,6 +270,6 @@ export function submitTimesheet(userEmail, periodType, anchorDate = new Date()) 
   return nextSummary;
 }
 
-export function hasPendingCorrectionsInPeriod(userEmail, attendanceIds) {
+export function hasPendingCorrectionsInPeriod(userEmail: string, attendanceIds: string[]): boolean {
   return hasPendingCorrections(userEmail, attendanceIds);
 }

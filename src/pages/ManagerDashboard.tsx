@@ -639,7 +639,7 @@ function ManagerTimesheetApproval({
                 })
               ) : (
                 <tr>
-                  <td colSpan="10" className="manager-table-empty">Không có bảng công nào trong phạm vi quản lý.</td>
+                  <td colSpan={10} className="manager-table-empty">Không có bảng công nào trong phạm vi quản lý.</td>
                 </tr>
               )}
             </tbody>
@@ -776,7 +776,7 @@ function ManagerLeaveApproval({
                 })
               ) : (
                 <tr>
-                  <td colSpan="9" className="manager-table-empty">Không có đơn nghỉ phép nào trong phạm vi quản lý.</td>
+                  <td colSpan={9} className="manager-table-empty">Không có đơn nghỉ phép nào trong phạm vi quản lý.</td>
                 </tr>
               )}
             </tbody>
@@ -912,7 +912,7 @@ function ManagerEmployees({ employees, timesheets, leaveRequests, departments })
                 })
               ) : (
                 <tr>
-                  <td colSpan="9" className="manager-table-empty">Không tìm thấy nhân viên phù hợp.</td>
+                  <td colSpan={9} className="manager-table-empty">Không tìm thấy nhân viên phù hợp.</td>
                 </tr>
               )}
             </tbody>
@@ -1208,7 +1208,7 @@ function ManagerTimesheetReport({ timesheets, employees, departments, feedback, 
                 })
               ) : (
                 <tr>
-                  <td colSpan="9" className="manager-table-empty">Không có dữ liệu để xuất.</td>
+                  <td colSpan={9} className="manager-table-empty">Không có dữ liệu để xuất.</td>
                 </tr>
               )}
             </tbody>
@@ -1331,7 +1331,7 @@ function RejectDialog({ dialog, timesheets, leaveRequests, onChange, onClose, on
           <span>Lý do từ chối</span>
           <textarea
             id="manager-reject-reason"
-            rows="5"
+            rows={5}
             value={dialog.reason}
             onChange={(event) => onChange(event.target.value)}
             placeholder="Nhập lý do để nhân viên có thể điều chỉnh hoặc bổ sung thông tin..."

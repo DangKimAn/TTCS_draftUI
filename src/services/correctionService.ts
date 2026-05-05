@@ -1,8 +1,15 @@
 import { mockCorrections } from '../data/mockCorrections';
+import type { AppError, CorrectionRequest } from '../types';
 
 const CORRECTION_STORAGE_KEY = 'timesheet_pro_corrections';
 
-function parseStoredCorrections() {
+type CorrectionRequestPayload = Pick<
+  CorrectionRequest,
+  'userEmail' | 'attendanceId' | 'date' | 'reason'
+> &
+  Partial<Pick<CorrectionRequest, 'requestedCheckIn' | 'requestedCheckOut'>>;
+
+function parseStoredCorrections(): CorrectionRequest[] | null {
   const rawValue = localStorage.getItem(CORRECTION_STORAGE_KEY);
 
   if (!rawValue) {
@@ -17,7 +24,7 @@ function parseStoredCorrections() {
   }
 }
 
-function ensureCorrections() {
+function ensureCorrections(): CorrectionRequest[] {
   const parsed = parseStoredCorrections();
 
   if (parsed) {
@@ -28,21 +35,21 @@ function ensureCorrections() {
   return [...mockCorrections];
 }
 
-function writeCorrections(nextCorrections) {
+function writeCorrections(nextCorrections: CorrectionRequest[]): void {
   localStorage.setItem(CORRECTION_STORAGE_KEY, JSON.stringify(nextCorrections));
 }
 
-export function getCorrectionsByUser(userEmail) {
+export function getCorrectionsByUser(userEmail: string): CorrectionRequest[] {
   return ensureCorrections()
     .filter((item) => item.userEmail === userEmail)
-    .sort((left, right) => new Date(right.createdAt) - new Date(left.createdAt));
+    .sort((left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime());
 }
 
-export function getCorrectionByAttendanceId(attendanceId) {
+export function getCorrectionByAttendanceId(attendanceId: string): CorrectionRequest | null {
   return ensureCorrections().find((item) => item.attendanceId === attendanceId) || null;
 }
 
-export function hasPendingCorrections(userEmail, attendanceIds = []) {
+export function hasPendingCorrections(userEmail: string, attendanceIds: string[] = []): boolean {
   return ensureCorrections().some(
     (item) =>
       item.userEmail === userEmail &&
@@ -51,7 +58,7 @@ export function hasPendingCorrections(userEmail, attendanceIds = []) {
   );
 }
 
-export function createCorrectionRequest(payload) {
+export function createCorrectionRequest(payload: CorrectionRequestPayload): CorrectionRequest {
   const corrections = ensureCorrections();
 
   const duplicatePending = corrections.find(
@@ -62,12 +69,12 @@ export function createCorrectionRequest(payload) {
   );
 
   if (duplicatePending) {
-    const error = new Error('Pending correction already exists');
+    const error = new Error('Pending correction already exists') as AppError;
     error.code = 'CORRECTION_PENDING_EXISTS';
     throw error;
   }
 
-  const nextCorrection = {
+  const nextCorrection: CorrectionRequest = {
     id: `correction-${payload.userEmail}-${payload.date}-${Date.now()}`,
     userEmail: payload.userEmail,
     attendanceId: payload.attendanceId,
