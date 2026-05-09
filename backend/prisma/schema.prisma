@@ -1,0 +1,221 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql" // Hoặc "mysql" tùy vào DB bạn sử dụng
+}
+
+
+model User {
+  userID            String    @id @default(uuid()) @db.Uuid
+  email             String    @unique
+  username          String    @unique
+  hashedPassword    String
+  linkAvatar        String?   // Nên để optional và xử lý default ở Code
+  salaryCoefficient Float     @default(0)
+  birthday          DateTime?
+  remainDaysofLeave Int       @default(12)
+  totalDaysofLeave  Int       @default(12)
+  isActive          Boolean?  @default(true)
+  refreshToken      String?   @db.Text
+
+  // Foreign keys
+  roleId            String    @db.Uuid
+  departmentID      String?   @db.Uuid
+
+  // Relations
+  role              Role        @relation(fields: [roleId], references: [roleID] , onDelete: Restrict)
+  department        Department? @relation("UserInDepartment", fields: [departmentID], references: [departmentID], onDelete: Restrict)
+  
+  managedDepartments Department[] @relation("DepartmentManager")
+  
+  leaveApplicationsSent     LeaveApplication[] @relation("Sender")
+  leaveApplicationsReviewed LeaveApplication[] @relation("Reviewer")
+  
+  notificationsSent     Notification[] @relation("NotiSender")
+  notificationsReceived Notification[] @relation("NotiReceiver")
+  
+  warnings              Warning[]
+  monthlyTimesheets     MonthlyTimesheet[] @relation("EmployeeTimesheet")
+  
+  // Field lưu vết những bảng công mà user này THỰC TẾ đã duyệt trong quá khứ
+  approvedTimesheets    MonthlyTimesheet[] @relation("ActualReviewer")
+  
+  payrolls              Payroll[]
+
+  requestedCorrections RequestCorrection[] @relation("CorrectionReviewer")
+  @@map("users")
+}
+
+model Role {
+  roleID   String @id @default(uuid()) @db.Uuid
+  nameRole String @unique
+  users    User[]
+
+  @@map("roles")
+}
+
+model Department {
+  departmentID   String @id @default(uuid()) @db.Uuid
+  departmentName String @unique
+  managerID      String? @db.Uuid
+
+  // Relations
+  manager        User?  @relation("DepartmentManager", fields: [managerID], references: [userID] , onDelete: Restrict)
+  users          User[] @relation("UserInDepartment")
+
+  @@map("departments")
+}
+
+model TimesheetEntry {
+  timesheetEntryID    String   @id @default(uuid()) @db.Uuid
+  monthlyTimesheetID  String   @db.Uuid
+  date                String
+  status              String   // 'pending', 'approved', 'rejected'
+  checkIn             DateTime @db.Timestamp
+  checkOut            DateTime? @db.Timestamp
+  IPAddress           String
+  canRequestCorrection Boolean  @default(true)
+
+  // Relations
+  monthlyTimesheet    MonthlyTimesheet @relation(fields: [monthlyTimesheetID], references: [monthlyTimesheetID], onDelete: Restrict)
+
+  @@map("timesheet_entries")
+}
+model MonthlyTimesheet {
+  monthlyTimesheetID String   @id @default(uuid()) @db.Uuid
+  userID             String   @db.Uuid
+  month              Int
+  year               Int
+  status             String   // 'draft', 'submitted', 'approved', 'rejected'
+  reasonReject       String?
+  
+  // Snapshot thông tin người duyệt thực tế để đảm bảo tính lịch sử (Audit trail)
+  approvedById       String?  @db.Uuid 
+  reviewedAt         DateTime?
+  
+  createdAt          DateTime @default(now())
+  isSubmitted        Boolean  @default(false)
+
+  canSubmit          Boolean  @default(false)
+  employee           User     @relation("EmployeeTimesheet", fields: [userID], references: [userID], onDelete: Restrict)
+  actualReviewer     User?    @relation("ActualReviewer", fields: [approvedById], references: [userID], onDelete: Restrict)
+  
+  entries            TimesheetEntry[]
+  corrections        RequestCorrection[]
+  payrolls           Payroll[]
+
+  // 3NF: Đảm bảo một nhân viên chỉ có 1 bảng công duy nhất cho 1 tháng/năm
+  @@unique([userID, month, year])
+  @@map("monthly_timesheets")
+}
+model LeaveApplication {
+  leaveApplicationID String   @id @default(uuid()) @db.Uuid
+  senderID           String   @db.Uuid
+  
+  // ID của người thực tế đã nhấn nút Duyệt/Từ chối (Audit Trail)
+  reviewerID         String?  @db.Uuid 
+  
+  typeLeaveID        String   @db.Uuid
+  
+  startDate          DateTime
+  endDate            DateTime
+  
+  // Số ngày nghỉ thực tế (ví dụ: 1, 0.5, 2.5) 
+  // Giúp tính toán remainDaysofLeave chính xác và nhanh hơn
+  duration           Float    
+  
+  reason             String   @db.Text
+  status             String   @default("pending") // 'pending', 'approved', 'rejected', 'cancelled'
+  
+  // Lý do từ chối nếu có
+  reasonReject       String?  @db.Text
+  
+  createdAt          DateTime @default(now())
+  
+  // Thời điểm đơn được xử lý (Duyệt hoặc Từ chối)
+  reviewedAt         DateTime?
+
+  // Relations
+  sender             User      @relation("Sender", fields: [senderID], references: [userID], onDelete: Restrict)
+  reviewer           User?     @relation("Reviewer", fields: [reviewerID], references: [userID], onDelete: Restrict)
+  typeLeave          TypeLeave @relation(fields: [typeLeaveID], references: [typeLeaveID], onDelete: Restrict)
+
+  @@map("leave_applications")
+}
+
+model TypeLeave {
+  typeLeaveID   String @id @default(uuid()) @db.Uuid
+  nameTypeLeave String
+  hasSalary     Float
+  applications  LeaveApplication[]
+
+  @@map("type_leaves")
+}
+
+model Notification {
+  notificationID String   @id @default(uuid()) @db.Uuid
+  senderID       String   @db.Uuid
+  receiverID     String   @db.Uuid
+  createdAt      DateTime @default(now())
+  content        String
+  isRead         Boolean  @default(false)
+  relatedType    String?  // 'warning', 'leave', 'timesheet'
+
+  // Relations
+  sender         User     @relation("NotiSender", fields: [senderID], references: [userID], onDelete: Restrict)
+  receiver       User     @relation("NotiReceiver", fields: [receiverID], references: [userID], onDelete: Restrict)
+
+  @@map("notifications")
+}
+
+model Warning {
+  warningID String   @id @default(uuid()) @db.Uuid
+  userID    String   @db.Uuid
+  content   String?
+  level     String?  // 'low', 'medium', 'high' @default('low')
+  createdAt DateTime @default(now())
+
+  // Relations
+  user      User     @relation(fields: [userID], references: [userID], onDelete: Restrict)
+
+  @@map("warnings")
+}
+
+model RequestCorrection {
+  requestCorrectionID String   @id @default(uuid()) @db.Uuid
+  monthlyTimesheetID  String   @db.Uuid
+  reason              String
+  reviewerID          String   @db.Uuid
+  status              String   // 'pending', 'approved', 'rejected'
+  reasonReject        String?
+  reviewedAt          DateTime?
+  createdAt           DateTime @default(now())
+
+  // Relations
+  monthlyTimesheet    MonthlyTimesheet @relation(fields: [monthlyTimesheetID], references: [monthlyTimesheetID])
+  reviewer            User             @relation("CorrectionReviewer", fields: [reviewerID], references: [userID])
+
+  @@map("request_corrections")
+}
+
+model Payroll {
+  payrollID           String   @id @default(uuid()) @db.Uuid
+  userID          String   @db.Uuid
+  month               Int
+  year                Int
+  monthlyTimesheetID  String   @db.Uuid
+  totalHours          Float
+  totalExtraHours     Float    @default(0)
+  totalSalaryByHours  Float
+
+  // Relations
+  employee            User             @relation(fields: [userID], references: [userID])
+  monthlyTimesheet    MonthlyTimesheet @relation(fields: [monthlyTimesheetID], references: [monthlyTimesheetID])
+
+  @@map("payrolls")
+}
