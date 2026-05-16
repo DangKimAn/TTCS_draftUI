@@ -1,6 +1,21 @@
-import { BadRequestException, Body, ConflictException, Controller, NotFoundException, Post, UseGuards } from '@nestjs/common';
+import {
+  BadRequestException,
+  Body,
+  ConflictException,
+  Controller,
+  NotFoundException,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
 import { WarningService } from './warning.service';
-import { ApiBadRequestResponse, ApiBearerAuth, ApiConflictResponse, ApiCreatedResponse, ApiNotFoundResponse, ApiOperation } from '@nestjs/swagger';
+import {
+  ApiBadRequestResponse,
+  ApiBearerAuth,
+  ApiConflictResponse,
+  ApiCreatedResponse,
+  ApiNotFoundResponse,
+  ApiOperation,
+} from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { UserAccessGaurd } from 'src/auth/guards/access.guard';
 import { RequirePermission } from 'src/common/require-permissions.decorator';
@@ -13,35 +28,36 @@ import { CONFLIG_CODE, CREATED_RESPONE, NOTFOUND_CODE } from 'src/common/code';
 export class WarningController {
   constructor(private readonly warningService: WarningService) {}
 
-  
   @Post('/sendWarning')
   @ApiOperation({
-    summary:'for admin in test, not use in production!!!'
+    summary: 'for admin in test, not use in production!!!',
   })
   @ApiBearerAuth()
   @ApiCreatedResponse()
   @ApiNotFoundResponse()
   @ApiBadRequestResponse()
   @ApiConflictResponse()
-
   @UseGuards(JwtAuthGuard, UserAccessGaurd)
-
   @RequirePermission('admin')
-  async seandWarning( @Body() createWarningDto :CreateWarningDto): Promise<ResponseDto<WarningDto>> {
-    const { statusCode, message, data }: ResponseDto<WarningDto> = await this.warningService.sendWarning(createWarningDto)
+  async seandWarning(
+    @Body() createWarningDto: CreateWarningDto,
+  ): Promise<ResponseDto<WarningDto>> {
+    const { statusCode, message, data }: ResponseDto<WarningDto> =
+      await this.warningService.sendWarning(createWarningDto);
 
     if (statusCode === CREATED_RESPONE)
       return {
-        statusCode, message, data
-      }
+        statusCode,
+        message,
+        data,
+      };
 
     if (statusCode === NOTFOUND_CODE)
-      throw new NotFoundException(statusCode, message)
+      throw new NotFoundException(statusCode, message);
 
     if (statusCode === CONFLIG_CODE)
-      throw new ConflictException(statusCode, message)
+      throw new ConflictException(statusCode, message);
 
-    throw new BadRequestException(statusCode, message)
+    throw new BadRequestException(statusCode, message);
   }
-
 }

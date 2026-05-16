@@ -1,36 +1,65 @@
-import { NestFactory } from '@nestjs/core';
+import { ClassSerializerInterceptor, ValidationPipe } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { NestFactory, Reflector } from '@nestjs/core';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
-import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
-import { ValidationPipe } from '@nestjs/common';
-import { ClassSerializerInterceptor } from '@nestjs/common';
-import { Reflector } from '@nestjs/core';
-import { nowVN } from './common/time';
+import { ResponseEnvelopeInterceptor } from './common/interceptors/response-envelope.interceptor';
+
+function parseCorsOrigins(value?: string): string[] {
+  return (value || 'http://localhost:5173')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+}
+
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  const configService = app.get(ConfigService);
+  const reflector = app.get(Reflector);
+
+  app.enableCors({
+    origin: parseCorsOrigins(configService.get<string>('CORS_ORIGIN')),
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    credentials: true,
+  });
+
+  app.setGlobalPrefix('api');
+
   const config = new DocumentBuilder()
-    .setTitle('Dự án NestJS API')
-    .setDescription('Danh sách các API của ứng dụng')
+    .setTitle('Timesheet Pro API')
+    .setDescription(
+      'API contract for attendance, timesheet, leave, HR, notification, warning and payroll workflows.',
+    )
     .setVersion('1.0')
     .addBearerAuth()
     .build();
   const document = SwaggerModule.createDocument(app, config);
 
-  SwaggerModule.setup('api', app, document);
+  SwaggerModule.setup('api/docs', app, document, {
+    jsonDocumentUrl: 'api/docs-json',
+  });
 
-  app.useGlobalPipes(new ValidationPipe({
-    whitelist: true,               // Tự động loại bỏ các field không được định nghĩa trong DTO
-    forbidNonWhitelisted: true,    // Trả về lỗi nếu có field lạ gửi lên
-    transform: true,               // Tự động convert kiểu dữ liệu (vd: string "1" thành number 1)
-  }));
-  // add proxy to get IP 
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
+    }),
+  );
+
   app.getHttpAdapter().getInstance().trustProxy = true;
 
-app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
+  app.useGlobalInterceptors(
+    new ClassSerializerInterceptor(reflector),
+    new ResponseEnvelopeInterceptor(),
+  );
 
-  const port = process.env.PORT ?? 3000
+  const port = configService.get<number>('PORT') || 3000;
   await app.listen(port);
 
-  console.log(`The website run at localhost:${port}`)
-  
+  console.log(`Server running at http://localhost:${port}`);
+  console.log(`Swagger docs at http://localhost:${port}/api/docs`);
+  console.log(`OpenAPI JSON at http://localhost:${port}/api/docs-json`);
 }
+
 bootstrap();

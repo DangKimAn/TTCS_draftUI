@@ -1,107 +1,67 @@
-import { ApiProperty } from "@nestjs/swagger";
-import { Type } from "class-transformer";
-import { IsBoolean, IsDate, IsDateString, IsEmail, IsIn, IsInt, IsNumber, IsOptional, IsString } from "class-validator";
+import { ApiProperty } from '@nestjs/swagger';
+import { IsString, IsEmail, IsOptional, IsUUID, IsNumber } from 'class-validator';
 
+export class CreateUserDto {
+  @ApiProperty()
+  @IsString()
+  username: string;
 
-export default class CreateUserDto{
+  @ApiProperty()
+  @IsEmail()
+  email: string;
 
-    @ApiProperty({
-        description : 'email',
-        example : "abc@gmail.com",
-        required : true
-    })
-    @IsEmail()
-    email : string 
+  @ApiProperty({ required: false })
+  @IsString()
+  @IsOptional()
+  password?: string;
 
-     @ApiProperty({
-        description : 'username',
-        example : "hahaha",
-        required : true
-    })
-    @IsString()
-    username : string
-     @ApiProperty({
-        description : 'password',
-        example : "hacked by me",
-        required : true
-    })
-    @IsString()
-    password: string
-    
-     @ApiProperty({
-        description : 'linkAvatar',
-        example : "",
-        required : false
-    })
+  @ApiProperty({ required: false })
+  @IsUUID()
+  @IsOptional()
+  roleID?: string;
 
-    @IsString()
-    @IsOptional()
-    linkAvatar?:string | undefined
-     @ApiProperty({
-        description : 'salaryCoefficient',
-        example : "0.01",
-        required : false
-    })
-    
-    @IsNumber()
-    @IsOptional()
-    salaryCoefficient?:number |undefined
-     @ApiProperty({
-        description : 'birthday',
-        example : "04/10/2005",
-        required : false
-    })
-    @Type(() => Date)
-    @IsDate()
-    @IsOptional()
-    birthday?:Date | undefined
+  @ApiProperty({ required: false })
+  @IsUUID()
+  @IsOptional()
+  departmentID?: string;
 
-     @ApiProperty({
-        description : 'remainDaysofLeaves',
-        example : "12",
-        required : false
-    })
-    @IsInt()
-    @IsOptional()
-    remainDaysofLeave?:number | undefined
+  @ApiProperty({ required: false })
+  @IsString()
+  @IsOptional()
+  roleName?: string;
 
-     @ApiProperty({
-        description : 'totalDayOfLeaves',
-        example : "12",
-        required : false
-    })
-    @IsInt()
-    @IsOptional()
-    totalDaysofLeave ?:number | undefined
+  @ApiProperty({ required: false })
+  @IsString()
+  @IsOptional()
+  departmentName?: string;
 
-     @ApiProperty({
-        description : 'isActive',
-        example : "true",
-        required : false
-    })
-    @IsBoolean()
-    @IsOptional()
-    isActive?:boolean |undefined
+  @ApiProperty({ required: false })
+  @IsString()
+  @IsOptional()
+  linkAvatar?: string;
 
-     @ApiProperty({
-        description : 'roleName',
-        example : "admin",
-        required : false
-    })
-    @IsString()
-    @IsOptional()
-    roleName?:string | undefined
+  @ApiProperty({ required: false })
+  @IsNumber()
+  @IsOptional()
+  salaryCoefficient?: number;
 
-     @ApiProperty({
-        description : 'departmentName',
-        example : "IT",
-        required : false
-    })
-    @IsString()
-    @IsOptional()
-    departmentName?:string | undefined
+  @ApiProperty({ required: false })
+  @IsOptional()
+  birthday?: Date;
 
-    @IsString()
-    @IsOptional()
-    refreshToken?:string | undefined
-};
+  @ApiProperty({ required: false })
+  @IsOptional()
+  remainDaysofLeave?: number;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  totalDaysofLeave?: number;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  isActive?: boolean;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  refreshToken?: string;
+}

@@ -1,26 +1,21 @@
-import { IsBoolean, IsDataURI, IsDate, IsOptional, IsString, IsUUID } from "class-validator";
+import { IsDate, IsOptional, IsString, IsUUID } from 'class-validator';
 
 export default class WarningDto {
+  @IsString()
+  @IsUUID()
+  warningID: string;
 
+  @IsString()
+  @IsUUID()
+  userID: string;
 
-    @IsString()
-    @IsUUID()
-    warningID : string
-    
-    
-    @IsString()
-    @IsUUID()
-    userID : string
+  @IsString()
+  content: string | null;
 
-    @IsString()
-    content: string | null
+  @IsDate()
+  createdAt: Date;
 
-    @IsDate()
-    createdAt : Date
-
-
-    @IsOptional()
-    @IsString()
-    level? : string | null
-
+  @IsOptional()
+  @IsString()
+  level?: string | null;
 }

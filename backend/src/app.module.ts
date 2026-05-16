@@ -1,25 +1,31 @@
 import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
+import { ScheduleModule } from '@nestjs/schedule';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { PrismaModule } from './prisma/prisma.module';
-import { ConfigModule } from '@nestjs/config';
-import { RoleModule } from './role/role.module';
-import { UserModule } from './user/user.module';
+import { AttendanceModuleModule } from './attendance-module/attendance-module.module';
 import { AuthModule } from './auth/auth.module';
-import { DepartmentModule } from './department/department.module';
 import { BycyptHashedModule } from './common/bycypt-hashed/bycypt-hashed.module';
 import { SeedService } from './common/seed.service';
-import { AttendanceModuleModule } from './attendance-module/attendance-module.module';
+import { DepartmentModule } from './department/department.module';
+import { LeaveApplicationModule } from './leave-application/leave-application.module';
 import { MonthlyTimeSheetModule } from './monthly-time-sheet/monthly-time-sheet.module';
 import { NotificationModule } from './notification/notification.module';
-import { ScheduleModule } from '@nestjs/schedule';
-import { WarningModule } from './warning/warning.module';
+import { PayrollModule } from './payroll/payroll.module';
+import { PrismaModule } from './prisma/prisma.module';
+import { RoleModule } from './role/role.module';
 import { TypeLeaveModule } from './type-leave/type-leave.module';
+import { UserModule } from './user/user.module';
+import { WarningModule } from './warning/warning.module';
+import { RequestCorrectionModule } from './request-correction/request-correction.module';
+import { EmailModule } from './common/email.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
-      isGlobal: true, // Để các module khác không cần import lại
+      isGlobal: true,
+      cache: true,
+      envFilePath: ['.env', '../.env'],
     }),
     PrismaModule,
     RoleModule,
@@ -32,8 +38,11 @@ import { TypeLeaveModule } from './type-leave/type-leave.module';
     NotificationModule,
     ScheduleModule.forRoot(),
     WarningModule,
-    TypeLeaveModule
-    
+    TypeLeaveModule,
+    LeaveApplicationModule,
+    PayrollModule,
+    RequestCorrectionModule,
+    EmailModule,
   ],
   controllers: [AppController],
   providers: [AppService, SeedService],

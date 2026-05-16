@@ -1,30 +1,35 @@
-import { IsBoolean, IsDataURI, IsDate, IsOptional, IsString, IsUUID } from "class-validator";
+import {
+  IsBoolean,
+  IsDataURI,
+  IsDate,
+  IsOptional,
+  IsString,
+  IsUUID,
+} from 'class-validator';
 
 export default class NotificationDto {
+  @IsString()
+  @IsUUID()
+  notificationID: string;
+  @IsString()
+  @IsUUID()
+  @IsOptional()
+  senderID?: string | null;
 
+  @IsString()
+  @IsUUID()
+  receiverID: string;
 
-    @IsString()
-    @IsUUID()
-    notificationID : string
-    @IsString()
-    @IsUUID()
-    senderID : string 
+  @IsString()
+  content: string;
 
-    @IsString()
-    @IsUUID()
-    receiverID : string
+  @IsDate()
+  createdAt: Date;
 
-    @IsString()
-    content: string 
+  @IsBoolean()
+  isRead: boolean;
 
-    @IsDate()
-    createdAt : Date
-
-    @IsBoolean()
-    isRead: boolean
-
-    @IsOptional()
-    @IsString()
-    relatedType? : string | null
-
+  @IsOptional()
+  @IsString()
+  relatedType?: string | null;
 }

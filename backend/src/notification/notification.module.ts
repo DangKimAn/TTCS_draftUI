@@ -6,7 +6,7 @@ import { UserModule } from 'src/user/user.module';
 @Module({
   controllers: [NotificationController],
   providers: [NotificationService],
-  exports:[NotificationService],
-  imports :[forwardRef(() => UserModule)]
+  exports: [NotificationService],
+  imports: [forwardRef(() => UserModule)],
 })
 export class NotificationModule {}

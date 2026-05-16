@@ -9,10 +9,12 @@ import { AuthModule } from 'src/auth/auth.module';
 @Module({
   controllers: [UserController],
   providers: [UserService],
-  imports :[forwardRef(() => RoleModule),
-  forwardRef(() => DepartmentModule),
-  BycyptHashedModule,
-forwardRef(()=> AuthModule)],
-  exports :[UserService]
+  imports: [
+    forwardRef(() => RoleModule),
+    forwardRef(() => DepartmentModule),
+    BycyptHashedModule,
+    forwardRef(() => AuthModule),
+  ],
+  exports: [UserService],
 })
 export class UserModule {}

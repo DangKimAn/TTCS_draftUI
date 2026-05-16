@@ -5,6 +5,6 @@ import { BycyptHashedController } from './bycypt-hashed.controller';
 @Module({
   controllers: [BycyptHashedController],
   providers: [BycyptHashedService],
-  exports :[BycyptHashedService]
+  exports: [BycyptHashedService],
 })
 export class BycyptHashedModule {}

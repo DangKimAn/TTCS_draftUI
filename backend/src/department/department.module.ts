@@ -8,7 +8,7 @@ import { RoleModule } from 'src/role/role.module';
 @Module({
   controllers: [DepartmentController],
   providers: [DepartmentService],
-  exports : [DepartmentService],
-  imports: [forwardRef(() => UserModule) , forwardRef(() => RoleModule)]
+  exports: [DepartmentService],
+  imports: [forwardRef(() => UserModule), forwardRef(() => RoleModule)],
 })
 export class DepartmentModule {}

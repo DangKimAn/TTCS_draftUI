@@ -6,7 +6,7 @@ import { UserModule } from 'src/user/user.module';
 @Module({
   controllers: [RoleController],
   providers: [RoleService],
-  exports :[RoleService],
-  imports :[forwardRef(() => UserModule)]
+  exports: [RoleService],
+  imports: [forwardRef(() => UserModule)],
 })
 export class RoleModule {}

@@ -1,36 +1,51 @@
-import { ApiProperty } from "@nestjs/swagger";
-import { Type } from "class-transformer";
-import { IsBoolean, IsDate, IsDateString, IsEmail, IsIn, IsInt, IsNumber, IsOptional, IsString, IsUUID } from "class-validator";
+import { ApiProperty } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
+import {
+  IsBoolean,
+  IsDate,
+  IsDateString,
+  IsEmail,
+  IsIn,
+  IsInt,
+  IsNumber,
+  IsOptional,
+  IsString,
+  IsUUID,
+} from 'class-validator';
 
+export default class UserDto {
+  @IsString()
+  @IsUUID()
+  userID: string;
+  @ApiProperty({
+    description: 'email',
+    example: 'abc@gmail.com',
+    required: true,
+  })
+  @IsString()
+  @IsEmail()
+  email: string;
 
-export default class UserDto{
+  @ApiProperty({
+    description: 'username',
+    example: 'hahaha',
+    required: true,
+  })
+  @IsString()
+  username: string;
 
-    @IsString()
-    @IsUUID()
-    userID : string
-    @ApiProperty({
-        description : 'email',
-        example : "abc@gmail.com",
-        required : true
-    })
-    @IsString()
-    @IsEmail()
-    email : string 
+  @IsString()
+  @IsOptional()
+  departmentName?: string;
 
-     @ApiProperty({
-        description : 'username',
-        example : "hahaha",
-        required : true
-    })
-    @IsString()
-    username : string
-   
-    @IsString()
-        @IsOptional()
-        departmentName?:string
-    
-     @IsString()
-        @IsOptional()
-        roleId:string |null
-    
-};
+  @IsString()
+  @IsOptional()
+  departmentID?: string | null;
+
+  @IsString()
+  @IsOptional()
+  roleId: string | null;
+
+  @IsOptional()
+  role?: unknown;
+}

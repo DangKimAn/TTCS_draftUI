@@ -6,12 +6,14 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql" // Hoặc "mysql" tùy vào DB bạn sử dụng
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 
 model User {
-  userID            String    @id @default(uuid()) @db.Uuid
+  userID            String    @id @default(uuid())
   email             String    @unique
   username          String    @unique
   hashedPassword    String
@@ -21,11 +23,11 @@ model User {
   remainDaysofLeave Int       @default(12)
   totalDaysofLeave  Int       @default(12)
   isActive          Boolean?  @default(true)
-  refreshToken      String?   @db.Text
+  refreshToken      String?  
 
   // Foreign keys
-  roleId            String    @db.Uuid
-  departmentID      String?   @db.Uuid
+  roleId            String   
+  departmentID      String?  
 
   // Relations
   role              Role        @relation(fields: [roleId], references: [roleID] , onDelete: Restrict)
@@ -45,14 +47,16 @@ model User {
   // Field lưu vết những bảng công mà user này THỰC TẾ đã duyệt trong quá khứ
   approvedTimesheets    MonthlyTimesheet[] @relation("ActualReviewer")
   
+  // Các quan hệ khác
   payrolls              Payroll[]
 
-  requestedCorrections RequestCorrection[] @relation("CorrectionReviewer")
+  correctionRequests RequestCorrection[] @relation("CorrectionRequester")
+  correctionReviews  RequestCorrection[] @relation("CorrectionReviewer")
   @@map("users")
 }
 
 model Role {
-  roleID   String @id @default(uuid()) @db.Uuid
+  roleID   String @id @default(uuid())
   nameRole String @unique
   users    User[]
 
@@ -60,9 +64,9 @@ model Role {
 }
 
 model Department {
-  departmentID   String @id @default(uuid()) @db.Uuid
+  departmentID   String @id @default(uuid())
   departmentName String @unique
-  managerID      String? @db.Uuid
+  managerID      String?
 
   // Relations
   manager        User?  @relation("DepartmentManager", fields: [managerID], references: [userID] , onDelete: Restrict)
@@ -71,31 +75,68 @@ model Department {
   @@map("departments")
 }
 
+enum TimesheetStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  MISSING_OUT
+}
+
+enum MonthlyTimesheetStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+  REJECTED
+}
+
+enum LeaveStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+enum NotificationRelatedType {
+  WARNING
+  LEAVE
+  TIMESHEET
+}
+
+enum WarningLevel {
+  LOW
+  MEDIUM
+  HIGH
+}
+
 model TimesheetEntry {
-  timesheetEntryID    String   @id @default(uuid()) @db.Uuid
-  monthlyTimesheetID  String   @db.Uuid
+  timesheetEntryID    String   @id @default(uuid())
+  monthlyTimesheetID  String  
   date                String
-  status              String   // 'pending', 'approved', 'rejected'
-  checkIn             DateTime @db.Timestamp
-  checkOut            DateTime? @db.Timestamp
+  status              TimesheetStatus @default(PENDING)
+  checkIn             DateTime
+  checkOut            DateTime?
   IPAddress           String
+  deviceInfo          String?
   canRequestCorrection Boolean  @default(true)
+  isWarning           Boolean  @default(false)
 
   // Relations
   monthlyTimesheet    MonthlyTimesheet @relation(fields: [monthlyTimesheetID], references: [monthlyTimesheetID], onDelete: Restrict)
+  corrections         RequestCorrection[]
 
   @@map("timesheet_entries")
 }
+
 model MonthlyTimesheet {
-  monthlyTimesheetID String   @id @default(uuid()) @db.Uuid
-  userID             String   @db.Uuid
+  monthlyTimesheetID String   @id @default(uuid())
+  userID             String  
   month              Int
   year               Int
-  status             String   // 'draft', 'submitted', 'approved', 'rejected'
+  status             MonthlyTimesheetStatus @default(DRAFT)
   reasonReject       String?
   
   // Snapshot thông tin người duyệt thực tế để đảm bảo tính lịch sử (Audit trail)
-  approvedById       String?  @db.Uuid 
+  approvedById       String?  
   reviewedAt         DateTime?
   
   createdAt          DateTime @default(now())
@@ -113,14 +154,15 @@ model MonthlyTimesheet {
   @@unique([userID, month, year])
   @@map("monthly_timesheets")
 }
+
 model LeaveApplication {
-  leaveApplicationID String   @id @default(uuid()) @db.Uuid
-  senderID           String   @db.Uuid
+  leaveApplicationID String   @id @default(uuid())
+  senderID           String  
   
   // ID của người thực tế đã nhấn nút Duyệt/Từ chối (Audit Trail)
-  reviewerID         String?  @db.Uuid 
+  reviewerID         String?  
   
-  typeLeaveID        String   @db.Uuid
+  typeLeaveID        String  
   
   startDate          DateTime
   endDate            DateTime
@@ -129,17 +171,17 @@ model LeaveApplication {
   // Giúp tính toán remainDaysofLeave chính xác và nhanh hơn
   duration           Float    
   
-  reason             String   @db.Text
-  status             String   @default("pending") // 'pending', 'approved', 'rejected', 'cancelled'
+  reason             String  
+  status             LeaveStatus @default(PENDING)
   
   // Lý do từ chối nếu có
-  reasonReject       String?  @db.Text
+  reasonReject       String? 
   
   createdAt          DateTime @default(now())
   
   // Thời điểm đơn được xử lý (Duyệt hoặc Từ chối)
   reviewedAt         DateTime?
-
+ 
   // Relations
   sender             User      @relation("Sender", fields: [senderID], references: [userID], onDelete: Restrict)
   reviewer           User?     @relation("Reviewer", fields: [reviewerID], references: [userID], onDelete: Restrict)
@@ -149,7 +191,8 @@ model LeaveApplication {
 }
 
 model TypeLeave {
-  typeLeaveID   String @id @default(uuid()) @db.Uuid
+  typeLeaveID   String @id @default(uuid())
+  code          String @unique
   nameTypeLeave String
   hasSalary     Float
   applications  LeaveApplication[]
@@ -158,26 +201,26 @@ model TypeLeave {
 }
 
 model Notification {
-  notificationID String   @id @default(uuid()) @db.Uuid
-  senderID       String   @db.Uuid
-  receiverID     String   @db.Uuid
+  notificationID String   @id @default(uuid())
+  senderID       String? 
+  receiverID     String  
   createdAt      DateTime @default(now())
   content        String
   isRead         Boolean  @default(false)
-  relatedType    String?  // 'warning', 'leave', 'timesheet'
+  relatedType    NotificationRelatedType?
 
   // Relations
-  sender         User     @relation("NotiSender", fields: [senderID], references: [userID], onDelete: Restrict)
+  sender         User?    @relation("NotiSender", fields: [senderID], references: [userID], onDelete: Restrict)
   receiver       User     @relation("NotiReceiver", fields: [receiverID], references: [userID], onDelete: Restrict)
 
   @@map("notifications")
 }
 
 model Warning {
-  warningID String   @id @default(uuid()) @db.Uuid
-  userID    String   @db.Uuid
+  warningID String   @id @default(uuid())
+  userID    String  
   content   String?
-  level     String?  // 'low', 'medium', 'high' @default('low')
+  level     WarningLevel? @default(LOW)
   createdAt DateTime @default(now())
 
   // Relations
@@ -187,28 +230,34 @@ model Warning {
 }
 
 model RequestCorrection {
-  requestCorrectionID String   @id @default(uuid()) @db.Uuid
-  monthlyTimesheetID  String   @db.Uuid
+  requestCorrectionID String   @id @default(uuid())
+  monthlyTimesheetID  String  
+  timesheetEntryID    String?
+  userID              String
   reason              String
-  reviewerID          String   @db.Uuid
-  status              String   // 'pending', 'approved', 'rejected'
+  reviewerID          String  
+  status              TimesheetStatus @default(PENDING)
   reasonReject        String?
+  proposedCheckIn     DateTime?
+  proposedCheckOut    DateTime?
   reviewedAt          DateTime?
   createdAt           DateTime @default(now())
 
   // Relations
   monthlyTimesheet    MonthlyTimesheet @relation(fields: [monthlyTimesheetID], references: [monthlyTimesheetID])
+  timesheetEntry      TimesheetEntry?   @relation(fields: [timesheetEntryID], references: [timesheetEntryID], onDelete: Restrict)
+  employee            User             @relation("CorrectionRequester", fields: [userID], references: [userID])
   reviewer            User             @relation("CorrectionReviewer", fields: [reviewerID], references: [userID])
 
   @@map("request_corrections")
 }
 
 model Payroll {
-  payrollID           String   @id @default(uuid()) @db.Uuid
-  userID          String   @db.Uuid
+  payrollID           String   @id @default(uuid())
+  userID              String  
   month               Int
   year                Int
-  monthlyTimesheetID  String   @db.Uuid
+  monthlyTimesheetID  String  
   totalHours          Float
   totalExtraHours     Float    @default(0)
   totalSalaryByHours  Float
@@ -219,3 +268,4 @@ model Payroll {
 
   @@map("payrolls")
 }
+

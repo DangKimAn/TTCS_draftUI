@@ -1,8 +1,8 @@
-import { Role } from "@prisma/client";
-import { IsAscii, IsNumber, IsOptional, IsString } from "class-validator";
-import DepartmentDto from "src/department/dto/department.dto";
-import { RoleDto } from "src/role/dto/Role.dto";
-import UserDto from "src/user/dto/user.dto";
+import { Role } from '@prisma/client';
+import { IsAscii, IsNumber, IsOptional, IsString } from 'class-validator';
+import DepartmentDto from 'src/department/dto/department.dto';
+import { RoleDto } from 'src/role/dto/Role.dto';
+import UserDto from 'src/user/dto/user.dto';
 
 // class ResponseDtoRole{
 
@@ -27,8 +27,6 @@ import UserDto from "src/user/dto/user.dto";
 //     data?: RoleDto[] | null
 // }
 
-
-
 // class ResponseDtoDepartment{
 
 //     @IsNumber()
@@ -46,12 +44,11 @@ import UserDto from "src/user/dto/user.dto";
 //     statusCode : number  = 400
 
 //     @IsString()
-//     message :  string ='' 
+//     message :  string =''
 
 //     @IsOptional()
 //     data?: DepartmentDto[] | null
 // }
-
 
 // class ResponseDtoUser{
 //      @IsNumber()
@@ -74,43 +71,37 @@ import UserDto from "src/user/dto/user.dto";
 //     data?: UserDto[] |null
 // }
 
-
-
 export default class ResponseDto<T> {
-    statusCode: number;
-    message: string;
-    data?: T;
+  statusCode: number;
+  message: string;
+  data?: T;
 
-    constructor(partial: Partial<ResponseDto<T>>) {
-        if (!partial.statusCode || !partial.message) {
-            throw new Error("Missing required fields");
-        }
-        Object.assign(this, partial);
+  constructor(partial: Partial<ResponseDto<T>>) {
+    if (!partial.statusCode || !partial.message) {
+      throw new Error('Missing required fields');
     }
+    Object.assign(this, partial);
+  }
 }
 
-
 class AnotherError {
-    @IsNumber()
-    statusCode: number = 400
+  @IsNumber()
+  statusCode: number = 400;
 
-    @IsString()
-    message: string = 'aonther code '
+  @IsString()
+  message: string = 'aonther code ';
 
-    data?
-
+  data?;
 }
 
 class DefaultResponse {
-    @IsNumber()
-    statusCode: number 
+  @IsNumber()
+  statusCode: number;
 
-    @IsString()
-    message: string 
+  @IsString()
+  message: string;
 
-
-    data? : any
-
+  data?: unknown;
 }
 
-export {AnotherError,DefaultResponse}
+export { AnotherError, DefaultResponse };

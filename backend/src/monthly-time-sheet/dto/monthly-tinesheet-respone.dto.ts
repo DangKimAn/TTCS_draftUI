@@ -1,25 +1,35 @@
-import { IsBoolean, IsISBN, IsString, IsUUID } from "class-validator";
+import { IsBoolean, IsISBN, IsString, IsUUID } from 'class-validator';
 
-export class MonthlyTimesheeetResponeDto{
-    @IsUUID()
-    @IsString()
+export class MonthlyTimesheeetResponeDto {
+  @IsUUID()
+  @IsString()
+  monthlyTimesheetID: string;
 
-    monthlyTimesheetID : string
+  @IsBoolean()
+  canSubmit: boolean;
 
+  @IsBoolean()
+  isSubmitted: boolean;
 
-    @IsBoolean()
-    canSubmit : boolean
+  @IsString()
+  status?: string;
 
-    @IsBoolean()
+  month?: number;
 
-    isSubmitted:boolean
+  year?: number;
 
-    // @IsUUID()
-    // @IsString()
-    // userID : string 
+  userID?: string;
 
-    // @IsString()
-    // @IsUUID()
+  reasonReject?: string | null;
 
-    // reviewerID: string
+  reviewedAt?: Date | null;
+
+  // @IsUUID()
+  // @IsString()
+  // userID : string
+
+  // @IsString()
+  // @IsUUID()
+
+  // reviewerID: string
 }

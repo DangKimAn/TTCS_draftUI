@@ -1,17 +1,16 @@
-import { ApiProperty } from "@nestjs/swagger";
-import { IsOptional, IsString, IsUUID } from "class-validator";
+import { ApiProperty } from '@nestjs/swagger';
+import { IsOptional, IsString, IsUUID } from 'class-validator';
 
-export default class DepartmentDto{
-    @IsString()
-    @IsUUID()
-    departmentID: string
-    
-    @IsString()
-    departmentName: string
+export default class DepartmentDto {
+  @IsString()
+  @IsUUID()
+  departmentID: string;
 
-    @IsOptional()
-    @IsString()
-    @IsUUID()
-    managerID?: string|null
+  @IsString()
+  departmentName: string;
+
+  @IsOptional()
+  @IsString()
+  @IsUUID()
+  managerID?: string | null;
 }
-
