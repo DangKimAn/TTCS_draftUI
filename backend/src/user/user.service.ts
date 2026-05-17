@@ -25,6 +25,7 @@ import { DepartmentService } from 'src/department/department.service';
 import updateUserDto from './dto/update-user.dto';
 import FullUserDto from './dto/full-user.dto';
 import { RequestUser } from 'src/common/types';
+import { SelfUpdateUserDto } from './dto/self-update-user.dto';
 @Injectable()
 export class UserService {
   constructor(
@@ -53,7 +54,7 @@ export class UserService {
       where: {
         userID,
       },
-      include: { role: true },
+      include: { role: true, department: true },
     });
     if (!user)
       return {
@@ -78,7 +79,7 @@ export class UserService {
       where: {
         username,
       },
-      include: { role: true },
+      include: { role: true, department: true },
     });
     if (!user)
       return {
@@ -104,7 +105,7 @@ export class UserService {
       where: {
         email,
       },
-      include: { role: true },
+      include: { role: true, department: true },
     });
 
     if (!user)
@@ -130,6 +131,9 @@ export class UserService {
       roleName,
       departmentName,
       linkAvatar,
+      phone,
+      address,
+      emergencyContact,
       salaryCoefficient,
       birthday,
       remainDaysofLeave,
@@ -199,6 +203,9 @@ export class UserService {
             roleId: roleResult.data?.roleID || '',
             departmentID: deptResult?.departmentID || null,
             linkAvatar,
+            phone,
+            address,
+            emergencyContact,
             salaryCoefficient,
             birthday,
             remainDaysofLeave,
@@ -265,6 +272,9 @@ export class UserService {
     const {
       password,
       linkAvatar,
+      phone,
+      address,
+      emergencyContact,
       salaryCoefficient,
       birthday,
       remainDaysofLeave,
@@ -372,6 +382,9 @@ export class UserService {
             roleId: targetRoleID,
             departmentID: targetDeptID,
             linkAvatar,
+            phone,
+            address,
+            emergencyContact,
             salaryCoefficient,
             birthday,
             remainDaysofLeave,
@@ -465,6 +478,55 @@ export class UserService {
       return {
         statusCode: Interval_Server_Network_Exeception_Code,
         message: 'Internal server error during activation',
+      };
+    }
+  }
+
+  async updateSelfProfile(
+    userID: string,
+    dto: SelfUpdateUserDto,
+  ): Promise<ResponseDto<UserDto>> {
+    const data: Prisma.UserUpdateInput = {};
+
+    if (dto.linkAvatar !== undefined) data.linkAvatar = dto.linkAvatar;
+    if (dto.phone !== undefined) data.phone = dto.phone;
+    if (dto.address !== undefined) data.address = dto.address;
+    if (dto.emergencyContact !== undefined) {
+      data.emergencyContact = dto.emergencyContact;
+    }
+    if (dto.birthday !== undefined) data.birthday = dto.birthday;
+
+    try {
+      const updatedUser = await this.prismaService.user.update({
+        where: { userID },
+        data,
+        include: { role: true, department: true },
+      });
+
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { hashedPassword: _, ...userDto } = updatedUser;
+      return {
+        statusCode: OK_CODE,
+        message: 'Update self profile successfully',
+        data: userDto as unknown as UserDto,
+      };
+    } catch (error: unknown) {
+      if (
+        error &&
+        typeof error === 'object' &&
+        'code' in error &&
+        error.code === 'P2025'
+      ) {
+        return {
+          statusCode: NOTFOUND_CODE,
+          message: 'User not found',
+        };
+      }
+
+      console.error('Error updating self profile:', error);
+      return {
+        statusCode: Interval_Server_Network_Exeception_Code,
+        message: 'Internal server error during self profile update',
       };
     }
   }

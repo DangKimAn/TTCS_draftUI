@@ -3,14 +3,10 @@ import { Type } from 'class-transformer';
 import {
   IsBoolean,
   IsDate,
-  IsDateString,
-  IsEmail,
-  IsIn,
   IsInt,
   IsNumber,
   IsOptional,
   IsString,
-  IsUUID,
 } from 'class-validator';
 
 export default class updateUserDto {
@@ -26,6 +22,34 @@ export default class updateUserDto {
   @IsString()
   @IsOptional()
   linkAvatar?: string;
+
+  @ApiProperty({
+    description: 'phone',
+    example: '0900000000',
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  phone?: string | null;
+
+  @ApiProperty({
+    description: 'address',
+    example: 'Ha Noi',
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  address?: string | null;
+
+  @ApiProperty({
+    description: 'emergencyContact',
+    example: '0900000001',
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  emergencyContact?: string | null;
+
   @ApiProperty({
     description: 'salaryCoefficient',
     example: '0.01',

@@ -6,11 +6,19 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import request from 'supertest';
+import { App } from 'supertest/types';
 import { AppModule } from './../src/app.module';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { BycyptHashedService } from 'src/common/bycypt-hashed/bycypt-hashed.service';
-import { PENDING, APPROVED, DRAFT, SUBMITTED } from 'src/common/code';
-import { MonthlyTimesheetStatus, TimesheetStatus } from '@prisma/client';
+import {
+  MonthlyTimesheetStatus,
+  TimesheetStatus,
+  NotificationRelatedType,
+} from '@prisma/client';
+
+function getTestServer(app: INestApplication): App {
+  return app.getHttpServer() as unknown as App;
+}
 
 interface ApiResponse<T> {
   statusCode: number;
@@ -158,7 +166,9 @@ describe('RequestCorrection (e2e)', () => {
     timesheetEntryID = entry.timesheetEntryID;
 
     // Login as Employee
-    const empLogin = await request(app.getHttpServer() as request.App)
+    const server = getTestServer(app);
+
+    const empLogin = await request(server)
       .post('/api/auth/login')
       .send({ email: 'employee_e2e@example.com', password: 'password123' });
 
@@ -168,10 +178,13 @@ describe('RequestCorrection (e2e)', () => {
         JSON.stringify(empLogin.body, null, 2),
       );
     }
-    employeeToken = empLogin.body.data?.accessToken;
+    const empLoginBody = empLogin.body as ApiResponse<{
+      accessToken: string;
+    }>;
+    employeeToken = empLoginBody.data?.accessToken ?? '';
 
     // Login as Manager
-    const mgrLogin = await request(app.getHttpServer() as request.App)
+    const mgrLogin = await request(server)
       .post('/api/auth/login')
       .send({ email: 'manager_e2e@example.com', password: 'password123' });
 
@@ -181,7 +194,10 @@ describe('RequestCorrection (e2e)', () => {
         JSON.stringify(mgrLogin.body, null, 2),
       );
     }
-    managerToken = mgrLogin.body.data?.accessToken;
+    const mgrLoginBody = mgrLogin.body as ApiResponse<{
+      accessToken: string;
+    }>;
+    managerToken = mgrLoginBody.data?.accessToken ?? '';
   });
 
   afterAll(async () => {
@@ -240,8 +256,10 @@ describe('RequestCorrection (e2e)', () => {
 
   describe('Correction Flow', () => {
     it('should complete the full correction flow from creation to approval', async () => {
+      const server = getTestServer(app);
+
       // 1. Employee creates correction request
-      const createRes = await request(app.getHttpServer() as request.App)
+      const createRes = await request(server)
         .post(`/api/request-correction/${employeeID}`)
         .set('Authorization', `Bearer ${employeeToken}`)
         .send({
@@ -266,7 +284,10 @@ describe('RequestCorrection (e2e)', () => {
 
       // Assert Manager received notification
       const managerNoti = await prisma.notification.findFirst({
-        where: { receiverID: managerID, relatedType: 'timesheet' },
+        where: {
+          receiverID: managerID,
+          relatedType: NotificationRelatedType.TIMESHEET,
+        },
         orderBy: { createdAt: 'desc' },
       });
       expect(managerNoti).toBeDefined();
@@ -275,7 +296,7 @@ describe('RequestCorrection (e2e)', () => {
       );
 
       // 2. Manager approves the request
-      const reviewRes = await request(app.getHttpServer() as request.App)
+      const reviewRes = await request(server)
         .patch(`/api/request-correction/review/${requestId}`)
         .set('Authorization', `Bearer ${managerToken}`)
         .send({
@@ -283,7 +304,8 @@ describe('RequestCorrection (e2e)', () => {
         });
 
       expect(reviewRes.status).toBe(200);
-      expect(reviewRes.body.message).toContain(TimesheetStatus.APPROVED);
+      const reviewBody = reviewRes.body as ApiResponse<unknown>;
+      expect(reviewBody.message).toContain(TimesheetStatus.APPROVED);
 
       // 3. Verify TimesheetEntry updated automatically
       const updatedEntry = await prisma.timesheetEntry.findUnique({
@@ -303,7 +325,10 @@ describe('RequestCorrection (e2e)', () => {
 
       // Verify Employee received notification
       const employeeNoti = await prisma.notification.findFirst({
-        where: { receiverID: employeeID, relatedType: 'timesheet' },
+        where: {
+          receiverID: employeeID,
+          relatedType: NotificationRelatedType.TIMESHEET,
+        },
         orderBy: { createdAt: 'desc' },
       });
       expect(employeeNoti).toBeDefined();
@@ -311,13 +336,15 @@ describe('RequestCorrection (e2e)', () => {
     });
 
     it('should fail if the monthly timesheet is not in Draft status', async () => {
+      const server = getTestServer(app);
+
       // Manually set status to submitted
       await prisma.monthlyTimesheet.update({
         where: { monthlyTimesheetID },
         data: { status: MonthlyTimesheetStatus.SUBMITTED },
       });
 
-      const createRes = await request(app.getHttpServer() as request.App)
+      const createRes = await request(server)
         .post(`/api/request-correction/${employeeID}`)
         .set('Authorization', `Bearer ${employeeToken}`)
         .send({
@@ -328,7 +355,8 @@ describe('RequestCorrection (e2e)', () => {
         });
 
       expect(createRes.status).toBe(400);
-      expect(createRes.body.message).toContain('waiting for review');
+      const createBody = createRes.body as ApiResponse<unknown>;
+      expect(createBody.message).toContain('waiting for review');
 
       // Cleanup: Reset to draft for any subsequent tests
       await prisma.monthlyTimesheet.update({

@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import Sidebar from '../components/WorkspaceSidebar';
 import Topbar from '../components/WorkspaceTopbar';
+import '../pages/EmployeeDashboard.css';
 
 const SIDEBAR_COLLAPSE_KEY = 'timesheet_pro_sidebar_collapsed';
 

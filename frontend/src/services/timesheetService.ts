@@ -80,6 +80,33 @@ export interface ManagerReviewTimesheetResult {
   timesheets: Timesheet[];
 }
 
+export interface TimesheetReportFilters {
+  fromDate?: string;
+  toDate?: string;
+  employeeId?: string;
+  departmentId?: string;
+  status?: string;
+}
+
+export interface TimesheetReportSummary {
+  totalRecords: number;
+  totalEmployees: number;
+  totalHours: number;
+  pending: number;
+  submitted: number;
+  approved: number;
+  rejected: number;
+  missingOut: number;
+  warningRecords: number;
+  byStatus: Record<string, number>;
+}
+
+export interface TimesheetReportData {
+  filters: TimesheetReportFilters;
+  rows: Timesheet[];
+  summary: TimesheetReportSummary;
+}
+
 const monthlyTimesheetCache = new Map<string, MonthlyTimesheetData>();
 
 function createTimesheetError(message: string, code?: string): AppError {
@@ -876,6 +903,30 @@ export async function getManagerMonthlyTimesheetsForReview(
   }
 }
 
+export async function getTimesheetReport(filters: TimesheetReportFilters): Promise<TimesheetReportData> {
+  try {
+    const response = await httpClient.get<BackendResponse<TimesheetReportData> | TimesheetReportData>(
+      '/time-sheet/report',
+      {
+        params: normalizeReportParams(filters),
+      },
+    );
+    const data = unwrapBackendData<TimesheetReportData>(response.data);
+
+    return {
+      filters: data?.filters || filters,
+      rows: Array.isArray(data?.rows) ? data.rows.map(normalizeReportRow) : [],
+      summary: data?.summary || buildTimesheetReportSummary([]),
+    };
+  } catch (error) {
+    throw normalizeTimesheetError(
+      error,
+      'Khong the tai bao cao timesheet.',
+      'TIMESHEET_REPORT_FAILED',
+    );
+  }
+}
+
 export function canSubmitTimesheet(
   records: Attendance[],
   corrections: CorrectionRequest[],
@@ -926,4 +977,55 @@ export function canSubmitTimesheet(
 
 export function hasPendingCorrectionsInPeriod(userEmail: string, attendanceIds: string[]): boolean {
   return hasPendingCorrections(userEmail, attendanceIds);
+}
+
+function normalizeReportParams(filters: TimesheetReportFilters) {
+  const params: Record<string, string> = {};
+
+  Object.entries(filters).forEach(([key, value]) => {
+    if (value && value !== 'all') {
+      params[key] = value;
+    }
+  });
+
+  return params;
+}
+
+function normalizeReportRow(row: Timesheet & Record<string, any>): Timesheet {
+  return {
+    ...row,
+    id: row.id || row.timesheetEntryID || row.monthlyTimesheetID,
+    code: row.code || row.monthlyTimesheetID || row.id,
+    employeeId: row.employeeId || row.userID || '',
+    departmentId: row.departmentId || row.departmentID || '',
+    workDate: row.workDate || row.date,
+    date: row.date || row.workDate,
+    checkIn: row.checkIn || '',
+    checkOut: row.checkOut || '',
+    totalHours: Number(row.totalHours || 0),
+    status: row.status || 'Pending',
+    warnings: Array.isArray(row.warnings) ? row.warnings : [],
+  };
+}
+
+function buildTimesheetReportSummary(rows: Timesheet[]): TimesheetReportSummary {
+  const byStatus = rows.reduce<Record<string, number>>((acc, row) => {
+    const status = String(row.status || 'Pending');
+    acc[status] = (acc[status] || 0) + 1;
+    return acc;
+  }, {});
+  const warningRecords = rows.filter((row) => Array.isArray(row.warnings) && row.warnings.length > 0).length;
+
+  return {
+    totalRecords: rows.length,
+    totalEmployees: new Set(rows.map((row) => row.employeeId).filter(Boolean)).size,
+    totalHours: Math.round(rows.reduce((total, row) => total + Number(row.totalHours || 0), 0) * 100) / 100,
+    pending: byStatus.Pending || 0,
+    submitted: byStatus.Submitted || 0,
+    approved: byStatus.Approved || 0,
+    rejected: byStatus.Rejected || 0,
+    missingOut: rows.filter((row) => row.warnings?.some((warning: any) => String(warning.label || warning).includes('Missing Out'))).length,
+    warningRecords,
+    byStatus,
+  };
 }

@@ -1,6 +1,6 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsIn, IsInt, IsOptional, IsString, IsUUID } from 'class-validator';
+import { IsInt } from 'class-validator';
 
 export default class CreateMonthlyTimeSheetDto {
   @ApiProperty({ description: 'Tháng cần tra cứu' })

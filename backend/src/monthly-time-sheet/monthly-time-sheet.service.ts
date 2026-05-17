@@ -1,33 +1,86 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   HttpException,
   Injectable,
-  InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import CreateMonthlyTimeSheetDto from './dto/create-timesheet.dto';
 import ResponseDto, { DefaultResponse } from 'src/common/response.dto';
 import {
-  BADREQUEST_CODE,
   CREATED_RESPONE,
   Interval_Server_Network_Exeception_Code,
   NOTFOUND_CODE,
   OK_CODE,
 } from 'src/common/code';
-import { MonthlyTimesheetStatus, TimesheetStatus, NotificationRelatedType } from '@prisma/client';
-import { catchError, NotFoundError } from 'rxjs';
+import {
+  MonthlyTimesheetStatus,
+  TimesheetStatus,
+  NotificationRelatedType,
+} from '@prisma/client';
 import GetMonthlyTimeSheetDto from './dto/get-timesheet.dto';
 import { UserService } from 'src/user/user.service';
 import { DepartmentService } from 'src/department/department.service';
 import { MonthlyTimesheeetResponeDto } from './dto/monthly-tinesheet-respone.dto';
 import ReviewMonthlyTimesheetDto from './dto/review-monthly-timesheet.dto';
+import ReportTimesheetDto from './dto/report-timesheet.dto';
 import { NotificationService } from 'src/notification/notification.service';
 import { Prisma } from '@prisma/client';
 import { EmailService } from 'src/common/email.service';
 import { ExcelHelper } from 'src/common/excel.helper';
+import { RequestUser } from 'src/common/types';
 import * as ExcelJS from 'exceljs';
+
+interface TimesheetReportFilters {
+  fromDate?: string;
+  toDate?: string;
+  employeeId?: string;
+  departmentId?: string;
+  status?: string;
+}
+
+interface TimesheetReportRow {
+  id: string;
+  code: string;
+  monthlyTimesheetID: string;
+  timesheetEntryID: string;
+  employeeId: string;
+  employeeName: string;
+  employeeEmail: string;
+  departmentId: string;
+  departmentName: string;
+  workDate: string;
+  date: string;
+  checkIn: string;
+  checkOut: string;
+  totalHours: number;
+  status: string;
+  monthlyStatus: string;
+  entryStatus: string;
+  locked: boolean;
+  warnings: string[];
+}
+
+interface TimesheetReportSummary {
+  totalRecords: number;
+  totalEmployees: number;
+  totalHours: number;
+  pending: number;
+  submitted: number;
+  approved: number;
+  rejected: number;
+  missingOut: number;
+  warningRecords: number;
+  byStatus: Record<string, number>;
+}
+
+interface TimesheetReportData {
+  filters: TimesheetReportFilters;
+  rows: TimesheetReportRow[];
+  summary: TimesheetReportSummary;
+}
 
 @Injectable()
 export class MonthlyTimeSheetService {
@@ -58,11 +111,15 @@ export class MonthlyTimeSheetService {
 
     const hasEntries = timesheet.entries.length > 0;
     const hasMissingTime = timesheet.entries.some(
-      (entry) => !entry.checkIn || !entry.checkOut || entry.status === TimesheetStatus.MISSING_OUT,
+      (entry) =>
+        !entry.checkIn ||
+        !entry.checkOut ||
+        entry.status === TimesheetStatus.MISSING_OUT,
     );
     const hasPendingCorrection = timesheet.corrections.length > 0;
     const isLocked =
-      timesheet.status === MonthlyTimesheetStatus.APPROVED || timesheet.status === MonthlyTimesheetStatus.SUBMITTED;
+      timesheet.status === MonthlyTimesheetStatus.APPROVED ||
+      timesheet.status === MonthlyTimesheetStatus.SUBMITTED;
     const canSubmit =
       hasEntries && !hasMissingTime && !hasPendingCorrection && !isLocked;
 
@@ -113,6 +170,85 @@ export class MonthlyTimeSheetService {
         reasonReject: timesheet.reasonReject,
         reviewedAt: timesheet.reviewedAt,
       },
+    };
+  }
+
+  async getTimesheetReport(
+    query: ReportTimesheetDto,
+    currentUser?: RequestUser,
+  ): Promise<TimesheetReportData> {
+    const filters = await this.normalizeReportFilters(query, currentUser);
+    const entryWhere: Prisma.TimesheetEntryWhereInput = {};
+
+    if (filters.fromDate || filters.toDate) {
+      entryWhere.date = {};
+      if (filters.fromDate) entryWhere.date.gte = filters.fromDate;
+      if (filters.toDate) entryWhere.date.lte = filters.toDate;
+    }
+
+    const where: Prisma.MonthlyTimesheetWhereInput = {};
+    const monthlyStatus = this.toMonthlyStatusFilter(filters.status);
+
+    if (filters.employeeId) {
+      where.userID = filters.employeeId;
+    }
+
+    if (filters.departmentId) {
+      where.employee = { departmentID: filters.departmentId };
+    }
+
+    if (monthlyStatus) {
+      where.status = monthlyStatus;
+    }
+
+    if (Object.keys(entryWhere).length > 0) {
+      where.entries = { some: entryWhere };
+    }
+
+    const timesheets = await this.prismaService.monthlyTimesheet.findMany({
+      where,
+      include: {
+        employee: {
+          select: {
+            userID: true,
+            username: true,
+            email: true,
+            departmentID: true,
+            department: {
+              select: {
+                departmentID: true,
+                departmentName: true,
+              },
+            },
+          },
+        },
+        entries: {
+          where: entryWhere,
+          orderBy: { date: 'asc' },
+        },
+      },
+      orderBy: [{ year: 'desc' }, { month: 'desc' }],
+    });
+
+    const rows = timesheets.flatMap((timesheet) =>
+      timesheet.entries.map((entry) =>
+        this.toReportRow({
+          monthlyTimesheetID: timesheet.monthlyTimesheetID,
+          month: timesheet.month,
+          year: timesheet.year,
+          status: timesheet.status,
+          employee: timesheet.employee,
+          entry,
+        }),
+      ),
+    );
+
+    rows.sort((left, right) => right.workDate.localeCompare(left.workDate));
+
+    return {
+      filters,
+      rows,
+      summary: this.buildTimesheetReportSummary(rows),
     };
   }
 
@@ -181,6 +317,251 @@ export class MonthlyTimeSheetService {
     return `"${escaped}"`;
   }
 
+  private async normalizeReportFilters(
+    query: ReportTimesheetDto,
+    currentUser?: RequestUser,
+  ): Promise<TimesheetReportFilters> {
+    const requestedDepartmentId = this.cleanFilterValue(
+      query.departmentId || query.departmentID,
+    );
+    const employeeId = this.cleanFilterValue(query.employeeId || query.userID);
+    const roleName = String(
+      currentUser?.roleName || currentUser?.role || '',
+    ).toLowerCase();
+    const isAdmin = roleName === 'admin' || roleName === 'hr';
+    let departmentId = requestedDepartmentId;
+
+    if (!isAdmin) {
+      const managerDepartmentId =
+        currentUser?.departmentID ||
+        (currentUser?.userID
+          ? await this.getUserDepartmentID(currentUser.userID)
+          : '');
+
+      if (!managerDepartmentId) {
+        throw new BadRequestException('Manager department is required');
+      }
+
+      if (
+        requestedDepartmentId &&
+        requestedDepartmentId !== managerDepartmentId
+      ) {
+        throw new ForbiddenException(
+          'Managers can only view their own department report',
+        );
+      }
+
+      departmentId = managerDepartmentId;
+    }
+
+    return {
+      fromDate: this.cleanFilterValue(query.fromDate),
+      toDate: this.cleanFilterValue(query.toDate),
+      employeeId,
+      departmentId,
+      status: this.normalizeReportStatusFilter(query.status),
+    };
+  }
+
+  private cleanFilterValue(value?: string): string | undefined {
+    const normalized = String(value || '').trim();
+    if (!normalized || normalized.toLowerCase() === 'all') return undefined;
+    return normalized;
+  }
+
+  private normalizeReportStatusFilter(status?: string): string | undefined {
+    const normalized = String(status || '')
+      .trim()
+      .toLowerCase()
+      .replace(/[\s_-]+/g, '');
+
+    switch (normalized) {
+      case '':
+      case 'all':
+        return undefined;
+      case 'draft':
+      case 'pending':
+        return 'Pending';
+      case 'submitted':
+        return 'Submitted';
+      case 'approved':
+      case 'accepted':
+        return 'Approved';
+      case 'rejected':
+        return 'Rejected';
+      default:
+        return status?.trim();
+    }
+  }
+
+  private toMonthlyStatusFilter(
+    status?: string,
+  ): MonthlyTimesheetStatus | undefined {
+    switch (
+      String(status || '')
+        .trim()
+        .toLowerCase()
+    ) {
+      case 'pending':
+      case 'draft':
+        return MonthlyTimesheetStatus.DRAFT;
+      case 'submitted':
+        return MonthlyTimesheetStatus.SUBMITTED;
+      case 'approved':
+      case 'accepted':
+        return MonthlyTimesheetStatus.APPROVED;
+      case 'rejected':
+        return MonthlyTimesheetStatus.REJECTED;
+      default:
+        return undefined;
+    }
+  }
+
+  private async getUserDepartmentID(userID: string): Promise<string> {
+    const user = await this.prismaService.user.findUnique({
+      where: { userID },
+      select: { departmentID: true },
+    });
+
+    return user?.departmentID || '';
+  }
+
+  private toReportRow(input: {
+    monthlyTimesheetID: string;
+    month: number;
+    year: number;
+    status: MonthlyTimesheetStatus;
+    employee: {
+      userID: string;
+      username: string;
+      email: string;
+      departmentID: string | null;
+      department: {
+        departmentID: string;
+        departmentName: string;
+      } | null;
+    };
+    entry: {
+      timesheetEntryID: string;
+      date: string;
+      status: TimesheetStatus;
+      checkIn: Date;
+      checkOut: Date | null;
+      isWarning: boolean;
+    };
+  }): TimesheetReportRow {
+    const status = this.toReportDisplayStatus(input.status);
+    const employeeId = input.employee.userID;
+    const monthText = String(input.month).padStart(2, '0');
+    const shortEmployeeId = employeeId.slice(0, 8).toUpperCase();
+
+    return {
+      id: input.entry.timesheetEntryID,
+      code: `TS-${input.year}${monthText}-${shortEmployeeId}`,
+      monthlyTimesheetID: input.monthlyTimesheetID,
+      timesheetEntryID: input.entry.timesheetEntryID,
+      employeeId,
+      employeeName: input.employee.username || input.employee.email,
+      employeeEmail: input.employee.email,
+      departmentId:
+        input.employee.department?.departmentID ||
+        input.employee.departmentID ||
+        '',
+      departmentName: input.employee.department?.departmentName || '',
+      workDate: input.entry.date,
+      date: input.entry.date,
+      checkIn: this.formatTime(input.entry.checkIn),
+      checkOut: this.formatTime(input.entry.checkOut),
+      totalHours: this.calculateEntryHours(
+        input.entry.checkIn,
+        input.entry.checkOut,
+      ),
+      status,
+      monthlyStatus: input.status,
+      entryStatus: input.entry.status,
+      locked: input.status === MonthlyTimesheetStatus.APPROVED,
+      warnings: this.buildReportWarnings(input.entry),
+    };
+  }
+
+  private toReportDisplayStatus(status: MonthlyTimesheetStatus): string {
+    switch (status) {
+      case MonthlyTimesheetStatus.SUBMITTED:
+        return 'Submitted';
+      case MonthlyTimesheetStatus.APPROVED:
+        return 'Approved';
+      case MonthlyTimesheetStatus.REJECTED:
+        return 'Rejected';
+      case MonthlyTimesheetStatus.DRAFT:
+      default:
+        return 'Pending';
+    }
+  }
+
+  private buildReportWarnings(entry: {
+    status: TimesheetStatus;
+    checkOut: Date | null;
+    isWarning: boolean;
+  }): string[] {
+    const warnings: string[] = [];
+
+    if (!entry.checkOut || entry.status === TimesheetStatus.MISSING_OUT) {
+      warnings.push('Missing Out');
+    }
+
+    if (entry.isWarning) {
+      warnings.push('Warning');
+    }
+
+    if (entry.status === TimesheetStatus.REJECTED) {
+      warnings.push('Rejected Entry');
+    }
+
+    return warnings;
+  }
+
+  private formatTime(value?: Date | null): string {
+    if (!value) return '';
+    const date = new Date(value);
+    const pad = (n: number) => n.toString().padStart(2, '0');
+    return `${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  }
+
+  private calculateEntryHours(checkIn: Date, checkOut?: Date | null): number {
+    if (!checkIn || !checkOut) return 0;
+    const hours =
+      (new Date(checkOut).getTime() - new Date(checkIn).getTime()) / 3600000;
+    return Math.round(Math.max(hours, 0) * 100) / 100;
+  }
+
+  private buildTimesheetReportSummary(
+    rows: TimesheetReportRow[],
+  ): TimesheetReportSummary {
+    const byStatus = rows.reduce<Record<string, number>>((acc, row) => {
+      acc[row.status] = (acc[row.status] || 0) + 1;
+      return acc;
+    }, {});
+
+    const totalHours = rows.reduce(
+      (total, row) => total + Number(row.totalHours || 0),
+      0,
+    );
+
+    return {
+      totalRecords: rows.length,
+      totalEmployees: new Set(rows.map((row) => row.employeeId)).size,
+      totalHours: Math.round(totalHours * 100) / 100,
+      pending: byStatus.Pending || 0,
+      submitted: byStatus.Submitted || 0,
+      approved: byStatus.Approved || 0,
+      rejected: byStatus.Rejected || 0,
+      missingOut: rows.filter((row) => row.warnings.includes('Missing Out'))
+        .length,
+      warningRecords: rows.filter((row) => row.warnings.length > 0).length,
+      byStatus,
+    };
+  }
+
   async createMonthlyTimeSheet(
     userID: string,
     createMonthlyTimeSheetDto: CreateMonthlyTimeSheetDto,
@@ -192,7 +573,7 @@ export class MonthlyTimeSheetService {
       const executeLogic = async (
         dCbt: Prisma.TransactionClient,
       ): Promise<ResponseDto<MonthlyTimesheeetResponeDto>> => {
-        const { statusCode, message, data } = await this.getMonthlyTimeSheet(
+        const { statusCode, message } = await this.getMonthlyTimeSheet(
           userID,
           {
             month: createMonthlyTimeSheetDto.month,
@@ -270,7 +651,9 @@ export class MonthlyTimeSheetService {
     tx?: Prisma.TransactionClient,
   ): Promise<DefaultResponse> {
     try {
-      const executeLogic = async (dCbt): Promise<DefaultResponse> => {
+      const executeLogic = async (
+        dCbt: Prisma.TransactionClient,
+      ): Promise<DefaultResponse> => {
         const monthGet = await dCbt.monthlyTimesheet.findUnique({
           where: {
             monthlyTimesheetID,
@@ -283,11 +666,11 @@ export class MonthlyTimeSheetService {
           },
         });
 
-        if (monthGet === undefined || monthGet?.userID === undefined) {
+        if (!monthGet) {
           throw new NotFoundException('monthly timesheet is not found');
         }
 
-        if (monthGet?.isSubmitted === true)
+        if (monthGet.isSubmitted === true)
           throw new BadRequestException('You were submit this timesheet');
 
         if (monthGet.status === MonthlyTimesheetStatus.APPROVED)
@@ -305,7 +688,7 @@ export class MonthlyTimeSheetService {
 
         await dCbt.monthlyTimesheet.update({
           where: {
-            monthlyTimesheetID: monthGet?.monthlyTimesheetID,
+            monthlyTimesheetID: monthGet.monthlyTimesheetID,
           },
           data: {
             isSubmitted: true,
@@ -315,7 +698,7 @@ export class MonthlyTimeSheetService {
         });
 
         const userGet = await this.userService.getUserByUserID(
-          monthGet?.userID,
+          monthGet.userID,
           dCbt,
         );
 
@@ -449,7 +832,9 @@ export class MonthlyTimeSheetService {
             monthlyTimesheetID: monthGet?.monthlyTimesheetID,
           },
           data: {
-            status: accept ? MonthlyTimesheetStatus.APPROVED : MonthlyTimesheetStatus.REJECTED,
+            status: accept
+              ? MonthlyTimesheetStatus.APPROVED
+              : MonthlyTimesheetStatus.REJECTED,
             reasonReject: accept ? null : reasonReject?.trim(),
             canSubmit: false,
             isSubmitted: accept ? true : false,
@@ -464,12 +849,18 @@ export class MonthlyTimeSheetService {
               monthlyTimesheetID: monthGet.monthlyTimesheetID,
               checkOut: { not: null },
             },
-            data: { status: TimesheetStatus.APPROVED, canRequestCorrection: false },
+            data: {
+              status: TimesheetStatus.APPROVED,
+              canRequestCorrection: false,
+            },
           });
         } else {
           await dCbt.timesheetEntry.updateMany({
             where: { monthlyTimesheetID: monthGet.monthlyTimesheetID },
-            data: { status: TimesheetStatus.PENDING, canRequestCorrection: true },
+            data: {
+              status: TimesheetStatus.PENDING,
+              canRequestCorrection: true,
+            },
           });
         }
 

@@ -8,9 +8,24 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
+import { Request } from 'express';
 import { OK_CODE } from 'src/common/code';
+import { RequestUser } from 'src/common/types';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { UserService } from 'src/user/user.service';
+
+interface ReviewRequest extends Request<{ monthlyTimesheetID?: string }> {
+  user: RequestUser;
+}
+
+function isManagerData(value: unknown): value is { managerID: string } {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'managerID' in value &&
+    typeof value.managerID === 'string'
+  );
+}
 
 @Injectable()
 export default class ReviewAuthGuards implements CanActivate {
@@ -28,7 +43,7 @@ export default class ReviewAuthGuards implements CanActivate {
 
     if (!allowedPermission) return true;
 
-    const request = context.switchToHttp().getRequest();
+    const request = context.switchToHttp().getRequest<ReviewRequest>();
 
     const currentUser = request.user;
 
@@ -59,14 +74,16 @@ export default class ReviewAuthGuards implements CanActivate {
         const managerGet = await this.userService.getManagerIdOfUserID(
           monthlyTimesheet.userID,
         );
-        if (
-          managerGet.statusCode !== OK_CODE ||
-          managerGet.data === undefined ||
-          managerGet.data.managerID === undefined
-        )
+        if (managerGet.statusCode !== OK_CODE || !managerGet.data) {
           throw new BadRequestException(managerGet.message);
+        }
 
-        if (managerGet.data.managerID === currentUser.userID) return true;
+        const managerData = managerGet.data;
+        if (!isManagerData(managerData)) {
+          throw new BadRequestException(managerGet.message);
+        }
+
+        if (managerData.managerID === currentUser.userID) return true;
       } else if (permission === 'me') {
         const monthlyTimesheet =
           await this.prismaService.monthlyTimesheet.findFirst({

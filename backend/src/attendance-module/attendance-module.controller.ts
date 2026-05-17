@@ -139,7 +139,7 @@ export class AttendanceModuleController {
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, UserAccessGaurd)
   @Get('/getAllAttendenceOfMonth/:userID')
-  @RequirePermission('me')
+  @RequirePermission('me', 'manager', 'admin')
   async getAllEntryOfMonth(
     @Param('userID', new ParseUUIDPipe()) userID: string,
     @Query() getAttendence: GetAttendenceDto,

@@ -1,5 +1,29 @@
 import * as ExcelJS from 'exceljs';
-import { Response } from 'express';
+import type { Response } from 'express';
+
+export interface TimesheetWorkbookRow {
+  date: string;
+  checkIn?: Date | string | null;
+  checkOut?: Date | string | null;
+  status: string;
+  deviceInfo?: string | null;
+  notes?: string | null;
+}
+
+export interface PayrollWorkbookRow {
+  employee?: {
+    username?: string | null;
+    email?: string | null;
+    department?: {
+      departmentName?: string | null;
+    } | null;
+  } | null;
+  month: number;
+  year: number;
+  totalHours: number;
+  totalExtraHours: number;
+  totalSalaryByHours: number;
+}
 
 export class ExcelHelper {
   static async sendExcel(
@@ -20,9 +44,12 @@ export class ExcelHelper {
     res.end();
   }
 
-  static createTimesheetWorkbook(data: any[], title: string): ExcelJS.Workbook {
+  static createTimesheetWorkbook(
+    data: TimesheetWorkbookRow[],
+    title: string,
+  ): ExcelJS.Workbook {
     const workbook = new ExcelJS.Workbook();
-    const worksheet = workbook.addWorksheet('Timesheet');
+    const worksheet = workbook.addWorksheet(title || 'Timesheet');
 
     worksheet.columns = [
       { header: 'Date', key: 'date', width: 15 },
@@ -45,7 +72,9 @@ export class ExcelHelper {
       worksheet.addRow({
         date: entry.date,
         checkIn: entry.checkIn ? new Date(entry.checkIn).toLocaleString() : '',
-        checkOut: entry.checkOut ? new Date(entry.checkOut).toLocaleString() : '',
+        checkOut: entry.checkOut
+          ? new Date(entry.checkOut).toLocaleString()
+          : '',
         status: entry.status,
         deviceInfo: entry.deviceInfo || '',
         notes: entry.notes || '',
@@ -55,9 +84,12 @@ export class ExcelHelper {
     return workbook;
   }
 
-  static createPayrollWorkbook(data: any[], title: string): ExcelJS.Workbook {
+  static createPayrollWorkbook(
+    data: PayrollWorkbookRow[],
+    title: string,
+  ): ExcelJS.Workbook {
     const workbook = new ExcelJS.Workbook();
-    const worksheet = workbook.addWorksheet('Payroll');
+    const worksheet = workbook.addWorksheet(title || 'Payroll');
 
     worksheet.columns = [
       { header: 'Employee', key: 'employee', width: 25 },

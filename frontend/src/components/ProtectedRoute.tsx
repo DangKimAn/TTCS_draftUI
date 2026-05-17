@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
-import type { AuthSession, Role } from '../types';
+import type { Role } from '../types';
 import { getDashboardPathByRole } from '../utils/storage';
 
 interface ProtectedRouteProps {
@@ -11,28 +11,44 @@ interface ProtectedRouteProps {
 function ProtectedRoute({ allowedRoles = [] }: ProtectedRouteProps) {
   const location = useLocation();
   const storeSession = useAuthStore((state) => state.session);
+  const isHydrated = useAuthStore((state) => state.isHydrated);
+  const hasVerifiedSession = useAuthStore((state) => state.hasVerifiedSession);
   const hydrate = useAuthStore((state) => state.hydrate);
   const verifySession = useAuthStore((state) => state.verifySession);
-  const [session, setSession] = useState<AuthSession | null>(storeSession);
-  const [checkingAuth, setCheckingAuth] = useState(true);
+  const hasToken = Boolean(storeSession?.accessToken || storeSession?.token);
+  const shouldVerifySession = hasToken && !hasVerifiedSession;
+  const [checkingAuth, setCheckingAuth] = useState(shouldVerifySession);
+  const loginRedirectState = useMemo(
+    () => ({
+      from: `${location.pathname}${location.search}`,
+      reason: 'SESSION_INVALID',
+    }),
+    [location.pathname, location.search],
+  );
 
   useEffect(() => {
     let isMounted = true;
 
-    hydrate();
-    setCheckingAuth(true);
+    if (!isHydrated) {
+      hydrate();
+    }
 
+    if (!hasToken) {
+      setCheckingAuth(false);
+      return () => {
+        isMounted = false;
+      };
+    }
+
+    if (!shouldVerifySession) {
+      setCheckingAuth(false);
+      return () => {
+        isMounted = false;
+      };
+    }
+
+    setCheckingAuth(true);
     verifySession()
-      .then((verifiedSession) => {
-        if (isMounted) {
-          setSession(verifiedSession);
-        }
-      })
-      .catch(() => {
-        if (isMounted) {
-          setSession(null);
-        }
-      })
       .finally(() => {
         if (isMounted) {
           setCheckingAuth(false);
@@ -42,18 +58,18 @@ function ProtectedRoute({ allowedRoles = [] }: ProtectedRouteProps) {
     return () => {
       isMounted = false;
     };
-  }, [hydrate, location.pathname, verifySession]);
+  }, [hasToken, hydrate, isHydrated, shouldVerifySession, verifySession]);
 
   if (checkingAuth) {
     return <div className="route-loading">Đang xác thực phiên đăng nhập...</div>;
   }
 
-  if (!session?.accessToken) {
-    return <Navigate to="/login" replace state={{ from: location.pathname }} />;
+  if (!hasToken || !storeSession) {
+    return <Navigate to="/login" replace state={loginRedirectState} />;
   }
 
-  if (allowedRoles.length > 0 && !allowedRoles.includes(session.role)) {
-    return <Navigate to="/unauthorized" replace state={{ redirectTo: getDashboardPathByRole(session.role) }} />;
+  if (allowedRoles.length > 0 && !allowedRoles.includes(storeSession.role)) {
+    return <Navigate to="/unauthorized" replace state={{ redirectTo: getDashboardPathByRole(storeSession.role) }} />;
   }
 
   return <Outlet />;

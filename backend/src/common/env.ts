@@ -24,6 +24,17 @@ export const ENV = {
     CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET,
     CALLBACK_URL: process.env.GOOGLE_CALLBACK_URL,
   },
+  MICROSOFT: {
+    CLIENT_ID: process.env.MICROSOFT_CLIENT_ID,
+    CLIENT_SECRET: process.env.MICROSOFT_CLIENT_SECRET,
+    TENANT_ID: process.env.MICROSOFT_TENANT_ID,
+    CALLBACK_URL: process.env.MICROSOFT_CALLBACK_URL,
+    SCOPES: process.env.MICROSOFT_SCOPES || 'openid profile email User.Read',
+  },
+  SSO: {
+    SUCCESS_REDIRECT_URL: process.env.SSO_SUCCESS_REDIRECT_URL,
+    ERROR_REDIRECT_URL: process.env.SSO_ERROR_REDIRECT_URL,
+  },
   EMAIL: {
     PROVIDER: process.env.EMAIL_PROVIDER || 'log',
     SMTP_HOST: process.env.SMTP_HOST,

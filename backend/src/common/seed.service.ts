@@ -10,7 +10,6 @@ import {
   TimesheetStatus,
   TypeLeave,
   User,
-  WarningLevel,
 } from '@prisma/client';
 import { BycyptHashedService } from 'src/common/bycypt-hashed/bycypt-hashed.service';
 import { PrismaService } from 'src/prisma/prisma.service';

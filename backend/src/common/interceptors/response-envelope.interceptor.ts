@@ -4,6 +4,7 @@ import {
   Injectable,
   NestInterceptor,
 } from '@nestjs/common';
+import type { Response } from 'express';
 import { map, Observable } from 'rxjs';
 
 interface ResponseEnvelope<T> {
@@ -19,9 +20,9 @@ export class ResponseEnvelopeInterceptor<T> implements NestInterceptor<
 > {
   intercept(
     context: ExecutionContext,
-    next: CallHandler,
+    next: CallHandler<T>,
   ): Observable<ResponseEnvelope<T> | T> {
-    const response = context.switchToHttp().getResponse();
+    const response = context.switchToHttp().getResponse<Response>();
 
     return next.handle().pipe(
       map((payload) => {

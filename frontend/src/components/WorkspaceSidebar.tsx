@@ -141,7 +141,7 @@ function getRoleConfig(role) {
     };
   }
 
-  if (role === 'hr') {
+  if (isHrWorkspaceRole(role)) {
     return {
       path: '/dashboard/hr',
       defaultSection: 'overview',
@@ -167,6 +167,10 @@ function getRoleConfig(role) {
     footerText: (session) =>
       `Mục mặc định: Tổng quan. Người dùng: ${session?.name || 'Không xác định'}.`,
   };
+}
+
+function isHrWorkspaceRole(role) {
+  return role === 'hr' || role === 'admin';
 }
 
 export default WorkspaceSidebar;

@@ -2,7 +2,6 @@ import { ApiProperty } from '@nestjs/swagger';
 import { Exclude, Expose, Type } from 'class-transformer';
 import {
   IsBoolean,
-  IsDataURI,
   IsDate,
   IsEmail,
   IsInt,
@@ -52,6 +51,37 @@ export default class FullUserDto {
   @IsString()
   @IsOptional()
   linkAvatar?: string | null;
+
+  @ApiProperty({
+    description: 'phone',
+    example: '0900000000',
+    required: false,
+  })
+  @Expose()
+  @IsString()
+  @IsOptional()
+  phone?: string | null;
+
+  @ApiProperty({
+    description: 'address',
+    example: 'Ha Noi',
+    required: false,
+  })
+  @Expose()
+  @IsString()
+  @IsOptional()
+  address?: string | null;
+
+  @ApiProperty({
+    description: 'emergencyContact',
+    example: '0900000001',
+    required: false,
+  })
+  @Expose()
+  @IsString()
+  @IsOptional()
+  emergencyContact?: string | null;
+
   @ApiProperty({
     description: 'salaryCoefficient',
     example: '0.01',
@@ -136,5 +166,5 @@ export default class FullUserDto {
     departmentID: string;
     departmentName: string;
     managerID: string | null;
-  };
+  } | null;
 }

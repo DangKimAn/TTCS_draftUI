@@ -14,10 +14,11 @@ import {
   Res,
   UseGuards,
 } from '@nestjs/common';
-import type { Response } from 'express';
+import type { Request, Response } from 'express';
 import { MonthlyTimeSheetService } from './monthly-time-sheet.service';
 import { DefaultResponse } from 'src/common/response.dto';
 import GetTimeSheetDto from './dto/get-timesheet.dto';
+import ReportTimesheetDto from './dto/report-timesheet.dto';
 import { ExcelHelper } from 'src/common/excel.helper';
 import {
   CONFLIG_CODE,
@@ -37,9 +38,13 @@ import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { UserAccessGaurd } from 'src/auth/guards/access.guard';
 import { RequirePermission } from 'src/common/require-permissions.decorator';
 import CreateMonthlyTimeSheetDto from './dto/create-timesheet.dto';
-import SubmitMonthlyTimesheetDto from './dto/submit-monthly-timesheet.dto';
 import ReviewAuthGuards from 'src/auth/guards/reviwer.guard';
 import ReviewMonthlyTimesheetDto from './dto/review-monthly-timesheet.dto';
+import { RequestUser } from 'src/common/types';
+
+interface AuthenticatedRequest extends Request {
+  user?: RequestUser;
+}
 
 @Controller('time-sheet')
 export class MonthlyTimeSheetController {
@@ -52,9 +57,9 @@ export class MonthlyTimeSheetController {
   @ApiBadRequestResponse()
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, UserAccessGaurd)
-  @RequirePermission('me')
+  @RequirePermission('me', 'manager', 'admin')
   @ApiOperation({
-    summary: "while test login with 'me' role, not use in production",
+    summary: 'Get monthly timesheet (Role: me, manager of employee, admin)',
   })
   async getMonthlyTimesheet(
     @Param('userID') userID: string,
@@ -76,6 +81,32 @@ export class MonthlyTimeSheetController {
       throw new ConflictException(statusCode, message);
 
     throw new BadRequestException(statusCode, message);
+  }
+
+  @Get('/report')
+  @ApiOkResponse({ description: 'Timesheet report with filters and summary' })
+  @ApiBadRequestResponse()
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, UserAccessGaurd)
+  @RequirePermission('manager', 'admin')
+  @ApiOperation({
+    summary:
+      'Get timesheet report by date range, employee, department and status',
+  })
+  async getTimesheetReport(
+    @Query() reportQuery: ReportTimesheetDto,
+    @Req() req: AuthenticatedRequest,
+  ): Promise<DefaultResponse> {
+    const data = await this.timeSheetService.getTimesheetReport(
+      reportQuery,
+      req.user,
+    );
+
+    return {
+      statusCode: OK_CODE,
+      message: 'get timesheet report successfull',
+      data,
+    };
   }
 
   @Get('/export/:userID')
@@ -109,7 +140,7 @@ export class MonthlyTimeSheetController {
       'Content-Disposition',
       `attachment; filename="timesheet_${userID}_${monthNumber}_${yearNumber}.csv"`,
     );
-    return res.send(csvString);
+    res.send(csvString);
   }
 
   @Get('/export-excel/:userID')
@@ -154,7 +185,6 @@ export class MonthlyTimeSheetController {
     @Param('departmentID') departmentID: string,
     @Query('month') month: string,
     @Query('year') year: string,
-    @Query('format') format: string = 'csv',
     @Res() res: Response,
   ) {
     const monthNumber = Number(month);
@@ -172,7 +202,7 @@ export class MonthlyTimeSheetController {
       'Content-Disposition',
       `attachment; filename="timesheet_department_${departmentID}_${monthNumber}_${yearNumber}.csv"`,
     );
-    return res.send(csvString);
+    res.send(csvString);
   }
 
   @Get('/export-department-excel/:departmentID')
@@ -280,7 +310,7 @@ export class MonthlyTimeSheetController {
   async reviewMonthlyTimsheet(
     @Param('monthlyTimesheetID') monthlyTimesheetID: string,
     @Body() reviewMonthlyTimesheetDto: ReviewMonthlyTimesheetDto,
-    @Req() req,
+    @Req() req: AuthenticatedRequest,
   ) {
     const { statusCode, message, data } =
       await this.timeSheetService.reviewMonthlyTimesheet(

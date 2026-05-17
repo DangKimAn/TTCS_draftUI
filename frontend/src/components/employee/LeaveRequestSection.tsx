@@ -1,16 +1,15 @@
-﻿import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { calculateLeaveDays } from '../../services/leaveService';
 import { formatDate } from '../../utils/dateUtils';
 
 const initialForm = {
-  type: 'Nghỉ phép năm',
+  typeLeaveID: '',
   startDate: '',
   endDate: '',
   reason: '',
-  isUnpaid: false,
 };
 
-function LeaveRequestSection({ summary, requests, onSubmitRequest }) {
+function LeaveRequestSection({ summary, requests, leaveTypes = [], onSubmitRequest }) {
   const [form, setForm] = useState(initialForm);
   const [feedback, setFeedback] = useState(null);
 
@@ -18,9 +17,23 @@ function LeaveRequestSection({ summary, requests, onSubmitRequest }) {
     () => calculateLeaveDays(form.startDate, form.endDate),
     [form.endDate, form.startDate],
   );
+  const selectedLeaveType = leaveTypes.find((item) => item.id === form.typeLeaveID) || null;
+
+  useEffect(() => {
+    if (!form.typeLeaveID && leaveTypes.length > 0) {
+      setForm((current) => ({
+        ...current,
+        typeLeaveID: leaveTypes[0].id,
+      }));
+    }
+  }, [form.typeLeaveID, leaveTypes]);
 
   const validate = () => {
     const today = new Date().toISOString().slice(0, 10);
+
+    if (!form.typeLeaveID) {
+      return 'Chưa có loại nghỉ phép từ API. Vui lòng tải lại dữ liệu nghỉ phép.';
+    }
 
     if (!form.startDate || !form.endDate || !form.reason.trim()) {
       return 'Vui lòng nhập đầy đủ thông tin đơn nghỉ phép.';
@@ -38,18 +51,18 @@ function LeaveRequestSection({ summary, requests, onSubmitRequest }) {
       return 'Số ngày nghỉ không hợp lệ.';
     }
 
-    if (totalDays > summary.remainingDays && !form.isUnpaid) {
-      return 'Số dư phép không đủ. Hãy chọn nghỉ không lương nếu cần.';
+    if (selectedLeaveType?.isPaid && totalDays > summary.remainingDays) {
+      return 'Số dư phép không đủ cho loại nghỉ có lương đã chọn.';
     }
 
     return null;
   };
 
   const handleChange = (event) => {
-    const { name, type, checked, value } = event.target;
+    const { name, value } = event.target;
     setForm((current) => ({
       ...current,
-      [name]: type === 'checkbox' ? checked : value,
+      [name]: value,
     }));
   };
 
@@ -64,12 +77,18 @@ function LeaveRequestSection({ summary, requests, onSubmitRequest }) {
 
     try {
       await onSubmitRequest({
-        ...form,
+        typeLeaveID: form.typeLeaveID,
+        startDate: form.startDate,
+        endDate: form.endDate,
+        reason: form.reason,
         totalDays,
       });
 
       setFeedback({ type: 'success', message: 'Đã tạo đơn nghỉ phép mới với trạng thái Chờ duyệt.' });
-      setForm(initialForm);
+      setForm({
+        ...initialForm,
+        typeLeaveID: leaveTypes[0]?.id || '',
+      });
     } catch (error) {
       setFeedback({
         type: 'danger',
@@ -107,10 +126,18 @@ function LeaveRequestSection({ summary, requests, onSubmitRequest }) {
             <form className="employee-form-grid" onSubmit={handleSubmit}>
               <label htmlFor="leave-type">
                 <span>Loại nghỉ</span>
-                <select id="leave-type" name="type" value={form.type} onChange={handleChange}>
-                  <option value="Nghỉ phép năm">Nghỉ phép năm</option>
-                  <option value="Nghỉ ốm">Nghỉ ốm</option>
-                  <option value="Nghỉ việc riêng">Nghỉ việc riêng</option>
+                <select
+                  id="leave-type"
+                  name="typeLeaveID"
+                  value={form.typeLeaveID}
+                  onChange={handleChange}
+                  disabled={!leaveTypes.length}
+                >
+                  {leaveTypes.length > 0 ? leaveTypes.map((type) => (
+                    <option key={type.id} value={type.id}>{type.name}</option>
+                  )) : (
+                    <option value="">Chưa có loại nghỉ phép từ API</option>
+                  )}
                 </select>
               </label>
 
@@ -139,6 +166,7 @@ function LeaveRequestSection({ summary, requests, onSubmitRequest }) {
               <div className="employee-form-grid__summary">
                 <span>Số ngày nghỉ tự tính</span>
                 <strong>{totalDays || 0} ngày</strong>
+                <small>{selectedLeaveType ? (selectedLeaveType.isPaid ? 'Có lương' : 'Không lương') : 'Chọn loại nghỉ từ API'}</small>
               </div>
 
               <label className="employee-form-grid__full" htmlFor="leave-reason">
@@ -153,19 +181,8 @@ function LeaveRequestSection({ summary, requests, onSubmitRequest }) {
                 />
               </label>
 
-              <label className="employee-form-grid__checkbox" htmlFor="leave-unpaid">
-                <input
-                  id="leave-unpaid"
-                  type="checkbox"
-                  name="isUnpaid"
-                  checked={form.isUnpaid}
-                  onChange={handleChange}
-                />
-                <span>Nghỉ không lương nếu không đủ số dư phép</span>
-              </label>
-
               <div className="dashboard-panel__actions">
-                <button type="submit" className="dashboard-button dashboard-button--primary">
+                <button type="submit" className="dashboard-button dashboard-button--primary" disabled={!leaveTypes.length}>
                   Tạo đơn nghỉ phép
                 </button>
               </div>

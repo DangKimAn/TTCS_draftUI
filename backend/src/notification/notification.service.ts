@@ -169,7 +169,12 @@ export class NotificationService {
         data: updatedNotification as unknown as NotificationDto,
       };
     } catch (error: unknown) {
-      if (error && typeof error === 'object' && 'code' in error && error.code === 'P2025') {
+      if (
+        error &&
+        typeof error === 'object' &&
+        'code' in error &&
+        error.code === 'P2025'
+      ) {
         return {
           statusCode: NOTFOUND_CODE,
           message: 'Notification not found',

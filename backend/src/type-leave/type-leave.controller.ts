@@ -5,6 +5,7 @@ import {
   Body,
   Patch,
   Param,
+  Query,
   Delete,
   ParseUUIDPipe,
   UseGuards,
@@ -46,9 +47,55 @@ export class TypeLeaveController {
   @UseGuards(JwtAuthGuard, UserAccessGaurd)
   @RequirePermission('me', 'manager', 'admin')
   @Get()
-  async getAllTypeLeaves(): Promise<DefaultResponse> {
-    const response = await this.typeLeaveService.getAllTypeLeaves();
+  async getAllTypeLeaves(
+    @Query('includeInactive') includeInactive?: string,
+  ): Promise<DefaultResponse> {
+    const response = await this.typeLeaveService.getAllTypeLeaves(
+      includeInactive === 'true',
+    );
     if (response.statusCode === OK_CODE) return response;
+    throw new BadRequestException(response.statusCode, response.message);
+  }
+
+  @ApiOperation({ description: 'Kích hoạt lại loại nghỉ phép' })
+  @ApiOkResponse()
+  @ApiNotFoundResponse()
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, UserAccessGaurd)
+  @RequirePermission('admin')
+  @Patch(':typeLeaveID/activate')
+  async activateTypeLeave(
+    @Param('typeLeaveID', new ParseUUIDPipe()) typeLeaveID: string,
+  ): Promise<DefaultResponse> {
+    const response = await this.typeLeaveService.setTypeLeaveActive(
+      typeLeaveID,
+      true,
+    );
+    if (response.statusCode === OK_CODE) return response;
+    if (response.statusCode === NOTFOUND_CODE)
+      throw new NotFoundException(response.statusCode, response.message);
+    throw new BadRequestException(response.statusCode, response.message);
+  }
+
+  @ApiOperation({
+    description: 'Vô hiệu hóa loại nghỉ phép, không xóa lịch sử',
+  })
+  @ApiOkResponse()
+  @ApiNotFoundResponse()
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, UserAccessGaurd)
+  @RequirePermission('admin')
+  @Patch(':typeLeaveID/deactivate')
+  async deactivateTypeLeave(
+    @Param('typeLeaveID', new ParseUUIDPipe()) typeLeaveID: string,
+  ): Promise<DefaultResponse> {
+    const response = await this.typeLeaveService.setTypeLeaveActive(
+      typeLeaveID,
+      false,
+    );
+    if (response.statusCode === OK_CODE) return response;
+    if (response.statusCode === NOTFOUND_CODE)
+      throw new NotFoundException(response.statusCode, response.message);
     throw new BadRequestException(response.statusCode, response.message);
   }
 
@@ -108,7 +155,7 @@ export class TypeLeaveController {
     throw new BadRequestException(response.statusCode, response.message);
   }
 
-  @ApiOperation({ description: 'Xóa loại nghỉ phép' })
+  @ApiOperation({ description: 'Vô hiệu hóa loại nghỉ phép, giữ lịch sử' })
   @ApiOkResponse()
   @ApiNotFoundResponse()
   @ApiConflictResponse()

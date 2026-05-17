@@ -110,6 +110,19 @@ function normalizeAttendanceError(
   fallbackMessage: string,
   fallbackCode?: string,
 ): AppError {
+  // 1. bắt lỗi đã qua Interceptor chuẩn hóa
+  if (error && typeof error === 'object' && 'status' in error) {
+    const err = error as any;
+    const message = err.message || fallbackMessage;
+    const status = err.status;
+
+    return createAttendanceError(
+      message,
+      getAttendanceErrorCode(message, status, fallbackCode),
+    );
+  }
+
+  // 2. Đoạn code AxiosError cũ giữ nguyên phía dưới
   if (axios.isAxiosError(error)) {
     const message = getResponseMessage(error.response?.data) || error.message || fallbackMessage;
     const status = error.response?.status;
@@ -126,6 +139,7 @@ function normalizeAttendanceError(
 
   return createAttendanceError(fallbackMessage, fallbackCode);
 }
+
 
 function unwrapBackendData<T>(payload: BackendResponse<T> | T): T | undefined {
   if (payload && typeof payload === 'object' && ('data' in payload || 'statusCode' in payload)) {
@@ -334,7 +348,12 @@ export async function getMonthlyAttendance(
     cacheUserRecords(userID, records);
     return sortAttendanceRecords(records);
   } catch (error) {
-    if (axios.isAxiosError(error) && error.response?.status === 404) {
+    // Kiểm tra status code = 404 từ cả Axios lỗi gốc và lỗi đã qua chuẩn hóa
+    const isNotFoundError =
+      (axios.isAxiosError(error) && error.response?.status === 404) ||
+      (error && typeof error === 'object' && (error as any).status === 404);
+
+    if (isNotFoundError) {
       cacheUserRecords(userID, []);
       return [];
     }
@@ -345,6 +364,7 @@ export async function getMonthlyAttendance(
       'ATTENDANCE_LOAD_FAILED',
     );
   }
+
 }
 
 export function getUserAttendanceRecords(userKey: string): Attendance[] {

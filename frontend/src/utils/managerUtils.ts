@@ -1,5 +1,6 @@
 import { formatDate } from './dateUtils';
 import { currentUser as mockCurrentUser } from '../data/mockData';
+import { API_CONFIG } from '../config/api';
 
 export const REVIEWABLE_TIMESHEET_STATUSES = ['Submitted', 'Pending'];
 
@@ -97,16 +98,23 @@ export function buildCurrentManager(session: any) {
   const sessionManagedEmployeeIds = Array.isArray(session?.managedEmployeeIds)
     ? session.managedEmployeeIds
     : [];
+  const fallbackManager = API_CONFIG.ENABLE_MOCK_FALLBACK
+    ? mockCurrentUser
+    : {
+        id: '',
+        departmentId: '',
+        managedEmployeeIds: [],
+      };
 
   return {
-    ...mockCurrentUser,
+    ...fallbackManager,
     ...session,
-    id: session?.id || mockCurrentUser.id,
+    id: session?.id || fallbackManager.id,
     role: 'manager',
-    departmentId: session?.departmentId || mockCurrentUser.departmentId,
+    departmentId: session?.departmentId || fallbackManager.departmentId,
     managedEmployeeIds: session
       ? sessionManagedEmployeeIds
-      : mockCurrentUser.managedEmployeeIds,
+      : fallbackManager.managedEmployeeIds,
   };
 }
 

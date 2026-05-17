@@ -67,8 +67,9 @@ export const useLeaveStore = create<LeaveState>((set) => ({
 
     try {
       const leaveTypes = await getLeaveTypes();
-      set({ leaveTypes, isLoading: false });
-      return leaveTypes;
+      const activeTypes = leaveTypes.filter((type) => type.isActive !== false);
+      set({ leaveTypes: activeTypes, isLoading: false });
+      return activeTypes;
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Cannot load leave types.';
       set({ error: message, isLoading: false });

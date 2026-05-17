@@ -18,6 +18,8 @@ interface BackendTypeLeave {
   nameTypeLeave?: string;
   name?: string;
   hasSalary?: number | boolean;
+  isActive?: boolean;
+  status?: string;
 }
 
 interface BackendLeaveApplication {
@@ -46,6 +48,7 @@ export interface LeaveType {
   name: string;
   nameTypeLeave: string;
   isPaid: boolean;
+  isActive?: boolean;
   hasSalary: number;
 }
 
@@ -406,6 +409,7 @@ function normalizeLeaveType(payload: BackendTypeLeave): LeaveType {
     name,
     nameTypeLeave: name,
     isPaid: hasSalary > 0,
+    isActive: payload.isActive ?? payload.status !== 'Inactive',
     hasSalary,
   };
 }

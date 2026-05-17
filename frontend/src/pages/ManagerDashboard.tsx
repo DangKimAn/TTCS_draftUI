@@ -9,6 +9,7 @@ import {
 import {
   departments as mockDepartments,
 } from '../data/mockData';
+import { API_CONFIG } from '../config/api';
 import {
   getDepartmentCorrectionRequests,
   reviewCorrectionRequest,
@@ -202,7 +203,7 @@ function ManagerDashboard() {
       departmentIds.push(currentManager.departmentId);
     }
     return departmentIds.map((departmentId: any) => {
-      const mockDepartment = mockDepartments.find((department) => department.id === departmentId);
+      const mockDepartment = API_CONFIG.ENABLE_MOCK_FALLBACK ? mockDepartments.find((department) => department.id === departmentId) : null;
       const employeeInDepartment = teamEmployees.find((employee) => employee.departmentId === departmentId);
       return mockDepartment || {
         id: departmentId,

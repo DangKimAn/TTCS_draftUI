@@ -1,5 +1,4 @@
 import { Injectable } from '@nestjs/common';
-import RegiesterDto from './dto/register.dto';
 import UserDto from 'src/user/dto/user.dto';
 import { UserService } from 'src/user/user.service';
 import ResponseDto, { AnotherError } from 'src/common/response.dto';
@@ -12,9 +11,33 @@ import {
 import * as jwt from 'jsonwebtoken';
 import LoginDto from './dto/login.dto';
 import { BycyptHashedService } from 'src/common/bycypt-hashed/bycypt-hashed.service';
-import AuthDto from './dto/auth.dto';
+import AuthDto, { AuthUserDto } from './dto/auth.dto';
 import FullUserDto from 'src/user/dto/full-user.dto';
 import { ENV } from 'src/common/env';
+import { createHmac, randomBytes, timingSafeEqual } from 'crypto';
+
+interface MicrosoftTokenResponse {
+  access_token?: string;
+  token_type?: string;
+  expires_in?: number;
+  scope?: string;
+  id_token?: string;
+  error?: string;
+  error_description?: string;
+}
+
+interface MicrosoftProfileResponse {
+  id?: string;
+  displayName?: string;
+  mail?: string;
+  userPrincipalName?: string;
+}
+
+interface OAuthStatePayload {
+  provider: string;
+  nonce: string;
+  exp: number;
+}
 
 @Injectable()
 export class AuthService {
@@ -22,29 +45,6 @@ export class AuthService {
     private userService: UserService,
     private bcryptHashedservice: BycyptHashedService,
   ) {}
-  async register(registerDto: RegiesterDto): Promise<ResponseDto<UserDto>> {
-    const { email, username, password, departmentName }: RegiesterDto =
-      registerDto;
-
-    const { statusCode, message, data }: ResponseDto<UserDto> | AnotherError =
-      await this.userService.createUser({
-        email,
-        username,
-        password,
-        departmentName,
-      });
-    if (statusCode !== CREATED_RESPONE)
-      return {
-        statusCode,
-        message,
-      };
-
-    return {
-      statusCode,
-      message,
-      data,
-    };
-  }
 
   async login(loginDto: LoginDto): Promise<ResponseDto<AuthDto>> {
     const { email, username, password }: LoginDto = loginDto;
@@ -85,7 +85,7 @@ export class AuthService {
         };
 
       const roleName = data?.role?.nameRole;
-      const newAcessToken = await this.genAccessToken(
+      const newAcessToken = this.genAccessToken(
         data?.username,
         data?.userID,
         data?.email,
@@ -93,7 +93,7 @@ export class AuthService {
         data?.departmentID,
         roleName,
       );
-      const newRefreshToken = await this.genRefreshToken(
+      const newRefreshToken = this.genRefreshToken(
         data?.userID || '',
         data?.username || '',
         data?.email || '',
@@ -103,18 +103,13 @@ export class AuthService {
       });
       if (userGet.statusCode !== OK_CODE) return { statusCode, message };
 
-      const {
-        hashedPassword: _,
-        refreshToken: __,
-        ...user
-      } = data;
       return {
         statusCode: CREATED_RESPONE,
         message: 'login successfull',
         data: {
           accessToken: newAcessToken,
           refreshToken: newRefreshToken,
-          user: user,
+          user: this.toAuthUser(data),
         },
       };
     }
@@ -122,8 +117,147 @@ export class AuthService {
   }
 
   async googleLogin(email: string): Promise<ResponseDto<AuthDto>> {
+    return this.ssoLogin(email, 'Google');
+  }
+
+  isGoogleConfigured(): boolean {
+    return (
+      this.isConfiguredValue(ENV.GOOGLE.CLIENT_ID) &&
+      this.isConfiguredValue(ENV.GOOGLE.CLIENT_SECRET) &&
+      this.isConfiguredValue(ENV.GOOGLE.CALLBACK_URL)
+    );
+  }
+
+  isMicrosoftConfigured(): boolean {
+    return (
+      this.isConfiguredValue(ENV.MICROSOFT.CLIENT_ID) &&
+      this.isConfiguredValue(ENV.MICROSOFT.CLIENT_SECRET) &&
+      this.isConfiguredValue(ENV.MICROSOFT.TENANT_ID) &&
+      this.isConfiguredValue(ENV.MICROSOFT.CALLBACK_URL)
+    );
+  }
+
+  createOAuthState(provider: string): string {
+    const payload: OAuthStatePayload = {
+      provider,
+      nonce: randomBytes(16).toString('hex'),
+      exp: Date.now() + 10 * 60 * 1000,
+    };
+    const encodedPayload = Buffer.from(JSON.stringify(payload)).toString(
+      'base64url',
+    );
+    const signature = this.signOAuthState(encodedPayload);
+
+    return `${encodedPayload}.${signature}`;
+  }
+
+  verifyOAuthState(state: string | undefined, provider: string): boolean {
+    if (!state) {
+      return false;
+    }
+
+    const [encodedPayload, signature] = state.split('.');
+
+    if (!encodedPayload || !signature) {
+      return false;
+    }
+
+    const expectedSignature = this.signOAuthState(encodedPayload);
+    const signatureBuffer = Buffer.from(signature);
+    const expectedSignatureBuffer = Buffer.from(expectedSignature);
+
+    if (
+      signatureBuffer.length !== expectedSignatureBuffer.length ||
+      !timingSafeEqual(signatureBuffer, expectedSignatureBuffer)
+    ) {
+      return false;
+    }
+
+    try {
+      const payload = JSON.parse(
+        Buffer.from(encodedPayload, 'base64url').toString('utf8'),
+      ) as OAuthStatePayload;
+
+      return payload.provider === provider && payload.exp > Date.now();
+    } catch {
+      return false;
+    }
+  }
+
+  getMicrosoftAuthorizationUrl(state: string): string {
+    const url = new URL(
+      `https://login.microsoftonline.com/${encodeURIComponent(
+        ENV.MICROSOFT.TENANT_ID || '',
+      )}/oauth2/v2.0/authorize`,
+    );
+
+    url.searchParams.set('client_id', ENV.MICROSOFT.CLIENT_ID || '');
+    url.searchParams.set('response_type', 'code');
+    url.searchParams.set('redirect_uri', ENV.MICROSOFT.CALLBACK_URL || '');
+    url.searchParams.set('response_mode', 'query');
+    url.searchParams.set('scope', ENV.MICROSOFT.SCOPES);
+    url.searchParams.set('state', state);
+
+    return url.toString();
+  }
+
+  async microsoftLoginWithCode(code: string): Promise<ResponseDto<AuthDto>> {
+    const token = await this.exchangeMicrosoftCode(code);
+
+    if (!token.access_token) {
+      return {
+        statusCode: UNAUTHORIZED_CODE,
+        message:
+          token.error_description ||
+          token.error ||
+          'Microsoft token exchange failed',
+      };
+    }
+
+    const profile = await this.fetchMicrosoftProfile(token.access_token);
+    const email = profile.mail || profile.userPrincipalName;
+
+    if (!email) {
+      return {
+        statusCode: UNAUTHORIZED_CODE,
+        message: 'Microsoft account did not return an email address',
+      };
+    }
+
+    return this.ssoLogin(email, 'Microsoft');
+  }
+
+  buildSsoSuccessRedirect(provider: string, auth: AuthDto): string {
+    const url = new URL(this.getSsoRedirectUrl(true));
+    url.searchParams.set('provider', provider);
+
+    const fragment = new URLSearchParams({
+      accessToken: auth.accessToken,
+      refreshToken: auth.refreshToken,
+    });
+
+    return `${url.toString()}#${fragment.toString()}`;
+  }
+
+  buildSsoErrorRedirect(
+    provider: string,
+    code: string,
+    message: string,
+  ): string {
+    const url = new URL(this.getSsoRedirectUrl(false));
+    url.searchParams.set('provider', provider);
+    url.searchParams.set('error', code);
+    url.searchParams.set('message', message);
+
+    return url.toString();
+  }
+
+  private async ssoLogin(
+    email: string,
+    provider: string,
+  ): Promise<ResponseDto<AuthDto>> {
     const userResult = await this.userService.getUserByEmail(email);
-    const { statusCode, message, data } = userResult;
+    const { statusCode, data } = userResult;
 
     if (statusCode !== OK_CODE || !data) {
       return {
@@ -140,7 +274,7 @@ export class AuthService {
     }
 
     const roleName = data.role?.nameRole;
-    const accessToken = await this.genAccessToken(
+    const accessToken = this.genAccessToken(
       data.username,
       data.userID,
       data.email,
@@ -148,7 +282,7 @@ export class AuthService {
       data.departmentID,
       roleName,
     );
-    const refreshToken = await this.genRefreshToken(
+    const refreshToken = this.genRefreshToken(
       data.userID,
       data.username || '',
       data.email,
@@ -156,20 +290,101 @@ export class AuthService {
 
     await this.userService.updateUser(data.userID, { refreshToken });
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { hashedPassword: _, refreshToken: __, ...user } = data;
     return {
       statusCode: CREATED_RESPONE,
-      message: 'Google login successful',
+      message: `${provider} login successful`,
       data: {
         accessToken,
         refreshToken,
-        user,
+        user: this.toAuthUser(data),
       },
     };
   }
 
-  async genAccessToken(
+  private signOAuthState(encodedPayload: string): string {
+    return createHmac('sha256', ENV.JWT.ACCESS_SECRET)
+      .update(encodedPayload)
+      .digest('base64url');
+  }
+
+  private isConfiguredValue(value?: string | null): boolean {
+    const normalized = String(value || '').trim();
+
+    return (
+      normalized.length > 0 &&
+      normalized !== '...' &&
+      !normalized.startsWith('your-') &&
+      !normalized.includes('[PASSWORD]') &&
+      !normalized.includes('[PROJECT-REF]')
+    );
+  }
+
+  private getSsoRedirectUrl(isSuccess: boolean): string {
+    const configuredUrl = isSuccess
+      ? ENV.SSO.SUCCESS_REDIRECT_URL
+      : ENV.SSO.ERROR_REDIRECT_URL;
+
+    if (configuredUrl) {
+      return configuredUrl;
+    }
+
+    const frontendOrigin = ENV.CORS_ORIGIN.split(',')[0]?.trim();
+    return `${frontendOrigin || 'http://localhost:5173'}/auth/callback`;
+  }
+
+  private async exchangeMicrosoftCode(
+    code: string,
+  ): Promise<MicrosoftTokenResponse> {
+    const tokenUrl = `https://login.microsoftonline.com/${encodeURIComponent(
+      ENV.MICROSOFT.TENANT_ID || '',
+    )}/oauth2/v2.0/token`;
+    const body = new URLSearchParams({
+      client_id: ENV.MICROSOFT.CLIENT_ID || '',
+      client_secret: ENV.MICROSOFT.CLIENT_SECRET || '',
+      code,
+      grant_type: 'authorization_code',
+      redirect_uri: ENV.MICROSOFT.CALLBACK_URL || '',
+      scope: ENV.MICROSOFT.SCOPES,
+    });
+
+    const response = await fetch(tokenUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body,
+    });
+    const payload = (await response.json()) as MicrosoftTokenResponse;
+
+    if (!response.ok) {
+      return {
+        error: payload.error || String(response.status),
+        error_description:
+          payload.error_description || 'Microsoft token endpoint failed',
+      };
+    }
+
+    return payload;
+  }
+
+  private async fetchMicrosoftProfile(
+    accessToken: string,
+  ): Promise<MicrosoftProfileResponse> {
+    const response = await fetch(
+      'https://graph.microsoft.com/v1.0/me?$select=id,displayName,mail,userPrincipalName',
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      },
+    );
+
+    if (!response.ok) {
+      throw new Error('Microsoft profile endpoint failed');
+    }
+
+    return (await response.json()) as MicrosoftProfileResponse;
+  }
+
+  genAccessToken(
     username: string | undefined,
     userID: string | undefined,
     email: string | undefined,
@@ -194,7 +409,7 @@ export class AuthService {
     return acessToken;
   }
 
-  async genRefreshToken(userID: string, username: string, email: string) {
+  genRefreshToken(userID: string, username: string, email: string) {
     const payload = {
       userID,
       username,
@@ -252,7 +467,7 @@ export class AuthService {
       };
 
     const roleName = data.role?.nameRole;
-    const newAcessToken: string = await this.genAccessToken(
+    const newAcessToken: string = this.genAccessToken(
       data.username,
       data.userID,
       data.email,
@@ -260,7 +475,7 @@ export class AuthService {
       data?.departmentID,
       roleName,
     );
-    const newRefreshToken: string = await this.genRefreshToken(
+    const newRefreshToken: string = this.genRefreshToken(
       data.userID,
       data.username,
       data.email,
@@ -277,19 +492,13 @@ export class AuthService {
         message,
       };
 
-    const { hashedPassword: _, refreshToken: __, ...user } = data;
-
     return {
       statusCode: CREATED_RESPONE,
       message: `update refreshToken successfull`,
       data: {
         refreshToken: newRefreshToken,
         accessToken: newAcessToken,
-        user: {
-          ...user,
-          role: data.role,
-          roleName,
-        },
+        user: this.toAuthUser(data),
       },
     };
   }
@@ -298,5 +507,26 @@ export class AuthService {
     await this.userService.updateUser(userID, { refreshToken: '' });
 
     return { statusCode: CREATED_RESPONE, message: 'log out successfully' };
+  }
+
+  private toAuthUser(data: FullUserDto): AuthUserDto {
+    return {
+      userID: data.userID,
+      email: data.email,
+      username: data.username,
+      linkAvatar: data.linkAvatar,
+      phone: data.phone,
+      address: data.address,
+      emergencyContact: data.emergencyContact,
+      salaryCoefficient: data.salaryCoefficient,
+      birthday: data.birthday,
+      remainDaysofLeave: data.remainDaysofLeave,
+      totalDaysofLeave: data.totalDaysofLeave,
+      isActive: data.isActive,
+      roleId: data.roleId,
+      departmentID: data.departmentID,
+      role: data.role,
+      department: data.department,
+    };
   }
 }

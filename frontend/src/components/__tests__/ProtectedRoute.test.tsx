@@ -2,16 +2,66 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import ProtectedRoute from '../ProtectedRoute';
+import type { AuthSession, Role } from '../../types';
+import { useAuthStore } from '../../store/authStore';
+
+vi.mock('../../store/authStore', () => ({
+  useAuthStore: vi.fn(),
+}));
 
 // ---- helpers ----------------------------------------------------------------
 
+type AuthStoreSnapshot = ReturnType<typeof useAuthStore>;
+
+function makeSession(role: Role): AuthSession {
+  return {
+    token: 'tok',
+    accessToken: 'tok',
+    refreshToken: 'refresh-tok',
+    id: 'u1',
+    userID: 'u1',
+    email: 'user@example.com',
+    name: 'Test User',
+    role,
+    roleId: null,
+    departmentId: 'dept-1',
+    managedEmployeeIds: [],
+    permissions: [],
+    isActive: true,
+    provider: 'password',
+    loggedInAt: '2026-05-16T00:00:00.000Z',
+  };
+}
+
 function makeAuthStoreMock(overrides: {
-  session?: { accessToken: string; role: string } | null;
-  verifySession?: () => Promise<{ accessToken: string; role: string } | null>;
+  session?: AuthSession | null;
+  hasVerifiedSession?: boolean;
+  verifySession?: () => Promise<AuthSession | null>;
 }) {
-  const state = {
-    session: overrides.session ?? null,
+  const session = overrides.session ?? null;
+  const state: AuthStoreSnapshot = {
+    session,
+    user: session
+      ? {
+          id: session.userID,
+          email: session.email,
+          name: session.name,
+          role: session.role,
+          departmentId: session.departmentId,
+          managedEmployeeIds: session.managedEmployeeIds,
+          permissions: session.permissions,
+          isActive: session.isActive,
+        }
+      : null,
+    role: session?.role ?? null,
+    isHydrated: Boolean(session),
+    isChecking: false,
+    hasVerifiedSession: overrides.hasVerifiedSession ?? false,
+    error: null,
     hydrate: vi.fn(),
+    setSession: vi.fn(),
+    login: vi.fn(),
+    logout: vi.fn(),
     verifySession:
       overrides.verifySession ??
       vi.fn().mockResolvedValue(overrides.session ?? null),
@@ -28,9 +78,7 @@ vi.mock('../../utils/storage', () => ({
 
 describe('ProtectedRoute', () => {
   it('TC-01: redirects to /login if no token (unauthenticated)', async () => {
-    vi.mock('../../store/authStore', () => ({
-      useAuthStore: makeAuthStoreMock({ session: null }),
-    }));
+    vi.mocked(useAuthStore).mockImplementation(makeAuthStoreMock({ session: null }));
 
     render(
       <MemoryRouter initialEntries={['/protected']}>
@@ -49,11 +97,10 @@ describe('ProtectedRoute', () => {
   });
 
   it('TC-02: redirects to /unauthorized when role does not match allowedRoles', async () => {
-    vi.mock('../../store/authStore', () => ({
-      useAuthStore: makeAuthStoreMock({
-        session: { accessToken: 'tok', role: 'employee' },
-        verifySession: vi.fn().mockResolvedValue({ accessToken: 'tok', role: 'employee' }),
-      }),
+    const session = makeSession('employee');
+    vi.mocked(useAuthStore).mockImplementation(makeAuthStoreMock({
+      session,
+      verifySession: vi.fn().mockResolvedValue(session),
     }));
 
     render(
@@ -74,11 +121,10 @@ describe('ProtectedRoute', () => {
   });
 
   it('TC-03: renders protected content when authenticated with correct role', async () => {
-    vi.mock('../../store/authStore', () => ({
-      useAuthStore: makeAuthStoreMock({
-        session: { accessToken: 'tok', role: 'manager' },
-        verifySession: vi.fn().mockResolvedValue({ accessToken: 'tok', role: 'manager' }),
-      }),
+    const session = makeSession('manager');
+    vi.mocked(useAuthStore).mockImplementation(makeAuthStoreMock({
+      session,
+      verifySession: vi.fn().mockResolvedValue(session),
     }));
 
     render(
@@ -98,12 +144,11 @@ describe('ProtectedRoute', () => {
   });
 
   it('TC-04: shows loading indicator while verifySession is pending', () => {
-    vi.mock('../../store/authStore', () => ({
-      useAuthStore: makeAuthStoreMock({
-        session: null,
-        // Never resolves during this test
-        verifySession: vi.fn().mockReturnValue(new Promise(() => {})),
-      }),
+    const session = makeSession('employee');
+    vi.mocked(useAuthStore).mockImplementation(makeAuthStoreMock({
+      session,
+      // Never resolves during this test
+      verifySession: vi.fn().mockReturnValue(new Promise(() => {})),
     }));
 
     render(

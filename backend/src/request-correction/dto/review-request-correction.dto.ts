@@ -3,7 +3,10 @@ import { IsEnum, IsOptional, IsString } from 'class-validator';
 import { TimesheetStatus } from '@prisma/client';
 
 export class ReviewRequestCorrectionDto {
-  @ApiProperty({ description: 'Review status', enum: [TimesheetStatus.APPROVED, TimesheetStatus.REJECTED] })
+  @ApiProperty({
+    description: 'Review status',
+    enum: [TimesheetStatus.APPROVED, TimesheetStatus.REJECTED],
+  })
   @IsEnum(TimesheetStatus)
   status: TimesheetStatus;
 

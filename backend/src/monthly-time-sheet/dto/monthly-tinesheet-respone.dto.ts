@@ -1,4 +1,4 @@
-import { IsBoolean, IsISBN, IsString, IsUUID } from 'class-validator';
+import { IsBoolean, IsString, IsUUID } from 'class-validator';
 
 export class MonthlyTimesheeetResponeDto {
   @IsUUID()

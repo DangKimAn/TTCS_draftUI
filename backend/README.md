@@ -41,6 +41,16 @@ npm run build
 npm test -- --runInBand
 ```
 
+E2E requires a disposable PostgreSQL database configured in `backend/.env.test` or `.env.test.local`. Use guarded scripts only:
+
+```bash
+npm run prisma:migrate:deploy:test
+npm run seed:test
+npm run test:e2e -- --runInBand
+```
+
+The E2E guard refuses URLs that do not clearly target `test`, `testing`, `e2e`, or `ci`.
+
 ## API Docs
 
 When running locally:

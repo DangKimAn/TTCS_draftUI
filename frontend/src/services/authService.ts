@@ -316,6 +316,13 @@ export async function login(
   }
 }
 
+export function completeSsoLogin(payload: AuthPayload, provider = 'sso'): LoginResult {
+  const session = createSessionFromPayload(payload, provider, null);
+
+  saveAuthSession(session, true);
+  return createLoginResult(session);
+}
+
 export async function logout(): Promise<void> {
   const session = getAuthSession();
   const accessToken = getAccessToken(session);

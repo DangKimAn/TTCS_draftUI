@@ -10,7 +10,6 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
-  UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
 import { DepartmentService } from './department.service';
@@ -22,11 +21,9 @@ import {
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
-  ApiResponse,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 import CreateDepartmentDto from './dto/createDepartment.dto';
-import { describe } from 'node:test';
 import {
   ANOTHER_ERROR_RESPONE,
   BADREQUEST_CODE,
@@ -90,12 +87,8 @@ export class DepartmentController {
   @RequirePermission('admin', 'managerOfDepartment')
   async getDepartmentById(
     @Param('departmentID', new ParseUUIDPipe()) departmentID: string,
-  ): Promise<Response | AnotherError> {
-    const {
-      statusCode,
-      message,
-      data,
-    }: ResponseDto<DepartmentDto> | AnotherError =
+  ): Promise<ResponseDto<DepartmentDto> | AnotherError> {
+    const { statusCode, message, data }: ResponseDto<DepartmentDto> =
       await this.departmentService.getDepartmentById(departmentID);
     if (statusCode === NOTFOUND_CODE) throw new NotFoundException(message);
     if (statusCode === OK_CODE)
@@ -122,11 +115,10 @@ export class DepartmentController {
     description: 'The id of manager is not exist',
   })
   async createDepartment(
-    @Body() DepartmentDto: CreateDepartmentDto,
+    @Body() createDepartmentDto: CreateDepartmentDto,
   ): Promise<ResponseDto<DepartmentDto> | AnotherError> {
-    console.log(DepartmentDto);
     const { statusCode, message, data }: ResponseDto<DepartmentDto> =
-      await this.departmentService.createDepartment(DepartmentDto);
+      await this.departmentService.createDepartment(createDepartmentDto);
     if (statusCode === CONFLIG_CODE)
       throw new ConflictException({
         message,
@@ -150,8 +142,11 @@ export class DepartmentController {
   }
 
   @Get('byDepartmentName/:departmentName')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, UserAccessGaurd)
+  @RequirePermission('admin')
   @ApiOperation({
-    summary: 'fix me pls! fix me pls!',
+    summary: 'Get department by departmentName for admin',
   })
   @ApiOkResponse({
     description: 'Get department by departmentName is successfull !!',
@@ -226,7 +221,7 @@ export class DepartmentController {
   async deleteDepartment(
     @Param('departmentID') departmentID: string,
   ): Promise<ResponseDto<DepartmentDto>> {
-    const { statusCode, message, data }: ResponseDto<DepartmentDto> =
+    const { statusCode, message }: ResponseDto<DepartmentDto> =
       await this.departmentService.deleteDepartment(departmentID);
     if (statusCode === OK_CODE)
       return {

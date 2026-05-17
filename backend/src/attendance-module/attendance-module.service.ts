@@ -285,6 +285,7 @@ export class AttendanceModuleService {
           if (
             managerResult.statusCode === OK_CODE &&
             managerResult.data &&
+            typeof managerResult.data === 'object' &&
             'managerID' in managerResult.data
           ) {
             const managerData = managerResult.data as { managerID: string };
@@ -374,7 +375,7 @@ export class AttendanceModuleService {
     if (allEmployeeDidntCheckOut.length === 0)
       return {
         statusCode: NOTFOUND_CODE,
-        message: "No employees missed check-out before " + date,
+        message: 'No employees missed check-out before ' + date,
       };
 
     return {

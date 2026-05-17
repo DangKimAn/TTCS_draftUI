@@ -14,7 +14,7 @@ import {
   toggleMockIp,
 } from '../services/attendanceService';
 import { createCorrectionRequest } from '../services/correctionService';
-import { createLeaveRequest, getLeaveBalance, getMyLeaveRequests } from '../services/leaveService';
+import { createLeaveRequest, getLeaveBalance, getLeaveTypes, getMyLeaveRequests } from '../services/leaveService';
 import { getEmployeeProfile, updateEmployeeProfile } from '../services/profileService';
 import {
   canSubmitTimesheet,
@@ -55,6 +55,7 @@ function EmployeeWorkspaceDashboard() {
   const [isCorrectionOpen, setIsCorrectionOpen] = useState(false);
   const [timesheetFeedback, setTimesheetFeedback] = useState(null);
   const [leaveRequests, setLeaveRequests] = useState([]);
+  const [leaveTypes, setLeaveTypes] = useState([]);
   const [leaveSummary, setLeaveSummary] = useState({
     totalAnnualDays: 0,
     usedDays: 0,
@@ -164,15 +165,18 @@ function EmployeeWorkspaceDashboard() {
     }
 
     try {
-      const [requests, summary] = await Promise.all([
+      const [requests, summary, types] = await Promise.all([
         getMyLeaveRequests(userID),
         getLeaveBalance(userID),
+        getLeaveTypes(),
       ]);
 
       setLeaveRequests(requests);
       setLeaveSummary(summary);
+      setLeaveTypes(types);
     } catch (error) {
       console.error('[EmployeeWorkspaceDashboard] Cannot load leave data:', error);
+      setLeaveTypes([]);
     }
   };
 
@@ -431,9 +435,13 @@ function EmployeeWorkspaceDashboard() {
     await loadLeaveData();
   };
 
-  const handleSaveProfile = (updates) => {
-    const nextProfile = updateEmployeeProfile(session.email, updates);
+  const handleSaveProfile = async (updates) => {
+    const nextProfile = await updateEmployeeProfile(session.email, updates);
+    if (!nextProfile) {
+      throw new Error('Không thể cập nhật thông tin cá nhân.');
+    }
     setProfile(nextProfile);
+    return nextProfile;
   };
 
   const sectionProps = {
@@ -489,6 +497,7 @@ function EmployeeWorkspaceDashboard() {
     'leave-request': {
       summary: leaveSummary,
       requests: leaveRequests,
+      leaveTypes,
       onSubmitRequest: handleCreateLeaveRequest,
     },
     'leave-balance': {

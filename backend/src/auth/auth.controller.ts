@@ -4,7 +4,6 @@ import {
   Body,
   ConflictException,
   Controller,
-  NotAcceptableException,
   NotFoundException,
   Post,
   UnauthorizedException,
@@ -12,22 +11,22 @@ import {
   Param,
   ParseUUIDPipe,
   Req,
+  Query,
+  Res,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import {
   ApiBadGatewayResponse,
   ApiBearerAuth,
   ApiConflictResponse,
-  ApiCreatedResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
   ApiTags,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
-import RegiesterDto from './dto/register.dto';
+
 import ResponseDto, { AnotherError } from 'src/common/response.dto';
-import UserDto from 'src/user/dto/user.dto';
 import {
   ANOTHER_ERROR_RESPONE,
   CONFLIG_CODE,
@@ -41,6 +40,7 @@ import AuthDto from './dto/auth.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { GoogleAuthGuard } from './guards/google-auth.guard';
 import type { Request } from 'express';
+import type { Response } from 'express';
 
 interface UserPayload {
   userID: string;
@@ -61,30 +61,6 @@ interface RequestWithUser extends Request {
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
-  @Post('/register')
-  @ApiNotFoundResponse()
-  @ApiCreatedResponse()
-  @ApiBadGatewayResponse()
-  @ApiConflictResponse()
-  async register(
-    @Body() registerDto: RegiesterDto,
-  ): Promise<ResponseDto<UserDto>> {
-    const { statusCode, message, data }: ResponseDto<UserDto> =
-      await this.authService.register(registerDto);
-    if (statusCode === NOTFOUND_CODE)
-      throw new NotAcceptableException(statusCode, message);
-    if (statusCode === CONFLIG_CODE)
-      throw new ConflictException(statusCode, message);
-
-    if (statusCode === CREATED_RESPONE)
-      return {
-        statusCode,
-        message,
-        data,
-      };
-
-    throw new BadRequestException(statusCode, message);
-  }
 
   @Post('/login')
   async login(@Body() loginDto: LoginDto): Promise<ResponseDto<AuthDto>> {
@@ -187,17 +163,112 @@ export class AuthController {
   @Get('google/callback')
   @UseGuards(GoogleAuthGuard)
   @ApiOperation({ summary: 'Google SSO callback' })
-  async googleAuthRedirect(@Req() req: RequestWithUser) {
+  async googleAuthRedirect(@Req() req: RequestWithUser, @Res() res: Response) {
     const user = req.user;
     if (!user?.email) {
-      throw new UnauthorizedException('Google authentication failed');
+      res.redirect(
+        this.authService.buildSsoErrorRedirect(
+          'google',
+          'GOOGLE_SSO_FAILED',
+          'Google authentication failed',
+        ),
+      );
+      return;
     }
 
     const result = await this.authService.googleLogin(user.email);
-    if (result.statusCode !== CREATED_RESPONE) {
-      throw new UnauthorizedException(result.message);
+    if (result.statusCode !== CREATED_RESPONE || !result.data) {
+      res.redirect(
+        this.authService.buildSsoErrorRedirect(
+          'google',
+          'GOOGLE_SSO_UNAUTHORIZED',
+          result.message,
+        ),
+      );
+      return;
     }
 
-    return result;
+    res.redirect(
+      this.authService.buildSsoSuccessRedirect('google', result.data),
+    );
+  }
+
+  @Get('microsoft')
+  @ApiOperation({ summary: 'Initiate Microsoft SSO login' })
+  microsoftAuth(@Res() res: Response) {
+    if (!this.authService.isMicrosoftConfigured()) {
+      res.redirect(
+        this.authService.buildSsoErrorRedirect(
+          'microsoft',
+          'MICROSOFT_SSO_NOT_CONFIGURED',
+          'Microsoft SSO is missing client id, tenant id, client secret, or callback URL.',
+        ),
+      );
+      return;
+    }
+
+    const state = this.authService.createOAuthState('microsoft');
+    res.redirect(this.authService.getMicrosoftAuthorizationUrl(state));
+  }
+
+  @Get('microsoft/callback')
+  @ApiOperation({ summary: 'Microsoft SSO callback' })
+  async microsoftAuthRedirect(
+    @Query('code') code: string | undefined,
+    @Query('state') state: string | undefined,
+    @Query('error') error: string | undefined,
+    @Query('error_description') errorDescription: string | undefined,
+    @Res() res: Response,
+  ) {
+    if (error) {
+      res.redirect(
+        this.authService.buildSsoErrorRedirect(
+          'microsoft',
+          error,
+          errorDescription || 'Microsoft authentication failed.',
+        ),
+      );
+      return;
+    }
+
+    if (!code || !this.authService.verifyOAuthState(state, 'microsoft')) {
+      res.redirect(
+        this.authService.buildSsoErrorRedirect(
+          'microsoft',
+          'MICROSOFT_SSO_INVALID_CALLBACK',
+          'Microsoft callback is missing code or has an invalid state.',
+        ),
+      );
+      return;
+    }
+
+    try {
+      const result = await this.authService.microsoftLoginWithCode(code);
+
+      if (result.statusCode !== CREATED_RESPONE || !result.data) {
+        res.redirect(
+          this.authService.buildSsoErrorRedirect(
+            'microsoft',
+            'MICROSOFT_SSO_UNAUTHORIZED',
+            result.message,
+          ),
+        );
+        return;
+      }
+
+      res.redirect(
+        this.authService.buildSsoSuccessRedirect('microsoft', result.data),
+      );
+    } catch (callbackError) {
+      res.redirect(
+        this.authService.buildSsoErrorRedirect(
+          'microsoft',
+          'MICROSOFT_SSO_FAILED',
+          callbackError instanceof Error
+            ? callbackError.message
+          : 'Microsoft authentication failed.',
+        ),
+      );
+    }
   }
 }

@@ -13,6 +13,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import type { Request } from 'express';
+import { RequestUser } from 'src/common/types';
 import { LeaveApplicationService } from './leave-application.service';
 import { CreateLeaveApplicationDto } from './dto/create-leave-application.dto';
 import { ReviewLeaveApplicationDto } from './dto/review-leave-application.dto';
@@ -37,7 +38,7 @@ import { UserAccessGaurd } from 'src/auth/guards/access.guard';
 import { RequirePermission } from 'src/common/require-permissions.decorator';
 
 interface RequestWithUser extends Request {
-  user?: any;
+  user?: RequestUser;
 }
 
 @ApiTags('leave-application')

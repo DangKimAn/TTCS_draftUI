@@ -12,6 +12,7 @@
 
 import httpClient from '../utils/httpClient';
 import { mockEmployeeProfiles } from '../data/mockProfile';
+import { API_CONFIG } from '../config/api';
 
 const PROFILE_STORAGE_KEY = 'timesheet_pro_employee_profiles';
 
@@ -22,9 +23,9 @@ export async function fetchProfileByUserID(userID: string): Promise<Record<strin
     const response = await httpClient.get<Record<string, unknown>>(`/user/getByID/${encodeURIComponent(userID)}`);
     const payload = response.data;
     if (payload && typeof payload === 'object' && 'data' in payload) {
-      return (payload as { data: Record<string, unknown> }).data ?? null;
+      return normalizeEmployeeProfile((payload as { data: Record<string, unknown> }).data);
     }
-    return payload ?? null;
+    return normalizeEmployeeProfile(payload);
   } catch {
     // API không khả dụng hoặc lỗi network → caller tự quyết fallback
     return null;
@@ -36,9 +37,9 @@ export async function fetchProfileByEmail(email: string): Promise<Record<string,
     const response = await httpClient.get<Record<string, unknown>>(`/user/getByEmail/${encodeURIComponent(email)}`);
     const payload = response.data;
     if (payload && typeof payload === 'object' && 'data' in payload) {
-      return (payload as { data: Record<string, unknown> }).data ?? null;
+      return normalizeEmployeeProfile((payload as { data: Record<string, unknown> }).data);
     }
-    return payload ?? null;
+    return normalizeEmployeeProfile(payload);
   } catch {
     return null;
   }
@@ -78,23 +79,110 @@ function writeProfiles(nextProfiles: Record<string, unknown>[]) {
   localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(nextProfiles));
 }
 
-/** Demo fallback – dùng email để tra cứu trong localStorage/mock */
+/** Tra cứu profile qua API, fallback về localStorage nếu bật mock */
 export async function getEmployeeProfile(email: string): Promise<Record<string, unknown> | null> {
   const apiProfile = await fetchProfileByEmail(email);
   if (apiProfile) return apiProfile;
-  return ensureProfiles().find((item) => item['email'] === email) ?? null;
+  if (!API_CONFIG.ENABLE_MOCK_FALLBACK) return null;
+  return normalizeEmployeeProfile(
+    ensureProfiles().find((item) => item['email'] === email) ?? null,
+  );
 }
 
-/** Demo fallback – cập nhật profile trong localStorage, KHÔNG gọi API */
-export function updateEmployeeProfile(
+/** Demo fallback – cập nhật profile trong localStorage, KHÔNG gọi API (chỉ gọi khi mock) */
+export async function updateEmployeeProfile(
   email: string,
   updates: Record<string, unknown>,
-): Record<string, unknown> | null {
+): Promise<Record<string, unknown> | null> {
+  const payload = buildSelfUpdatePayload(updates);
+
+  if (!API_CONFIG.ENABLE_MOCK_FALLBACK) {
+    return updateProfileViaApi(payload);
+  }
+
+  try {
+    return await updateProfileViaApi(payload);
+  } catch {
+    // Demo-only fallback below.
+  }
+
   const profiles = ensureProfiles();
   const nextProfiles = profiles.map((item) =>
-    item['email'] === email ? { ...item, ...updates } : item,
+    item['email'] === email ? { ...item, ...payload } : item,
   );
 
   writeProfiles(nextProfiles);
-  return nextProfiles.find((item) => item['email'] === email) ?? null;
+  return normalizeEmployeeProfile(
+    nextProfiles.find((item) => item['email'] === email) ?? null,
+  );
+}
+
+async function updateProfileViaApi(payload: Record<string, unknown>) {
+  const response = await httpClient.patch<Record<string, unknown>>('/user/me', payload);
+  const responsePayload = response.data;
+
+  if (responsePayload && typeof responsePayload === 'object' && 'data' in responsePayload) {
+    return normalizeEmployeeProfile((responsePayload as { data: Record<string, unknown> }).data);
+  }
+
+  return normalizeEmployeeProfile(responsePayload);
+}
+
+function buildSelfUpdatePayload(updates: Record<string, unknown>) {
+  return {
+    linkAvatar: normalizeNullableString(updates.linkAvatar ?? updates.avatar),
+    phone: normalizeNullableString(updates.phone),
+    address: normalizeNullableString(updates.address),
+    emergencyContact: normalizeNullableString(updates.emergencyContact),
+    birthday: normalizeNullableString(updates.birthday),
+  };
+}
+
+function normalizeNullableString(value: unknown): string | null | undefined {
+  if (value === undefined) return undefined;
+  if (value === null) return null;
+
+  const normalized = String(value).trim();
+  return normalized || null;
+}
+
+function normalizeEmployeeProfile(
+  payload: Record<string, unknown> | null | undefined,
+): Record<string, unknown> | null {
+  if (!payload) {
+    return null;
+  }
+
+  const role = payload.role as Record<string, unknown> | undefined;
+  const department = payload.department as Record<string, unknown> | undefined;
+  const name = String(payload.name || payload.fullName || payload.username || payload.email || '');
+  const userID = String(payload.userID || payload.id || payload.employeeId || '');
+  const roleName = String(role?.nameRole || payload.roleName || payload.role || 'employee');
+
+  return {
+    ...payload,
+    id: userID,
+    employeeId: userID ? `EMP-${userID.slice(0, 8).toUpperCase()}` : String(payload.employeeId || ''),
+    name,
+    fullName: name,
+    email: String(payload.email || ''),
+    avatar: payload.linkAvatar || payload.avatar || '',
+    phone: String(payload.phone || ''),
+    address: String(payload.address || ''),
+    emergencyContact: String(payload.emergencyContact || ''),
+    birthday: payload.birthday || '',
+    department: department?.departmentName || payload.departmentName || payload.departmentID || '--',
+    position: payload.position || roleName,
+    manager: payload.manager || '--',
+    joinDate: payload.joinDate || '',
+    accountStatus: payload.isActive === false ? 'Inactive' : 'Active',
+    role: normalizeRole(roleName),
+  };
+}
+
+function normalizeRole(value: string): string {
+  const normalized = value.trim().toLowerCase();
+  if (normalized === 'admin' || normalized === 'hr') return 'hr';
+  if (normalized === 'manager') return 'manager';
+  return 'employee';
 }

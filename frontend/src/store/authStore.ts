@@ -24,6 +24,7 @@ interface AuthState {
   role: Role | null;
   isHydrated: boolean;
   isChecking: boolean;
+  hasVerifiedSession: boolean;
   error: string | null;
   hydrate: () => void;
   setSession: (session: AuthSession | null, persist?: boolean) => void;
@@ -66,23 +67,29 @@ function getInitialSession(): AuthSession | null {
 }
 
 const initialSession = getInitialSession();
+let verifySessionPromise: Promise<AuthSession | null> | null = null;
 
 export const useAuthStore = create<AuthState>((set, get) => ({
   session: initialSession,
   user: toUser(initialSession),
   role: initialSession?.role || null,
-  isHydrated: Boolean(initialSession),
+  isHydrated: true,
   isChecking: false,
+  hasVerifiedSession: false,
   error: null,
 
   hydrate: () => {
     const session = getInitialSession();
+    const currentSession = get().session;
+    const currentToken = currentSession?.accessToken || currentSession?.token;
+    const nextToken = session?.accessToken || session?.token;
 
     set({
       session,
       user: toUser(session),
       role: session?.role || null,
       isHydrated: true,
+      hasVerifiedSession: Boolean(session && currentToken && nextToken === currentToken && get().hasVerifiedSession),
       error: null,
     });
   },
@@ -103,6 +110,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       user: toUser(normalizedSession),
       role: normalizedSession?.role || null,
       isHydrated: true,
+      hasVerifiedSession: Boolean(normalizedSession),
       error: null,
     });
   },
@@ -128,13 +136,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         role: session.role,
         isHydrated: true,
         isChecking: false,
+        hasVerifiedSession: true,
         error: null,
       });
 
       return session;
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Login failed.';
-      set({ isChecking: false, error: message });
+      set({ isChecking: false, hasVerifiedSession: false, error: message });
       throw error;
     }
   },
@@ -151,33 +160,50 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   verifySession: async () => {
+    if (verifySessionPromise) {
+      return verifySessionPromise;
+    }
+
     set({ isChecking: true, error: null });
 
-    try {
-      const session = normalizeSession(await verifyAuthSession());
+    verifySessionPromise = (async () => {
+      try {
+        const session = normalizeSession(await verifyAuthSession());
 
-      set({
-        session,
-        user: toUser(session),
-        role: session?.role || null,
-        isHydrated: true,
-        isChecking: false,
-      });
+        if (!session) {
+          clearAuthSession();
+        }
 
-      return session;
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Session verification failed.';
+        set({
+          session,
+          user: toUser(session),
+          role: session?.role || null,
+          isHydrated: true,
+          isChecking: false,
+          hasVerifiedSession: Boolean(session),
+        });
 
-      set({
-        session: null,
-        user: null,
-        role: null,
-        isHydrated: true,
-        isChecking: false,
-        error: message,
-      });
+        return session;
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Session verification failed.';
+        clearAuthSession();
 
-      return null;
-    }
+        set({
+          session: null,
+          user: null,
+          role: null,
+          isHydrated: true,
+          isChecking: false,
+          hasVerifiedSession: false,
+          error: message,
+        });
+
+        return null;
+      } finally {
+        verifySessionPromise = null;
+      }
+    })();
+
+    return verifySessionPromise;
   },
 }));

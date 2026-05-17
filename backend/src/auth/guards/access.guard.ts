@@ -5,10 +5,21 @@ import {
   Injectable,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
+import { Request } from 'express';
 import { OK_CODE } from 'src/common/code';
+import { RequestUser } from 'src/common/types';
 import { UserService } from 'src/user/user.service';
 
 type TargetType = 'userID' | 'email' | 'username' | 'departmentID' | '';
+interface UserAccessRequest extends Request {
+  user: RequestUser;
+  params: {
+    userID?: string;
+    email?: string;
+    username?: string;
+    departmentID?: string;
+  };
+}
 
 @Injectable()
 export class UserAccessGaurd implements CanActivate {
@@ -27,7 +38,7 @@ export class UserAccessGaurd implements CanActivate {
       return true;
     }
 
-    const request = context.switchToHttp().getRequest();
+    const request = context.switchToHttp().getRequest<UserAccessRequest>();
     const currentUser = request.user;
     const { userID, email, username, departmentID } = request.params;
     const { input, type } = this.resolveTarget({
@@ -48,8 +59,9 @@ export class UserAccessGaurd implements CanActivate {
 
       if (
         permission === 'me' &&
-        (await this.userService.IsMe(currentUser, input, type)).statusCode ===
-          OK_CODE
+        (!input ||
+          this.userService.IsMe(currentUser, input, type).statusCode ===
+            OK_CODE)
       ) {
         return true;
       }

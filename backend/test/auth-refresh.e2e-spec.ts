@@ -6,11 +6,16 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import request from 'supertest';
+import { App } from 'supertest/types';
 import * as jwt from 'jsonwebtoken';
 import { AppModule } from './../src/app.module';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { BycyptHashedService } from 'src/common/bycypt-hashed/bycypt-hashed.service';
 import { ENV } from 'src/common/env';
+
+function getTestServer(app: INestApplication): App {
+  return app.getHttpServer() as unknown as App;
+}
 
 interface ApiResponse<T> {
   statusCode: number;
@@ -29,17 +34,6 @@ describe('Auth Refresh Flow (e2e)', () => {
   let refreshToken: string;
 
   beforeAll(async () => {
-    // Fix for Supabase pooler issue: prepared statement already exists
-    if (
-      process.env.DATABASE_URL &&
-      !process.env.DATABASE_URL.includes('pgbouncer=true')
-    ) {
-      process.env.DATABASE_URL =
-        process.env.DATABASE_URL +
-        (process.env.DATABASE_URL.includes('?') ? '&' : '?') +
-        'pgbouncer=true';
-    }
-
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
     }).compile();
@@ -58,7 +52,6 @@ describe('Auth Refresh Flow (e2e)', () => {
       new ClassSerializerInterceptor(app.get(Reflector)),
     );
 
-    process.env.SKIP_AUTO_SEED = 'true';
     await app.init();
 
     prisma = app.get<PrismaService>(PrismaService);
@@ -100,13 +93,13 @@ describe('Auth Refresh Flow (e2e)', () => {
   });
 
   it('should login, fail with expired token, refresh token, and succeed with new token', async () => {
+    const server = getTestServer(app);
+
     // 1. Login
-    const loginRes = await request(app.getHttpServer() as request.App)
-      .post('/api/auth/login')
-      .send({
-        email: 'refresh_test@example.com',
-        password: 'password123',
-      });
+    const loginRes = await request(server).post('/api/auth/login').send({
+      email: 'refresh_test@example.com',
+      password: 'password123',
+    });
 
     expect(loginRes.status).toBe(201);
     const loginBody = loginRes.body as ApiResponse<{
@@ -123,7 +116,7 @@ describe('Auth Refresh Flow (e2e)', () => {
     expect(refreshToken).toBeDefined();
 
     // 2. Verify Access Token works initially
-    const initialAccess = await request(app.getHttpServer() as request.App)
+    const initialAccess = await request(server)
       .get(`/api/user/getByID/${userID}`)
       .set('Authorization', `Bearer ${accessToken}`);
 
@@ -141,14 +134,14 @@ describe('Auth Refresh Flow (e2e)', () => {
     });
 
     // 4. Verify expired token fails
-    const expiredAccess = await request(app.getHttpServer() as request.App)
+    const expiredAccess = await request(server)
       .get(`/api/user/getByID/${userID}`)
       .set('Authorization', `Bearer ${expiredToken}`);
 
     expect(expiredAccess.status).toBe(401);
 
     // 5. Use Refresh Token to get a new pair
-    const refreshRes = await request(app.getHttpServer() as request.App)
+    const refreshRes = await request(server)
       .post(`/api/auth/refreshToken/${userID}`)
       .send({
         refreshToken: refreshToken,
@@ -168,7 +161,7 @@ describe('Auth Refresh Flow (e2e)', () => {
     expect(newRefreshToken).not.toBe(refreshToken);
 
     // 6. Verify new Access Token works
-    const newAccess = await request(app.getHttpServer() as request.App)
+    const newAccess = await request(server)
       .get(`/api/user/getByID/${userID}`)
       .set('Authorization', `Bearer ${newAccessToken}`);
 

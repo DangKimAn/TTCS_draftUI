@@ -183,7 +183,7 @@ function LoginForm({ mode = 'default' }) {
             className="login-sso__button"
             disabled={loading}
             onClick={() => {
-              window.location.href = `${API_CONFIG.BASE_URL}/auth/google/login`;
+              window.location.href = `${API_CONFIG.BASE_URL}/auth/google`;
             }}
           >
             <FaGoogle />
@@ -193,10 +193,12 @@ function LoginForm({ mode = 'default' }) {
             type="button"
             className="login-sso__button"
             disabled={loading}
-            onClick={() => void completeLogin({ provider: 'microsoft' })}
+            onClick={() => {
+              window.location.href = `${API_CONFIG.BASE_URL}/auth/microsoft`;
+            }}
           >
             <FaMicrosoft />
-            Đăng nhập với Microsoft
+            Dang nhap voi Microsoft
           </button>
         </div>
 

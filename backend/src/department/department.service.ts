@@ -1,5 +1,4 @@
 import {
-  BadRequestException,
   ConflictException,
   forwardRef,
   HttpException,
@@ -8,28 +7,23 @@ import {
   InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
-import { Department, Prisma } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 import CreateDepartmentDto from './dto/createDepartment.dto';
 import DepartmentDto from './dto/department.dto';
 // import { ResponseDtoListDepartment, ResponseDtoDepartment} from 'src/common/response.dto';
-import ResponseDto, { AnotherError } from 'src/common/response.dto';
+import ResponseDto from 'src/common/response.dto';
 import {
   BADREQUEST_CODE,
-  CONFLIG_CODE,
   CREATED_RESPONE,
   nameRole_emloyee,
   nameRole_manager,
   NOTFOUND_CODE,
   OK_CODE,
 } from 'src/common/code';
-import { RoleDto } from 'src/role/dto/Role.dto';
 import { UserService } from 'src/user/user.service';
 import UpdateDepartmentDto from './dto/update-department.dto';
-import UserDto from 'src/user/dto/user.dto';
 import { RoleService } from 'src/role/role.service';
-import { escape } from 'querystring';
-import { ConfigModule } from '@nestjs/config';
 @Injectable()
 export class DepartmentService {
   constructor(
@@ -127,9 +121,7 @@ export class DepartmentService {
       if (error instanceof HttpException) throw error;
 
       // Nếu là lỗi lạ (DB sập,...) thì trả về lỗi 500 hoặc log lại
-      throw new InternalServerErrorException(
-        error.message || 'Internal Server Error',
-      );
+      throw new InternalServerErrorException(getErrorMessage(error));
     }
   }
 
@@ -216,20 +208,18 @@ export class DepartmentService {
         });
 
         return {
-          statusCode: CREATED_RESPONE,
+          statusCode: OK_CODE,
           message: 'Update Department Successful',
           data: updatedDepartment,
         };
       });
     } catch (error) {
       if (error instanceof HttpException) throw error;
-      throw new InternalServerErrorException(
-        error.message || 'Internal Server Error',
-      );
+      throw new InternalServerErrorException(getErrorMessage(error));
     }
   }
 
-  async deleteDepartment(id: string): Promise<ResponseDto<any>> {
+  async deleteDepartment(id: string): Promise<ResponseDto<DepartmentDto>> {
     try {
       await this.prismaService.department.delete({
         where: { departmentID: id },
@@ -239,9 +229,10 @@ export class DepartmentService {
         statusCode: OK_CODE,
         message: 'Delete Department Successfully',
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const code = getPrismaErrorCode(error);
       // Bắt lỗi vi phạm khóa ngoại của Prisma (Mã P2003)
-      if (error.code === 'P2003') {
+      if (code === 'P2003') {
         return {
           statusCode: BADREQUEST_CODE, // Hoặc CONFLICT_CODE (409)
           message:
@@ -250,7 +241,7 @@ export class DepartmentService {
       }
 
       // Bắt lỗi không tìm thấy phòng ban (Mã P2025)
-      if (error.code === 'P2025') {
+      if (code === 'P2025') {
         return {
           statusCode: NOTFOUND_CODE,
           message: 'Department not found.',
@@ -258,12 +249,12 @@ export class DepartmentService {
       }
 
       // Các lỗi server khác
-      throw new InternalServerErrorException(error.message);
+      throw new InternalServerErrorException(getErrorMessage(error));
     }
   }
 
   async handleManagerTransfer(
-    tx: any, // Nên dùng type Prisma.TransactionClient thay vì any
+    tx: Prisma.TransactionClient,
     departmentID: string,
     currentManagerID: string | null,
     newManagerID: string | null,
@@ -273,6 +264,11 @@ export class DepartmentService {
       const employeeRole = await tx.role.findUnique({
         where: { nameRole: nameRole_emloyee },
       });
+
+      if (!employeeRole) {
+        throw new NotFoundException('Employee role not found');
+      }
+
       await tx.user.update({
         where: { userID: currentManagerID },
         data: { roleId: employeeRole.roleID },
@@ -288,6 +284,10 @@ export class DepartmentService {
       const managerRole = await tx.role.findUnique({
         where: { nameRole: nameRole_manager },
       });
+
+      if (!managerRole) {
+        throw new NotFoundException('Manager role not found');
+      }
 
       if (
         newManager.roleId === managerRole.roleID &&
@@ -307,4 +307,17 @@ export class DepartmentService {
       });
     }
   }
+}
+
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : 'Internal Server Error';
+}
+
+function getPrismaErrorCode(error: unknown): string | undefined {
+  if (typeof error !== 'object' || error === null || !('code' in error)) {
+    return undefined;
+  }
+
+  const code = (error as { code?: unknown }).code;
+  return typeof code === 'string' ? code : undefined;
 }

@@ -27,21 +27,35 @@ export interface EmailMessage {
   html?: string;
 }
 
+export interface EmailDeliveryResult {
+  provider: 'log' | 'smtp';
+  attempted: boolean;
+  sent: boolean;
+  message: string;
+  error?: string;
+}
+
 export interface IEmailProvider {
-  send(message: EmailMessage): Promise<void>;
+  send(message: EmailMessage): Promise<EmailDeliveryResult>;
 }
 
 /** No-op provider: log email thay vì gửi thật. Dùng khi EMAIL_PROVIDER=log hoặc chưa cấu hình. */
 class LogEmailProvider implements IEmailProvider {
   private readonly logger = new Logger('EmailService[log-provider]');
 
-  async send(message: EmailMessage): Promise<void> {
+  send(message: EmailMessage): Promise<EmailDeliveryResult> {
     const recipients = Array.isArray(message.to)
       ? message.to.join(', ')
       : message.to;
     this.logger.log(
       `[NO-OP EMAIL] To: ${recipients} | Subject: "${message.subject}" | Body: ${(message.text ?? message.html ?? '').slice(0, 120)}`,
     );
+    return Promise.resolve({
+      provider: 'log',
+      attempted: false,
+      sent: false,
+      message: 'EMAIL_LOGGED_ONLY',
+    });
   }
 }
 
@@ -62,7 +76,11 @@ class SmtpEmailProvider implements IEmailProvider {
     });
   }
 
-  async send(message: EmailMessage): Promise<void> {
+  async send(message: EmailMessage): Promise<EmailDeliveryResult> {
+    const recipients = Array.isArray(message.to)
+      ? message.to.join(', ')
+      : message.to;
+
     try {
       await this.transporter.sendMail({
         from: ENV.EMAIL.SMTP_FROM,
@@ -71,9 +89,24 @@ class SmtpEmailProvider implements IEmailProvider {
         text: message.text,
         html: message.html,
       });
-      this.logger.log(`Email sent successfully to ${message.to}`);
+      this.logger.log(`Email sent successfully to ${recipients}`);
+      return {
+        provider: 'smtp',
+        attempted: true,
+        sent: true,
+        message: 'EMAIL_SENT',
+      };
     } catch (error) {
-      this.logger.error(`Failed to send email to ${message.to}`, error);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      this.logger.error(`Failed to send email to ${recipients}`, error);
+      return {
+        provider: 'smtp',
+        attempted: true,
+        sent: false,
+        message: 'EMAIL_SEND_FAILED',
+        error: errorMessage,
+      };
     }
   }
 }
@@ -113,12 +146,12 @@ export class EmailService {
     employeeName: string;
     status: 'approved' | 'rejected';
     reason?: string;
-  }): Promise<void> {
+  }): Promise<EmailDeliveryResult> {
     const statusText =
       opts.status === 'approved' ? 'đã được duyệt' : 'đã bị từ chối';
     const reasonText = opts.reason ? ` Lý do: ${opts.reason}` : '';
 
-    await this.provider.send({
+    return this.provider.send({
       to: opts.recipientEmail,
       subject: `[HRM] Đơn nghỉ phép của bạn ${statusText}`,
       text: `Xin chào ${opts.employeeName},\n\nĐơn nghỉ phép của bạn ${statusText}.${reasonText}\n\nTrân trọng,\nHệ thống HRM`,
@@ -132,7 +165,7 @@ export class EmailService {
     year: number;
     status: 'submitted' | 'approved' | 'rejected';
     reason?: string;
-  }): Promise<void> {
+  }): Promise<EmailDeliveryResult> {
     const period = `${String(opts.month).padStart(2, '0')}/${opts.year}`;
     const statusText =
       opts.status === 'submitted'
@@ -142,7 +175,7 @@ export class EmailService {
           : 'đã bị từ chối';
     const reasonText = opts.reason ? ` Lý do: ${opts.reason}` : '';
 
-    await this.provider.send({
+    return this.provider.send({
       to: opts.recipientEmail,
       subject: `[HRM] Bảng công tháng ${period} ${statusText}`,
       text: `Xin chào ${opts.employeeName},\n\nBảng công tháng ${period} của bạn ${statusText}.${reasonText}\n\nTrân trọng,\nHệ thống HRM`,
@@ -150,7 +183,7 @@ export class EmailService {
   }
 
   /** Generic send cho các notification khác */
-  async send(message: EmailMessage): Promise<void> {
-    await this.provider.send(message);
+  async send(message: EmailMessage): Promise<EmailDeliveryResult> {
+    return this.provider.send(message);
   }
 }

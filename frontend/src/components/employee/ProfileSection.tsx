@@ -9,6 +9,7 @@ const editableDefaults = {
 function ProfileSection({ profile, onSaveProfile, personalStats }) {
   const [form, setForm] = useState(editableDefaults);
   const [feedback, setFeedback] = useState('');
+  const [feedbackType, setFeedbackType] = useState('success');
 
   useEffect(() => {
     if (!profile) {
@@ -38,10 +39,16 @@ function ProfileSection({ profile, onSaveProfile, personalStats }) {
     }));
   };
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
-    onSaveProfile(form);
-    setFeedback('Thông tin cá nhân đã được cập nhật.');
+    try {
+      await onSaveProfile(form);
+      setFeedbackType('success');
+      setFeedback('Thông tin cá nhân đã được cập nhật.');
+    } catch (error) {
+      setFeedbackType('danger');
+      setFeedback(error instanceof Error ? error.message : 'Không thể cập nhật thông tin cá nhân.');
+    }
   };
 
   return (
@@ -105,7 +112,7 @@ function ProfileSection({ profile, onSaveProfile, personalStats }) {
             </div>
 
             {feedback ? (
-              <div className="submit-timesheet-panel__helper is-success">{feedback}</div>
+              <div className={`submit-timesheet-panel__helper is-${feedbackType}`}>{feedback}</div>
             ) : null}
 
             <form className="employee-form-grid" onSubmit={handleSubmit}>

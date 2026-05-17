@@ -30,7 +30,7 @@ export class WarningController {
 
   @Post('/sendWarning')
   @ApiOperation({
-    summary: 'for admin in test, not use in production!!!',
+    summary: 'Send an employee warning as an admin',
   })
   @ApiBearerAuth()
   @ApiCreatedResponse()

@@ -1,8 +1,8 @@
-import { Injectable, HttpException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateLeaveApplicationDto } from './dto/create-leave-application.dto';
 import { ReviewLeaveApplicationDto } from './dto/review-leave-application.dto';
-import ResponseDto, { DefaultResponse } from 'src/common/response.dto';
+import { DefaultResponse } from 'src/common/response.dto';
 import {
   BADREQUEST_CODE,
   CREATED_RESPONE,
@@ -68,6 +68,13 @@ export class LeaveApplicationService {
       if (!typeLeave) {
         return { statusCode: NOTFOUND_CODE, message: 'Type leave not found' };
       }
+      if (typeLeave.isActive === false) {
+        return {
+          statusCode: BADREQUEST_CODE,
+          message:
+            'Không thể tạo đơn xin nghỉ phép với loại nghỉ phép đã bị vô hiệu hóa',
+        };
+      }
 
       const isPaidLeave = Number(typeLeave.hasSalary) > 0;
       if (isPaidLeave && user.remainDaysofLeave < duration) {
@@ -77,6 +84,11 @@ export class LeaveApplicationService {
         };
       }
 
+      const conflictDates = await this.findWorkLogConflictDates(
+        userID,
+        start,
+        end,
+      );
       const application = await this.prisma.leaveApplication.create({
         data: {
           senderID: userID,
@@ -118,7 +130,7 @@ export class LeaveApplicationService {
               select: { email: true },
             });
             if (manager?.email) {
-              await this.emailService.send({
+              await this.emailService?.send({
                 to: manager.email,
                 subject: '[HRM] Yêu cầu nghỉ phép mới',
                 text: `Xin chào Quản lý,\n\nNhân viên ${user.username} vừa gửi đơn xin nghỉ phép từ ngày ${startDate} đến ${endDate} (${duration} ngày).\nLý do: ${reason}\n\nVui lòng truy cập hệ thống để phê duyệt.\n\nTrân trọng,\nHệ thống HRM`,
@@ -132,8 +144,20 @@ export class LeaveApplicationService {
 
       return {
         statusCode: CREATED_RESPONE,
-        message: 'Leave application submitted successfully',
-        data: application,
+        message: conflictDates.length
+          ? `Leave application submitted successfully with warning: work logs already exist on ${conflictDates.join(', ')}`
+          : 'Leave application submitted successfully',
+        data: conflictDates.length
+          ? {
+              ...application,
+              warnings: conflictDates.map((date) => ({
+                code: 'LEAVE_WORKLOG_CONFLICT',
+                date,
+                message:
+                  'Leave request overlaps with an existing timesheet entry.',
+              })),
+            }
+          : application,
       };
     } catch (error: unknown) {
       console.error('Error creating leave application:', error);
@@ -263,7 +287,10 @@ export class LeaveApplicationService {
 
         // Handle leave balance updates
         if (isPaidLeave) {
-          if (oldStatus === LeaveStatus.APPROVED && newStatus !== LeaveStatus.APPROVED) {
+          if (
+            oldStatus === LeaveStatus.APPROVED &&
+            newStatus !== LeaveStatus.APPROVED
+          ) {
             // Refund days if changing from approved to something else (e.g. rejected)
             await dbCtx.user.update({
               where: { userID: application.senderID },
@@ -272,7 +299,10 @@ export class LeaveApplicationService {
                   user.remainDaysofLeave + application.duration,
               },
             });
-          } else if (oldStatus !== LeaveStatus.APPROVED && newStatus === LeaveStatus.APPROVED) {
+          } else if (
+            oldStatus !== LeaveStatus.APPROVED &&
+            newStatus === LeaveStatus.APPROVED
+          ) {
             // Deduct days if changing to approved from something else (e.g. pending or rejected)
             if (user.remainDaysofLeave < application.duration) {
               return {
@@ -295,7 +325,8 @@ export class LeaveApplicationService {
           where: { leaveApplicationID },
           data: {
             status: newStatus,
-            reasonReject: newStatus === LeaveStatus.REJECTED ? reasonReject : null,
+            reasonReject:
+              newStatus === LeaveStatus.REJECTED ? reasonReject : null,
             reviewerID,
             reviewedAt: new Date(),
           },
@@ -317,10 +348,11 @@ export class LeaveApplicationService {
 
         // --- GỬI EMAIL CHO NHÂN VIÊN ---
         try {
-          await this.emailService.sendLeaveNotification({
+          await this.emailService?.sendLeaveNotification({
             recipientEmail: application.sender.email,
             employeeName: application.sender.username,
-            status: newStatus === LeaveStatus.APPROVED ? 'approved' : 'rejected',
+            status:
+              newStatus === LeaveStatus.APPROVED ? 'approved' : 'rejected',
             reason: reasonReject || undefined,
           });
         } catch (e) {
@@ -360,7 +392,8 @@ export class LeaveApplicationService {
     const pendingDays = applications
       .filter(
         (app) =>
-          app.status === LeaveStatus.PENDING && Number(app.typeLeave?.hasSalary ?? 0) > 0,
+          app.status === LeaveStatus.PENDING &&
+          Number(app.typeLeave?.hasSalary ?? 0) > 0,
       )
       .reduce((sum, app) => sum + app.duration, 0);
 
@@ -408,5 +441,55 @@ export class LeaveApplicationService {
     }
 
     return count;
+  }
+
+  private async findWorkLogConflictDates(
+    userID: string,
+    start: Date,
+    end: Date,
+  ): Promise<string[]> {
+    const startKey = this.toDateKey(start);
+    const endKey = this.toDateKey(end);
+
+    const monthlyTimesheets = await this.prisma.monthlyTimesheet.findMany({
+      where: {
+        userID,
+        entries: {
+          some: {
+            date: {
+              gte: startKey,
+              lte: endKey,
+            },
+          },
+        },
+      },
+      include: {
+        entries: {
+          where: {
+            date: {
+              gte: startKey,
+              lte: endKey,
+            },
+          },
+          select: { date: true },
+        },
+      },
+    });
+
+    return Array.from(
+      new Set(
+        monthlyTimesheets.flatMap((timesheet) =>
+          timesheet.entries.map((entry) => entry.date),
+        ),
+      ),
+    ).sort();
+  }
+
+  private toDateKey(value: Date): string {
+    const year = value.getFullYear();
+    const month = String(value.getMonth() + 1).padStart(2, '0');
+    const day = String(value.getDate()).padStart(2, '0');
+
+    return `${year}-${month}-${day}`;
   }
 }

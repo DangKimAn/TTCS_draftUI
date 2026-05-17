@@ -1,0 +1,147 @@
+import type { Timesheet } from '../types';
+import type { TimesheetReportFilters, TimesheetReportSummary } from '../services/timesheetService';
+
+interface ExportTimesheetReportPdfInput {
+  title: string;
+  filters: TimesheetReportFilters;
+  rows: Timesheet[];
+  summary: TimesheetReportSummary;
+}
+
+export function exportTimesheetReportPdf({
+  title,
+  filters,
+  rows,
+  summary,
+}: ExportTimesheetReportPdfInput): void {
+  const printWindow = window.open('', '_blank', 'noopener,noreferrer,width=1100,height=800');
+
+  if (!printWindow) {
+    throw new Error('Cannot open PDF print window. Please allow pop-ups for this site.');
+  }
+
+  printWindow.document.write(buildTimesheetReportHtml({ title, filters, rows, summary }));
+  printWindow.document.close();
+  printWindow.focus();
+  printWindow.setTimeout(() => {
+    printWindow.print();
+  }, 250);
+}
+
+function buildTimesheetReportHtml({
+  title,
+  filters,
+  rows,
+  summary,
+}: ExportTimesheetReportPdfInput): string {
+  const generatedAt = new Date().toLocaleString('vi-VN');
+
+  return `<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <title>${escapeHtml(title)}</title>
+  <style>
+    @page { size: A4 landscape; margin: 14mm; }
+    body { font-family: Arial, sans-serif; color: #0f172a; margin: 0; }
+    h1 { font-size: 22px; margin: 0 0 6px; }
+    p { margin: 0; color: #475569; font-size: 12px; }
+    .meta { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin: 16px 0; }
+    .summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 16px 0; }
+    .box { border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px; }
+    .box span { display: block; color: #64748b; font-size: 11px; text-transform: uppercase; }
+    .box strong { display: block; font-size: 16px; margin-top: 4px; }
+    table { width: 100%; border-collapse: collapse; font-size: 11px; }
+    th, td { border: 1px solid #cbd5e1; padding: 7px; text-align: left; vertical-align: top; }
+    th { background: #e2e8f0; color: #334155; text-transform: uppercase; font-size: 10px; }
+    .right { text-align: right; }
+    .muted { color: #64748b; }
+  </style>
+</head>
+<body>
+  <h1>${escapeHtml(title)}</h1>
+  <p>Generated at ${escapeHtml(generatedAt)}</p>
+  <section class="meta">
+    <div class="box"><span>From date</span><strong>${escapeHtml(filters.fromDate || '--')}</strong></div>
+    <div class="box"><span>To date</span><strong>${escapeHtml(filters.toDate || '--')}</strong></div>
+    <div class="box"><span>Employee</span><strong>${escapeHtml(filters.employeeId || 'All')}</strong></div>
+    <div class="box"><span>Department</span><strong>${escapeHtml(filters.departmentId || 'All')}</strong></div>
+    <div class="box"><span>Status</span><strong>${escapeHtml(filters.status || 'All')}</strong></div>
+  </section>
+  <section class="summary">
+    <div class="box"><span>Rows</span><strong>${summary.totalRecords}</strong></div>
+    <div class="box"><span>Employees</span><strong>${summary.totalEmployees}</strong></div>
+    <div class="box"><span>Total hours</span><strong>${formatHours(summary.totalHours)}</strong></div>
+    <div class="box"><span>Warnings</span><strong>${summary.warningRecords}</strong></div>
+  </section>
+  <table>
+    <thead>
+      <tr>
+        <th>Code</th>
+        <th>Employee</th>
+        <th>Department</th>
+        <th>Date</th>
+        <th>In</th>
+        <th>Out</th>
+        <th class="right">Hours</th>
+        <th>Status</th>
+        <th>Warnings</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${rows.length ? rows.map(renderRow).join('') : '<tr><td colspan="9" class="muted">No timesheet rows match the current filters.</td></tr>'}
+    </tbody>
+  </table>
+</body>
+</html>`;
+}
+
+function renderRow(row: Timesheet): string {
+  const warnings = getWarningLabels(row.warnings).join(', ') || '--';
+
+  return `<tr>
+    <td>${escapeHtml(row.code || row.id)}</td>
+    <td>${escapeHtml(row.employeeName || row.employeeId || '--')}</td>
+    <td>${escapeHtml((row as any).departmentName || row.departmentId || '--')}</td>
+    <td>${escapeHtml(row.workDate || row.date || '--')}</td>
+    <td>${escapeHtml(row.checkIn || '--')}</td>
+    <td>${escapeHtml(row.checkOut || '--')}</td>
+    <td class="right">${formatHours(row.totalHours || 0)}</td>
+    <td>${escapeHtml(row.status || '--')}</td>
+    <td>${escapeHtml(warnings)}</td>
+  </tr>`;
+}
+
+function getWarningLabels(warnings: unknown): string[] {
+  if (!Array.isArray(warnings)) {
+    return [];
+  }
+
+  return warnings
+    .map((warning) => {
+      if (typeof warning === 'string') {
+        return warning;
+      }
+
+      if (warning && typeof warning === 'object') {
+        const value = warning as { label?: string; code?: string };
+        return value.label || value.code || '';
+      }
+
+      return '';
+    })
+    .filter(Boolean);
+}
+
+function formatHours(value: number): string {
+  return `${Number(value || 0).toFixed(1)}h`;
+}
+
+function escapeHtml(value: unknown): string {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}

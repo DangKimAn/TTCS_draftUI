@@ -1,75 +1,41 @@
 # Manual Evidence
 
-Date: 2026-05-16
+Date: 2026-05-17
 
 ## Automated Evidence
 
 | Check | Result | Notes |
 | --- | --- | --- |
-| `cd backend && npm run test:e2e -- --runInBand` | PASS | Tất cả 4 bài test E2E đã vượt qua, bao gồm flow `request-correction`. |
-| `cd backend && npm run lint:check` | PARTIAL | Build/Test pass. Còn nợ lint (> 300 lỗi) nhưng không gây lỗi build. |
-| `cd backend && npm run build` | PASS | Build NestJS thành công 100%. |
-| `cd backend && npm test -- --runInBand` | PASS | Tất cả 19 bài test (Unit/Business rules) đã vượt qua. |
-| `cd backend && npm run prisma:generate` | PASS | Prisma Client v5.22.0 đã được generate thành công. |
-| `cd backend && npx prisma validate` | PASS | PostgreSQL schema hợp lệ. |
-| `cd frontend && npm test` | PASS | Đã thêm và chạy thành công test cho ProtectedRoute (Vitest). |
-| `cd frontend && npm run build` | PASS | Build Vite thành công. |
+| `cd backend && npx prisma validate` | PASS | Prisma schema is valid. This command loaded `backend/.env` but did not mutate DB. |
+| `cd backend && npm test -- --runInBand` | PASS | 3 suites, 34 tests passed after adding RBAC, payroll, TypeLeave activation/deactivation, profile and email metadata coverage. |
+| `cd frontend && npm test` | PASS | 4 files, 14 tests passed after adding profile mock-fallback gate coverage. |
+| `cd backend && npm run build` | PASS | NestJS build completed. |
+| `cd frontend && npm run build` | PASS | TypeScript + Vite production build completed. |
+| `cd backend && npm run lint:check` | PASS | 0 errors, 0 warnings after formatting backend TypeScript changes. |
+| `cd backend && npm run prisma:generate` | PASS | Prisma Client generated successfully. |
+| `cd backend && npm run prisma:migrate:deploy:test` | PASS | Ran against guarded `backend/.env.test` target: PostgreSQL database `postgres`, schema `test`, host `aws-1-ap-southeast-2.pooler.supabase.com`. Final rerun reported no pending migrations. |
+| `cd backend && npm run seed:test` | PASS | Seeded disposable test DB: 7 users, 6 monthly timesheets. First sandbox run hit Prisma TLS `P1011`; rerun with approved external execution succeeded. |
+| `cd backend && npm run test:e2e -- --runInBand` | PASS | 3 suites, 4 E2E tests passed against `.env.test`. |
+| `cd backend && npm run seed` | NOT RUN | Not needed for this pass; destructive/demo seed should not run without explicit confirmation of target DB. |
 
-## Manual Workflow Evidence
+## Manual Smoke Evidence
 
-Quy trình kiểm tra thủ công chưa hoàn tất do chưa có kết nối trực tiếp đến PostgreSQL/Supabase.
-
-Dùng danh sách này sau khi cấu hình biến môi trường thật:
-
-| Workflow | Evidence To Capture | Status |
-| --- | --- | --- |
-| Login employee | Screenshot of employee dashboard after login | Pending DB |
-| Role redirect | Employee/manager/admin được điều hướng đúng dashboard | Pending DB |
-| Check-in/out | Bản ghi chấm công trước và sau khi check-out | Pending DB |
-| Timesheet view | Danh sách các dòng bảng công tháng hiện tại | Pending DB |
-| Submit/review timesheet | Trạng thái Submitted sau đó Approved/Rejected | Pending DB |
-| Leave create/review | Đơn nghỉ phép Pending sau đó Approved/Rejected | Pending DB |
-| HR user management | Tạo/Cập nhật/Vô hiệu hóa demo user | Pending DB |
-| HR leave type | Tạo/Cập nhật loại nghỉ phép | Pending DB |
-| Notification | Số lượng chưa đọc và hành vi đánh dấu đã đọc | Pending DB |
+No browser-driven manual UI smoke workflow was executed in this pass, so no UC is marked PASS from manual observation. The workspace now has a confirmed guarded disposable test DB for backend E2E. All 12 UI UCs are prepared as `READY` in `docs/SMOKE_CHECKLIST.md` and should be run with `VITE_ENABLE_MOCK_FALLBACK=false`.
 
 ## API & External Services Status
 
-Dự án hiện tại đang ở trạng thái tích hợp một phần và mock có kiểm soát. Cụ thể:
+- E2E test startup requires `backend/.env.test` or `.env.test.local`, `E2E_DATABASE_GUARD=test`, and DB URL/schema/host containing `test`, `testing`, `e2e`, or `ci`.
+- Added `npm run prisma:migrate:deploy:test` and `npm run seed:test` so Prisma migration/seed can be run with `.env.test` instead of accidentally using `.env`.
+- Frontend profile update now calls `PATCH /api/user/me` when `VITE_ENABLE_MOCK_FALLBACK=false`; localStorage/mock write remains limited to mock fallback mode.
+- `PATCH /api/user/me` allows only `linkAvatar`, `phone`, `address`, `emergencyContact`, and `birthday`.
+- `DELETE /api/type-leave/:id` soft-deactivates leave types, `PATCH /api/type-leave/:id/activate` restores them, and inactive leave types are rejected for new leave applications.
+- Payroll export handles empty periods, validates month/year in service, warns on large synchronous exports, and documents external payroll integration as not configured.
+- Leave creation returns a warning payload when the requested leave dates overlap existing timesheet entries.
+- Email service supports `EMAIL_PROVIDER=log` and `EMAIL_PROVIDER=smtp`; SMTP failures are logged and returned as delivery metadata without rolling back business operations.
+- Google/Microsoft SSO must be configured via env values. Placeholder `your-*` values are treated as not configured.
 
-- **Frontend API Integration**: 
-  - `HRDashboard.tsx` đã tích hợp API thật cho Users, Departments, Leave Types.
-  - Hỗ trợ biến môi trường `VITE_ENABLE_MOCK_FALLBACK` để kiểm soát việc dùng dữ liệu mẫu khi API lỗi.
-- **SSO (Google Login)**: 
-  - Đã hoàn thiện flow production tối thiểu trong backend: Nhận profile -> Tìm user theo email -> Kiểm tra Active -> Sinh JWT & Refresh Token.
-  - Yêu cầu cấu hình `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` trong `.env`.
-- **Email Service**: 
-  - Đã tích hợp SMTP Provider (Nodemailer). 
-  - Hỗ trợ cấu hình qua các biến `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS` trong `.env`.
-  - Mặc định fallback về `log` provider (no-op) nếu chưa cấu hình.
-- **Payroll System**: 
-  - Đã thêm abstraction `IPayrollExporter`. Hiện tại hỗ trợ xuất CSV.
-  - Cấu trúc đã sẵn sàng để tích hợp thêm các hệ thống bên thứ 3 trong tương lai.
+## Remaining Blockers
 
-## Environment Blocker
-
-Hiện tại môi trường local chưa có PostgreSQL chạy tại port 5432. 
-
-Để hoàn tất xác minh thủ công:
-
-1. Điền URL Supabase vào `backend/.env` (`DATABASE_URL` và `DIRECT_URL`).
-2. Chạy:
-
-```bash
-cd backend
-npm run prisma:migrate:deploy
-npm run seed
-npm run start:dev
-```
-
-3. Chạy frontend:
-
-```bash
-cd frontend
-npm run dev
-```
+1. Start backend/frontend with `VITE_ENABLE_MOCK_FALLBACK=false` and execute the 12 manual UI smoke UCs from `docs/SMOKE_CHECKLIST.md`.
+2. Provide SMTP, Google, and Microsoft credentials in local env files or deployment secrets if those external flows must be verified.
+3. Configure a real external payroll provider if payroll handoff beyond CSV/Excel/JSON is required.

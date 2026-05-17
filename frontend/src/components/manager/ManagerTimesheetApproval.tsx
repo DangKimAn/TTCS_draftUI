@@ -33,6 +33,9 @@ const CorrectionRowItem = React.memo(({ index, data, style }: any) => {
   );
 });
 
+const compareDateDesc = (left?: string, right?: string) =>
+  String(right || '').localeCompare(String(left || ''));
+
 const ManagerTimesheetApproval: React.FC<ManagerTimesheetApprovalProps> = ({
   timesheets,
   correctionRequests,
@@ -53,13 +56,13 @@ const ManagerTimesheetApproval: React.FC<ManagerTimesheetApprovalProps> = ({
     const sortPendingFirst = (a: any, b: any) => {
       if (a.status === 'Submitted' && b.status !== 'Submitted') return -1;
       if (a.status !== 'Submitted' && b.status === 'Submitted') return 1;
-      return b.workDate.localeCompare(a.workDate);
+      return compareDateDesc(a.workDate, b.workDate);
     };
     return [...timesheets].filter(isTimesheetReviewable).sort(sortPendingFirst);
   }, [timesheets]);
 
   const correctionRows = useMemo(() => 
-    [...correctionRequests].sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+    [...correctionRequests].sort((a, b) => compareDateDesc(a.createdAt || a.date, b.createdAt || b.date))
   , [correctionRequests]);
 
   const getEmployeeById = (id: string) => employees.find((e) => e.id === id);

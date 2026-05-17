@@ -35,20 +35,23 @@ export class TypeLeaveService implements OnModuleInit {
         });
         console.log('Seeding default TypeLeave data completed.');
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error seeding TypeLeave data:', error);
     }
   }
 
-  async getAllTypeLeaves(): Promise<DefaultResponse> {
+  async getAllTypeLeaves(includeInactive = false): Promise<DefaultResponse> {
     try {
-      const typeLeaves = await this.prisma.typeLeave.findMany();
+      const typeLeaves = await this.prisma.typeLeave.findMany({
+        where: includeInactive ? undefined : { isActive: true },
+        orderBy: [{ isActive: 'desc' }, { nameTypeLeave: 'asc' }],
+      });
       return {
         statusCode: OK_CODE,
         message: 'Lấy danh sách loại nghỉ phép thành công',
         data: typeLeaves,
       };
-    } catch (error: any) {
+    } catch {
       return {
         statusCode: Interval_Server_Network_Exeception_Code,
         message: 'Lỗi server',
@@ -74,7 +77,7 @@ export class TypeLeaveService implements OnModuleInit {
         message: 'Lấy chi tiết loại nghỉ phép thành công',
         data: typeLeave,
       };
-    } catch (error: any) {
+    } catch {
       return {
         statusCode: Interval_Server_Network_Exeception_Code,
         message: 'Lỗi server',
@@ -86,8 +89,9 @@ export class TypeLeaveService implements OnModuleInit {
     createDto: CreateTypeLeaveDto,
   ): Promise<DefaultResponse> {
     try {
+      const code = createDto.code.trim().toUpperCase();
       const existingCode = await this.prisma.typeLeave.findUnique({
-        where: { code: createDto.code },
+        where: { code },
       });
       if (existingCode) {
         return {
@@ -97,7 +101,11 @@ export class TypeLeaveService implements OnModuleInit {
       }
 
       const newTypeLeave = await this.prisma.typeLeave.create({
-        data: createDto,
+        data: {
+          ...createDto,
+          code,
+          isActive: createDto.isActive ?? true,
+        },
       });
 
       return {
@@ -105,7 +113,7 @@ export class TypeLeaveService implements OnModuleInit {
         message: 'Tạo loại nghỉ phép thành công',
         data: newTypeLeave,
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error creating type leave:', error);
       return {
         statusCode: Interval_Server_Network_Exeception_Code,
@@ -130,9 +138,26 @@ export class TypeLeaveService implements OnModuleInit {
         };
       }
 
+      const code = updateDto.code?.trim().toUpperCase();
+      if (code) {
+        const existingCode = await this.prisma.typeLeave.findUnique({
+          where: { code },
+        });
+
+        if (existingCode && existingCode.typeLeaveID !== typeLeaveID) {
+          return {
+            statusCode: CONFLIG_CODE,
+            message: 'Mã loại nghỉ đã tồn tại',
+          };
+        }
+      }
+
       const updatedTypeLeave = await this.prisma.typeLeave.update({
         where: { typeLeaveID },
-        data: updateDto,
+        data: {
+          ...updateDto,
+          code,
+        },
       });
 
       return {
@@ -140,7 +165,7 @@ export class TypeLeaveService implements OnModuleInit {
         message: 'Cập nhật loại nghỉ phép thành công',
         data: updatedTypeLeave,
       };
-    } catch (error: any) {
+    } catch {
       return {
         statusCode: Interval_Server_Network_Exeception_Code,
         message: 'Lỗi server',
@@ -152,7 +177,6 @@ export class TypeLeaveService implements OnModuleInit {
     try {
       const typeLeave = await this.prisma.typeLeave.findUnique({
         where: { typeLeaveID },
-        include: { applications: true },
       });
 
       if (!typeLeave) {
@@ -162,22 +186,54 @@ export class TypeLeaveService implements OnModuleInit {
         };
       }
 
-      if (typeLeave.applications.length > 0) {
-        return {
-          statusCode: CONFLIG_CODE,
-          message: 'Không thể xóa do đã có đơn xin nghỉ phép sử dụng loại này',
-        };
-      }
-
-      await this.prisma.typeLeave.delete({
+      // Thay vì hard delete, chúng ta soft-deactivate (cập nhật isActive = false) để giữ lại lịch sử đơn nghỉ phép
+      const updatedTypeLeave = await this.prisma.typeLeave.update({
         where: { typeLeaveID },
+        data: { isActive: false },
       });
 
       return {
         statusCode: OK_CODE,
-        message: 'Xóa loại nghỉ phép thành công',
+        message: 'Vô hiệu hóa loại nghỉ phép thành công',
+        data: updatedTypeLeave,
       };
-    } catch (error: any) {
+    } catch {
+      return {
+        statusCode: Interval_Server_Network_Exeception_Code,
+        message: 'Lỗi server',
+      };
+    }
+  }
+
+  async setTypeLeaveActive(
+    typeLeaveID: string,
+    isActive: boolean,
+  ): Promise<DefaultResponse> {
+    try {
+      const typeLeave = await this.prisma.typeLeave.findUnique({
+        where: { typeLeaveID },
+      });
+
+      if (!typeLeave) {
+        return {
+          statusCode: NOTFOUND_CODE,
+          message: 'Không tìm thấy loại nghỉ phép',
+        };
+      }
+
+      const updatedTypeLeave = await this.prisma.typeLeave.update({
+        where: { typeLeaveID },
+        data: { isActive },
+      });
+
+      return {
+        statusCode: OK_CODE,
+        message: isActive
+          ? 'Kích hoạt loại nghỉ phép thành công'
+          : 'Vô hiệu hóa loại nghỉ phép thành công',
+        data: updatedTypeLeave,
+      };
+    } catch {
       return {
         statusCode: Interval_Server_Network_Exeception_Code,
         message: 'Lỗi server',

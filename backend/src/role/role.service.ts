@@ -3,9 +3,8 @@ import { CreateRoleDto } from './dto/create-role.dto';
 import { UpdateRoleDto } from './dto/update-role.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { Role } from '@prisma/client';
-import ResponseDto, { AnotherError } from 'src/common/response.dto';
+import ResponseDto from 'src/common/response.dto';
 import {
-  ANOTHER_ERROR_RESPONE,
   BADREQUEST_CODE,
   CONFLIG_CODE,
   CREATED_RESPONE,
@@ -79,7 +78,7 @@ export class RoleService {
   async update(
     id: string,
     updateRoleDto: UpdateRoleDto,
-  ): Promise<ResponseDto<RoleDto> | AnotherError> {
+  ): Promise<ResponseDto<RoleDto>> {
     const findRoleByID: ResponseDto<RoleDto> = await this.findOne(id);
     if (
       findRoleByID.statusCode === NOTFOUND_CODE ||
@@ -101,7 +100,7 @@ export class RoleService {
     if (findRoleByRoleName.statusCode === OK_CODE)
       return {
         statusCode: CONFLIG_CODE,
-        message: `The role\'s name must be unique`,
+        message: `The role's name must be unique`,
       };
 
     try {
@@ -118,10 +117,13 @@ export class RoleService {
         message: `update role have id = ${id} successfull`,
         data: newRole,
       };
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error updating role:', err);
     }
-    return ANOTHER_ERROR_RESPONE;
+    return {
+      statusCode: BADREQUEST_CODE,
+      message: 'Another error!!!',
+    };
   }
 
   async remove(id: string): Promise<ResponseDto<RoleDto>> {
@@ -146,9 +148,10 @@ export class RoleService {
         statusCode: OK_CODE,
         message: `Delete role with id = ${id} successfully`,
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const code = getPrismaErrorCode(error);
       // 3. Xử lý lỗi P2025 (Record to delete does not exist) của Prisma
-      if (error.code === 'P2025') {
+      if (code === 'P2025') {
         return {
           statusCode: NOTFOUND_CODE,
           message: 'Role ID does not exist',
@@ -229,4 +232,13 @@ export class RoleService {
       message: 'Another error!!!',
     };
   }
+}
+
+function getPrismaErrorCode(error: unknown): string | undefined {
+  if (typeof error !== 'object' || error === null || !('code' in error)) {
+    return undefined;
+  }
+
+  const code = (error as { code?: unknown }).code;
+  return typeof code === 'string' ? code : undefined;
 }

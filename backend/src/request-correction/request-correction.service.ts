@@ -6,7 +6,11 @@ import {
   NOTFOUND_CODE,
   OK_CODE,
 } from 'src/common/code';
-import { MonthlyTimesheetStatus, TimesheetStatus, NotificationRelatedType } from '@prisma/client';
+import {
+  MonthlyTimesheetStatus,
+  TimesheetStatus,
+  NotificationRelatedType,
+} from '@prisma/client';
 import { DefaultResponse } from 'src/common/response.dto';
 import { NotificationService } from 'src/notification/notification.service';
 import { PrismaService } from 'src/prisma/prisma.service';
@@ -272,7 +276,9 @@ export class RequestCorrectionService {
           };
         }
 
-        if (request.monthlyTimesheet.status === MonthlyTimesheetStatus.APPROVED) {
+        if (
+          request.monthlyTimesheet.status === MonthlyTimesheetStatus.APPROVED
+        ) {
           return {
             statusCode: BADREQUEST_CODE,
             message: 'Approved monthly timesheet is locked',
@@ -289,7 +295,8 @@ export class RequestCorrectionService {
           where: { requestCorrectionID },
           data: {
             status: dto.status,
-            reasonReject: dto.status === TimesheetStatus.REJECTED ? reasonReject : null,
+            reasonReject:
+              dto.status === TimesheetStatus.REJECTED ? reasonReject : null,
             reviewerID,
             reviewedAt,
           },
@@ -348,7 +355,8 @@ export class RequestCorrectionService {
     );
     const hasPendingCorrection = timesheet.corrections.length > 0;
     const isLocked =
-      timesheet.status === MonthlyTimesheetStatus.APPROVED || timesheet.status === MonthlyTimesheetStatus.SUBMITTED;
+      timesheet.status === MonthlyTimesheetStatus.APPROVED ||
+      timesheet.status === MonthlyTimesheetStatus.SUBMITTED;
     const canSubmit =
       hasEntries && !hasMissingTime && !hasPendingCorrection && !isLocked;
 

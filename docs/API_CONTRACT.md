@@ -21,7 +21,16 @@ Errors use NestJS HTTP status codes and include at least `statusCode` and `messa
 | POST | `/auth/login` | Public | Body: `email` or `username`, `password`. Returns `accessToken`, `refreshToken`, `user.role/nameRole`. |
 | POST | `/auth/refreshToken/:userID` | Public token body | Body: `refreshToken`. Rotates both tokens. |
 | POST | `/auth/logout` | Bearer | Clears stored refresh token. |
-| POST | `/auth/register` | Public/current demo | Creates employee user. HR user creation should prefer `/user`. |
+| GET | `/auth/google` | Public | Starts Google OAuth redirect. |
+| GET | `/auth/google/callback` | Public OAuth callback | Finds an existing active user by Google email, then returns JWT/refresh token. |
+| GET | `/auth/microsoft` | Public | Starts Microsoft OAuth redirect when Microsoft env vars are configured. |
+| GET | `/auth/microsoft/callback` | Public OAuth callback | Exchanges authorization code, finds an existing active user by Microsoft email, then redirects to frontend `/auth/callback` with JWT/refresh token in the URL fragment. |
+
+`/auth/register` is not exposed for public self-registration. HR/Admin account creation must use `POST /user/`.
+
+Personal profile self-update is exposed through `PATCH /user/me` for the current JWT user only. The whitelist is limited to `linkAvatar`, `phone`, `address`, `emergencyContact`, and `birthday`; role, email, salary, leave balance, department and active status remain HR/Admin-only through `PATCH /user/:userID`.
+
+Microsoft SSO requires `MICROSOFT_CLIENT_ID`, `MICROSOFT_CLIENT_SECRET`, `MICROSOFT_TENANT_ID`, `MICROSOFT_CALLBACK_URL`, `SSO_SUCCESS_REDIRECT_URL`, and `SSO_ERROR_REDIRECT_URL`. Credentials must stay in env files or deployment secrets.
 
 ## RBAC Roles
 
@@ -50,12 +59,14 @@ Permission names:
 | GET | `/user/getByID/:userID` | admin, manager, me |
 | GET | `/user/getByDepartment/:departmentID` | admin, managerOfDepartment |
 | POST | `/user/` | admin |
+| PATCH | `/user/me` | authenticated current user |
 | PATCH | `/user/:userID` | admin |
 | PATCH | `/user/deactivate/:userID` | admin |
 | PATCH | `/user/activate/:userID` | admin |
 | DELETE | `/user/:userID` | admin |
 | GET | `/department` | admin |
 | GET | `/department/byID/:departmentID` | admin, managerOfDepartment |
+| GET | `/department/byDepartmentName/:departmentName` | admin |
 | POST | `/department` | admin |
 | PATCH | `/department/:departmentID` | admin |
 | DELETE | `/department/:departmentID` | admin |
@@ -78,7 +89,14 @@ Permission names:
 | PATCH | `/time-sheet/submitMonthlyTimesheet/:monthlyTimesheetID` | owner |
 | PATCH | `/time-sheet/reviewMonthlyTimesheet/:monthlyTimesheetID` | manager reviewer |
 | GET | `/time-sheet/export/:userID?month=&year=&format=csv` | me |
+| GET | `/time-sheet/export-excel/:userID?month=&year=` | me |
+| GET | `/time-sheet/report?fromDate=&toDate=&employeeId=&departmentId=&status=` | manager, admin |
 | GET | `/time-sheet/export-department/:departmentID?month=&year=&format=csv` | managerOfDepartment, admin |
+| GET | `/time-sheet/export-department-excel/:departmentID?month=&year=` | managerOfDepartment, admin |
+
+Timesheet report returns `{ filters, rows, summary }`. `rows` include employee/department, date, check-in/out, hours, status, warnings. `summary` includes total records, employees, hours, status counts, missing checkout and warning counts.
+
+Timesheet CSV/Excel exports remain monthly endpoints. PDF export is implemented in frontend from the real report payload using the browser print-to-PDF flow, so no backend PDF dependency is required.
 
 ### Request Correction
 
@@ -93,6 +111,8 @@ Correction review accepts body `{ "status": "approved" | "rejected", "reasonReje
 
 ### Leave
 
+`POST /leave-application/:userID` may return `data.warnings[]` with `code=LEAVE_WORKLOG_CONFLICT` when the requested leave date range overlaps existing timesheet entries. The request is still created; reviewers should resolve the work-log/leave conflict manually.
+
 | Method | Path | Permission |
 | --- | --- | --- |
 | POST | `/leave-application/:userID` | me |
@@ -101,10 +121,14 @@ Correction review accepts body `{ "status": "approved" | "rejected", "reasonReje
 | GET | `/leave-application/department/:departmentID` | managerOfDepartment |
 | GET | `/leave-application/all` | admin |
 | PATCH | `/leave-application/review/:leaveApplicationID` | manager of sender department |
-| GET | `/type-leave` | me, manager, admin |
+| GET | `/type-leave?includeInactive=true` | me, manager, admin |
 | POST | `/type-leave` | admin |
 | PATCH | `/type-leave/:typeLeaveID` | admin |
-| DELETE | `/type-leave/:typeLeaveID` | admin |
+| PATCH | `/type-leave/:typeLeaveID/activate` | admin |
+| PATCH | `/type-leave/:typeLeaveID/deactivate` | admin |
+| DELETE | `/type-leave/:typeLeaveID` | admin; soft-deactivates, does not delete history |
+
+Employee-facing `GET /type-leave` returns active leave types by default. HR screens call `includeInactive=true` to show both active and inactive records. Creating a leave request with an inactive `typeLeaveID` is rejected.
 
 ### Notification, Warning, Payroll
 
@@ -118,4 +142,8 @@ Correction review accepts body `{ "status": "approved" | "rejected", "reasonReje
 | GET | `/payroll/user/:userID` | me |
 | GET | `/payroll/department/:departmentID` | managerOfDepartment, admin |
 | POST | `/payroll/generate/:monthlyTimesheetID` | admin |
+| GET | `/payroll/export?month=&year=&format=json` | admin |
 | GET | `/payroll/export?month=&year=&format=csv` | admin |
+| GET | `/payroll/export-excel?month=&year=` | admin |
+
+Payroll export validates month/year at service and DTO level. Empty periods return an empty CSV/Excel/JSON export with a clear message instead of fabricated payroll rows. JSON export includes `meta.count`, `meta.warnings`, and `meta.externalIntegration="not_configured"`. External payroll system integration is not implemented yet; the backend contains only an exporter contract/stub so this is not represented as a live integration.

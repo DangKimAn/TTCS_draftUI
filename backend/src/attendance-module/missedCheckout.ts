@@ -36,16 +36,21 @@ export class MissedCheckoutTask {
   async processMissingCheckouts(): Promise<ResponseDto<DefaultResponse>> {
     const now = new Date();
     const todayStr = this.formatDateKey(now);
-    console.log(`[MissedCheckoutTask] Cron triggered at ${now.toISOString()} - Processing entries before ${todayStr}`);
+    console.log(
+      `[MissedCheckoutTask] Cron triggered at ${now.toISOString()} - Processing entries before ${todayStr}`,
+    );
 
-    const result = await this.attendanceService.GetAllEmployeeDidNotCheckOutBefore(todayStr);
+    const result =
+      await this.attendanceService.GetAllEmployeeDidNotCheckOutBefore(todayStr);
 
     if (result.statusCode !== OK_CODE || !result.data) {
       return { statusCode: result.statusCode, message: result.message };
     }
 
     const missedEntries = result.data as MissedCheckoutEntry[];
-    console.log(`[MissedCheckoutTask] Found ${missedEntries.length} missed check-out entries.`);
+    console.log(
+      `[MissedCheckoutTask] Found ${missedEntries.length} missed check-out entries.`,
+    );
 
     for (const entry of missedEntries) {
       try {
@@ -74,7 +79,10 @@ export class MissedCheckoutTask {
               text: `Xin chào ${employee.username},\n\nHệ thống ghi nhận bạn quên check-out ngày ${entry.date}.\nTrạng thái công ngày này đã được chuyển sang "Missing Out".\nBạn sẽ không thể nộp bảng công tháng này cho đến khi giải trình xong.\nVui lòng truy cập hệ thống để tạo yêu cầu chỉnh sửa (Request Correction).\n\nTrân trọng,\nHệ thống HRM`,
             });
           } catch (emailErr) {
-            console.error(`[MissedCheckoutTask] Failed to send email to ${employee.email}`, emailErr);
+            console.error(
+              `[MissedCheckoutTask] Failed to send email to ${employee.email}`,
+              emailErr,
+            );
           }
 
           // 4. Refresh canSubmit của MonthlyTimesheet
@@ -85,7 +93,10 @@ export class MissedCheckoutTask {
           });
         });
       } catch (err) {
-        console.error(`[MissedCheckoutTask] Error processing entry ${entry.timesheetEntryID}:`, err);
+        console.error(
+          `[MissedCheckoutTask] Error processing entry ${entry.timesheetEntryID}:`,
+          err,
+        );
       }
     }
 

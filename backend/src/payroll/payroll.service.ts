@@ -1,6 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { MonthlyTimesheetStatus, TimesheetStatus, Prisma } from '@prisma/client';
+import {
+  MonthlyTimesheetStatus,
+  TimesheetStatus,
+  Prisma,
+} from '@prisma/client';
 import { DefaultResponse } from 'src/common/response.dto';
 import { ExcelHelper } from 'src/common/excel.helper';
 import {
@@ -9,13 +13,75 @@ import {
   NOTFOUND_CODE,
   OK_CODE,
 } from 'src/common/code';
+import * as ExcelJS from 'exceljs';
+
+const LARGE_EXPORT_WARNING_THRESHOLD = 5000;
+
+const payrollExportInclude = Prisma.validator<Prisma.PayrollInclude>()({
+  employee: {
+    select: {
+      userID: true,
+      username: true,
+      email: true,
+      salaryCoefficient: true,
+      departmentID: true,
+      department: { select: { departmentID: true, departmentName: true } },
+    },
+  },
+  monthlyTimesheet: {
+    select: {
+      monthlyTimesheetID: true,
+      status: true,
+      reviewedAt: true,
+    },
+  },
+});
+
+type PayrollExportRow = Prisma.PayrollGetPayload<{
+  include: typeof payrollExportInclude;
+}>;
+
+type PayrollExportResult =
+  | (DefaultResponse & { data: string; isCsv: true; warnings?: string[] })
+  | (DefaultResponse & {
+      data: PayrollExportRow[];
+      isCsv: false;
+      meta?: PayrollExportMeta;
+    })
+  | (DefaultResponse & { isCsv?: false });
 
 export interface IPayrollExporter {
-  export(payrolls: any[]): Promise<any>;
+  export(payrolls: PayrollExportRow[]): string;
+}
+
+export interface PayrollExportMeta {
+  count: number;
+  warnings: string[];
+  externalIntegration: 'not_configured';
+}
+
+export interface IExternalPayrollExporter {
+  providerName: string;
+  export(payrolls: PayrollExportRow[]): Promise<{
+    sent: boolean;
+    message: string;
+  }>;
+}
+
+export class NotConfiguredExternalPayrollExporter implements IExternalPayrollExporter {
+  providerName = 'not_configured';
+
+  export(): Promise<{ sent: boolean; message: string }> {
+    return Promise.resolve({
+      sent: false,
+      message:
+        'External payroll integration is not configured. Current scope supports CSV, Excel and JSON export only.',
+    });
+  }
 }
 
 class CsvPayrollExporter implements IPayrollExporter {
-  async export(payrolls: any[]): Promise<any> {
+  export(payrolls: PayrollExportRow[]): string {
     const header = [
       'Payroll ID',
       'User Name',
@@ -28,7 +94,7 @@ class CsvPayrollExporter implements IPayrollExporter {
       'Total Salary',
     ].join(',');
 
-    const rows = payrolls.map((p: any) => {
+    const rows = payrolls.map((p) => {
       return [
         p.payrollID,
         p.employee?.username || '',
@@ -40,11 +106,15 @@ class CsvPayrollExporter implements IPayrollExporter {
         p.totalExtraHours.toFixed(2),
         p.totalSalaryByHours.toFixed(2),
       ]
-        .map((field) => `"${field}"`)
+        .map((field) => this.escapeCsv(field))
         .join(',');
     });
 
     return [header, ...rows].join('\n');
+  }
+
+  private escapeCsv(value: string | number): string {
+    return `"${String(value).replace(/"/g, '""')}"`;
   }
 }
 
@@ -155,6 +225,9 @@ export class PayrollService {
     year?: number,
   ): Promise<DefaultResponse> {
     try {
+      const periodError = this.validatePeriod(month, year);
+      if (periodError) return periodError;
+
       const filter: Prisma.PayrollWhereInput = { userID };
       if (month) filter.month = month;
       if (year) filter.year = year;
@@ -185,6 +258,9 @@ export class PayrollService {
     year?: number,
   ): Promise<DefaultResponse> {
     try {
+      const periodError = this.validatePeriod(month, year);
+      if (periodError) return periodError;
+
       const departmentExists = await this.prisma.department.findUnique({
         where: { departmentID },
       });
@@ -225,8 +301,11 @@ export class PayrollService {
     month?: number,
     year?: number,
     format: string = 'json',
-  ): Promise<any> {
+  ): Promise<PayrollExportResult> {
     try {
+      const periodError = this.validatePeriod(month, year);
+      if (periodError) return periodError;
+
       const filter: Prisma.PayrollWhereInput = {};
       if (month) filter.month = month;
       if (year) filter.year = year;
@@ -234,26 +313,24 @@ export class PayrollService {
       const payrolls = await this.prisma.payroll.findMany({
         where: filter,
         include: {
-          employee: {
-            select: {
-              username: true,
-              email: true,
-              department: { select: { departmentName: true } },
-            },
-          },
+          ...payrollExportInclude,
         },
         orderBy: [{ year: 'desc' }, { month: 'desc' }],
       });
 
+      const warnings = this.buildExportWarnings(payrolls);
       if (format.toLowerCase() === 'csv') {
         const exporter = new CsvPayrollExporter();
-        const csvString = await exporter.export(payrolls);
+        const csvString = exporter.export(payrolls);
 
         return {
           statusCode: OK_CODE,
-          message: 'Exported payroll successfully (CSV)',
+          message: payrolls.length
+            ? 'Exported payroll successfully (CSV)'
+            : 'No payroll data matched the selected period',
           data: csvString,
           isCsv: true,
+          warnings,
         };
       }
 
@@ -262,9 +339,16 @@ export class PayrollService {
 
       return {
         statusCode: OK_CODE,
-        message: 'Exported payroll successfully (JSON)',
+        message: payrolls.length
+          ? 'Exported payroll successfully (JSON)'
+          : 'No payroll data matched the selected period',
         data: payrolls,
         isCsv: false,
+        meta: {
+          count: payrolls.length,
+          warnings,
+          externalIntegration: 'not_configured',
+        },
       };
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
@@ -276,7 +360,15 @@ export class PayrollService {
     }
   }
 
-  async exportPayrollExcel(month?: number, year?: number): Promise<any> {
+  async exportPayrollExcel(
+    month?: number,
+    year?: number,
+  ): Promise<ExcelJS.Workbook> {
+    const periodError = this.validatePeriod(month, year);
+    if (periodError) {
+      throw new Error(periodError.message);
+    }
+
     const filter: Prisma.PayrollWhereInput = {};
     if (month) filter.month = month;
     if (year) filter.year = year;
@@ -284,20 +376,55 @@ export class PayrollService {
     const payrolls = await this.prisma.payroll.findMany({
       where: filter,
       include: {
-        employee: {
-          select: {
-            username: true,
-            email: true,
-            department: { select: { departmentName: true } },
-          },
-        },
+        ...payrollExportInclude,
       },
-      orderBy: [
-        { year: 'desc' },
-        { month: 'desc' },
-      ],
+      orderBy: [{ year: 'desc' }, { month: 'desc' }],
     });
 
     return ExcelHelper.createPayrollWorkbook(payrolls, 'Payroll');
+  }
+
+  private validatePeriod(
+    month?: number,
+    year?: number,
+  ): DefaultResponse | null {
+    if (
+      month !== undefined &&
+      (!Number.isInteger(month) || month < 1 || month > 12)
+    ) {
+      return {
+        statusCode: 400,
+        message: 'Payroll month must be between 1 and 12',
+      };
+    }
+
+    if (year !== undefined && (!Number.isInteger(year) || year < 2000)) {
+      return { statusCode: 400, message: 'Payroll year must be 2000 or later' };
+    }
+
+    return null;
+  }
+
+  private buildExportWarnings(payrolls: PayrollExportRow[]): string[] {
+    const warnings: string[] = [];
+
+    if (payrolls.length > LARGE_EXPORT_WARNING_THRESHOLD) {
+      warnings.push(
+        `Export contains ${payrolls.length} rows. Consider splitting by month or department, or moving export to a background job before production scale.`,
+      );
+    }
+
+    const missingSalaryCount = payrolls.filter((payroll) => {
+      const salaryCoefficient = payroll.employee?.salaryCoefficient;
+      return !salaryCoefficient || salaryCoefficient <= 0;
+    }).length;
+
+    if (missingSalaryCount > 0) {
+      warnings.push(
+        `${missingSalaryCount} payroll rows have missing or zero salaryCoefficient on the employee record.`,
+      );
+    }
+
+    return warnings;
   }
 }

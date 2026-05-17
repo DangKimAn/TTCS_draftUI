@@ -5,6 +5,10 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import { ResponseEnvelopeInterceptor } from './common/interceptors/response-envelope.interceptor';
 
+interface TrustProxyHttpServer {
+  set(setting: 'trust proxy', value: boolean): void;
+}
+
 function parseCorsOrigins(value?: string): string[] {
   return (value || 'http://localhost:5173')
     .split(',')
@@ -47,7 +51,10 @@ async function bootstrap() {
     }),
   );
 
-  app.getHttpAdapter().getInstance().trustProxy = true;
+  const httpServer = app
+    .getHttpAdapter()
+    .getInstance() as unknown as TrustProxyHttpServer;
+  httpServer.set('trust proxy', true);
 
   app.useGlobalInterceptors(
     new ClassSerializerInterceptor(reflector),
@@ -62,4 +69,4 @@ async function bootstrap() {
   console.log(`OpenAPI JSON at http://localhost:${port}/api/docs-json`);
 }
 
-bootstrap();
+void bootstrap();

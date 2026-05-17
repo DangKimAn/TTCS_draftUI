@@ -25,20 +25,41 @@ export const StatusBadge: React.FC<{ status: string; className?: string }> = ({ 
   );
 };
 
-export const WarningList: React.FC<{ warnings?: string[] }> = ({ warnings }) => {
+type WarningItem =
+  | string
+  | {
+      code?: string;
+      label?: string;
+      message?: string;
+      tone?: string;
+    };
+
+function getWarningText(warning: WarningItem): string {
+  if (typeof warning === 'string') {
+    return warning;
+  }
+
+  return warning.label || warning.message || warning.code || 'Canh bao';
+}
+
+export const WarningList: React.FC<{ warnings?: WarningItem[] }> = ({ warnings }) => {
   if (!warnings || warnings.length === 0) return <span className="text-slate-400">Khong co canh bao</span>;
 
   return (
     <div className="flex flex-wrap gap-1.5 items-center">
-      {warnings.map((warning, index) => (
-        <span
-          key={index}
-          className="inline-flex items-center justify-center min-h-[26px] px-2.5 rounded-full text-[0.72rem] font-semibold border bg-amber-50 text-amber-700 border-amber-100"
-          title={warning}
-        >
-          {warning}
-        </span>
-      ))}
+      {warnings.map((warning, index) => {
+        const warningText = getWarningText(warning);
+
+        return (
+          <span
+            key={`${warningText}-${index}`}
+            className="inline-flex items-center justify-center min-h-[26px] px-2.5 rounded-full text-[0.72rem] font-semibold border bg-amber-50 text-amber-700 border-amber-100"
+            title={warningText}
+          >
+            {warningText}
+          </span>
+        );
+      })}
     </div>
   );
 };

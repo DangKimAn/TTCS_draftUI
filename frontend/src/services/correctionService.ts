@@ -264,7 +264,7 @@ export async function getDepartmentCorrectionRequests(
     const response = await httpClient.get<
       BackendResponse<BackendCorrectionRequest[]> | BackendCorrectionRequest[]
     >(`/request-correction/department/${encodeURIComponent(departmentID)}`, {
-      params: { status: 'pending' },
+      params: { status: 'PENDING' },
     });
     const data = unwrapBackendData<BackendCorrectionRequest[]>(response.data) || [];
 

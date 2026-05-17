@@ -18,6 +18,9 @@ model User {
   username          String    @unique
   hashedPassword    String
   linkAvatar        String?   // Nên để optional và xử lý default ở Code
+  phone             String?
+  address           String?
+  emergencyContact  String?
   salaryCoefficient Float     @default(0)
   birthday          DateTime?
   remainDaysofLeave Int       @default(12)
@@ -195,6 +198,7 @@ model TypeLeave {
   code          String @unique
   nameTypeLeave String
   hasSalary     Float
+  isActive      Boolean @default(true)
   applications  LeaveApplication[]
 
   @@map("type_leaves")
@@ -268,4 +272,3 @@ model Payroll {
 
   @@map("payrolls")
 }
-

@@ -1,0 +1,159 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  frontend:
+    name: Frontend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+  backend:
+    name: Backend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    env:
+      NODE_ENV: test
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/ttcs_draftui_ci?schema=public
+      DIRECT_URL: postgresql://postgres:postgres@localhost:5432/ttcs_draftui_ci?schema=public
+      JWT_ACCESS_SECRET: ci-access-secret
+      JWT_REFRESH_SECRET: ci-refresh-secret
+      SKIP_AUTO_SEED: "true"
+      EMAIL_PROVIDER: log
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Prisma validate
+        run: npx prisma validate
+
+      - name: Prisma generate
+        run: npm run prisma:generate
+
+      - name: Lint
+        run: npm run lint:check
+
+      - name: Unit and integration tests
+        run: npm test -- --runInBand
+
+      - name: Build
+        run: npm run build
+
+  e2e:
+    name: Backend E2E
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Detect safe E2E env
+        id: e2e-env
+        shell: bash
+        env:
+          ENABLE_E2E: ${{ vars.ENABLE_E2E }}
+          TEST_DATABASE_URL: ${{ secrets.TEST_DATABASE_URL }}
+          TEST_DIRECT_URL: ${{ secrets.TEST_DIRECT_URL }}
+        run: |
+          if [ "$ENABLE_E2E" = "true" ] && [ -n "$TEST_DATABASE_URL" ] && [ -n "$TEST_DIRECT_URL" ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "Skipping e2e: set vars.ENABLE_E2E=true plus TEST_DATABASE_URL and TEST_DIRECT_URL secrets for a disposable test DB."
+          fi
+
+      - name: Checkout
+        if: steps.e2e-env.outputs.run == 'true'
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        if: steps.e2e-env.outputs.run == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install
+        if: steps.e2e-env.outputs.run == 'true'
+        working-directory: backend
+        run: npm ci
+
+      - name: Write E2E env
+        if: steps.e2e-env.outputs.run == 'true'
+        working-directory: backend
+        shell: bash
+        env:
+          TEST_DATABASE_URL: ${{ secrets.TEST_DATABASE_URL }}
+          TEST_DIRECT_URL: ${{ secrets.TEST_DIRECT_URL }}
+        run: |
+          cat > .env.test <<EOF
+          NODE_ENV=test
+          DATABASE_URL=$TEST_DATABASE_URL
+          DIRECT_URL=$TEST_DIRECT_URL
+          E2E_DATABASE_GUARD=test
+          JWT_ACCESS_SECRET=ci-e2e-access-secret
+          JWT_REFRESH_SECRET=ci-e2e-refresh-secret
+          SKIP_AUTO_SEED=true
+          EMAIL_PROVIDER=log
+          EOF
+
+      - name: Prisma validate
+        if: steps.e2e-env.outputs.run == 'true'
+        working-directory: backend
+        run: npx prisma validate
+
+      - name: Prisma generate
+        if: steps.e2e-env.outputs.run == 'true'
+        working-directory: backend
+        run: npm run prisma:generate
+
+      - name: Migrate test DB
+        if: steps.e2e-env.outputs.run == 'true'
+        working-directory: backend
+        run: npm run prisma:migrate:deploy:test
+
+      - name: Seed test DB
+        if: steps.e2e-env.outputs.run == 'true'
+        working-directory: backend
+        run: npm run seed:test
+
+      - name: E2E tests
+        if: steps.e2e-env.outputs.run == 'true'
+        working-directory: backend
+        run: npm run test:e2e -- --runInBand

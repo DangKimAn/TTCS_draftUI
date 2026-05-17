@@ -126,7 +126,7 @@ export class PayrollController {
   @Get('/export')
   async exportPayroll(
     @Query() query: ExportPayrollQueryDto,
-    @Res({ passthrough: true }) res: Response,
+    @Res() res: Response,
   ) {
     const result = await this.payrollService.exportPayroll(
       query.month,
@@ -143,10 +143,14 @@ export class PayrollController {
         'Content-Type': 'text/csv',
         'Content-Disposition': `attachment; filename="payroll_report_${query.month || 'all'}_${query.year || 'all'}.csv"`,
       });
-      return res.send(result.data);
+      if (result.warnings?.length) {
+        res.set('X-Export-Warning', result.warnings.join(' | '));
+      }
+      res.send(result.data);
+      return;
     }
 
-    return res.json(result);
+    res.json(result);
   }
 
   @ApiOperation({ description: 'Xuất báo cáo lương Excel (Role: admin)' })
@@ -159,14 +163,20 @@ export class PayrollController {
     @Query() query: ExportPayrollQueryDto,
     @Res() res: Response,
   ) {
-    const workbook = await this.payrollService.exportPayrollExcel(
-      query.month,
-      query.year,
-    );
-    await ExcelHelper.sendExcel(
-      res,
-      workbook,
-      `payroll_report_${query.month || 'all'}_${query.year || 'all'}`,
-    );
+    try {
+      const workbook = await this.payrollService.exportPayrollExcel(
+        query.month,
+        query.year,
+      );
+      await ExcelHelper.sendExcel(
+        res,
+        workbook,
+        `payroll_report_${query.month || 'all'}_${query.year || 'all'}`,
+      );
+    } catch (error) {
+      throw new BadRequestException(
+        error instanceof Error ? error.message : 'Invalid payroll export query',
+      );
+    }
   }
 }

@@ -25,7 +25,6 @@ import {
   ApiOkResponse,
   ApiOperation,
 } from '@nestjs/swagger';
-import { describe } from 'node:test';
 import {
   ANOTHER_ERROR_RESPONE,
   CONFLIG_CODE,
@@ -36,7 +35,6 @@ import {
 import { RoleDto } from './dto/Role.dto';
 // import { AnotherError, ResponseDto<RoleDto[]>, ResponseDto<RoleDto> } from 'src/common/response.dto';
 import ResponseDto, { AnotherError } from 'src/common/response.dto';
-import UserDto from 'src/user/dto/user.dto';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { UserAccessGaurd } from 'src/auth/guards/access.guard';
 import { RequirePermission } from 'src/common/require-permissions.decorator';
@@ -156,8 +154,8 @@ export class RoleController {
     @Param('id', new ParseUUIDPipe()) id: string,
     @Body() updateRoleDto: UpdateRoleDto,
   ): Promise<ResponseDto<RoleDto> | AnotherError> {
-    const { statusCode, message, data }: ResponseDto<RoleDto> | AnotherError =
-      await this.roleService.update(id, updateRoleDto);
+    const response = await this.roleService.update(id, updateRoleDto);
+    const { statusCode, message, data } = response;
     if (statusCode === CONFLIG_CODE)
       throw new ConflictException(statusCode, message);
     if (statusCode == NOTFOUND_CODE)
@@ -192,7 +190,7 @@ export class RoleController {
   async remove(
     @Param('id', new ParseUUIDPipe()) id: string,
   ): Promise<ResponseDto<RoleDto> | AnotherError> {
-    const { statusCode, message, data }: ResponseDto<RoleDto> =
+    const { statusCode, message }: ResponseDto<RoleDto> =
       await this.roleService.remove(id);
     if (statusCode === NOTFOUND_CODE)
       throw new NotFoundException(statusCode, message);

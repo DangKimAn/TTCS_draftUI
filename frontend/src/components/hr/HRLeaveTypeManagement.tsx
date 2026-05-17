@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import { FiCheck, FiEdit3, FiPlus, FiTrash2 } from 'react-icons/fi';
+import { FiCheck, FiEdit3, FiPlus, FiPower, FiTrash2 } from 'react-icons/fi';
 import {
+  activateHrLeaveType,
   createHrLeaveType,
   deleteHrLeaveType,
   updateHrLeaveType,
@@ -47,6 +48,7 @@ function HRLeaveTypeManagement({
           code: form.code,
           name: form.name,
           isPaid: form.isPaid,
+          status: form.status,
         });
         const nextType = buildLeaveTypeFromForm(currentType, apiType, form);
 
@@ -62,6 +64,7 @@ function HRLeaveTypeManagement({
         code: form.code,
         name: form.name,
         isPaid: form.isPaid,
+        status: form.status,
       });
       const nextType = buildLeaveTypeFromForm(
         {
@@ -89,14 +92,40 @@ function HRLeaveTypeManagement({
 
     setPendingId(deleteTarget.id);
     try {
-      await deleteHrLeaveType(deleteTarget.id);
+      const apiType = await deleteHrLeaveType(deleteTarget.id);
       onLeaveTypesChange((current: Array<Record<string, any>>) =>
-        current.filter((type) => type.id !== deleteTarget.id),
+        current.map((type) =>
+          type.id === deleteTarget.id
+            ? buildLeaveTypeFromForm(type, apiType || { ...type, isActive: false, status: 'Inactive' }, {
+                code: type.code,
+                name: type.name,
+                isPaid: type.isPaid,
+                defaultDaysPerYear: String(type.defaultDaysPerYear || 0),
+                note: type.note || '',
+                status: 'Inactive',
+              })
+            : type,
+        ),
       );
-      onFeedback('success', `Da xoa loai nghi ${deleteTarget.name}.`);
+      onFeedback('success', `Da vo hieu hoa loai nghi ${deleteTarget.name}.`);
       setDeleteTarget(null);
     } catch (error) {
-      onFeedback('danger', error instanceof Error ? error.message : 'Khong the xoa loai nghi phep.');
+      onFeedback('danger', error instanceof Error ? error.message : 'Khong the vo hieu hoa loai nghi phep.');
+    } finally {
+      setPendingId('');
+    }
+  };
+
+  const handleActivateLeaveType = async (leaveType: Record<string, any>) => {
+    setPendingId(leaveType.id);
+    try {
+      const apiType = await activateHrLeaveType(leaveType.id);
+      onLeaveTypesChange((current: Array<Record<string, any>>) =>
+        current.map((type) => (type.id === leaveType.id ? { ...type, ...apiType, status: 'Active', isActive: true } : type)),
+      );
+      onFeedback('success', `Da kich hoat loai nghi ${leaveType.name}.`);
+    } catch (error) {
+      onFeedback('danger', error instanceof Error ? error.message : 'Khong the kich hoat loai nghi phep.');
     } finally {
       setPendingId('');
     }
@@ -165,15 +194,27 @@ function HRLeaveTypeManagement({
                           <FiEdit3 />
                           Sua
                         </button>
-                        <button
-                          type="button"
-                          className="dashboard-button hr-button--danger hr-action-button"
-                          onClick={() => setDeleteTarget(type)}
-                          disabled={pendingId === type.id}
-                        >
-                          <FiTrash2 />
-                          Xoa
-                        </button>
+                        {type.status === 'Inactive' ? (
+                          <button
+                            type="button"
+                            className="dashboard-button dashboard-button--ghost hr-action-button"
+                            onClick={() => void handleActivateLeaveType(type)}
+                            disabled={pendingId === type.id}
+                          >
+                            <FiPower />
+                            Kich hoat
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            className="dashboard-button hr-button--danger hr-action-button"
+                            onClick={() => setDeleteTarget(type)}
+                            disabled={pendingId === type.id}
+                          >
+                            <FiTrash2 />
+                            Vo hieu hoa
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -261,7 +302,7 @@ function LeaveTypeModal({
   return (
     <ModalShell title={modal.mode === 'edit' ? 'Sua loai nghi phep' : 'Them loai nghi phep'} onClose={onClose}>
       {leaveType?.hasUsageHistory ? (
-        <div className="hr-inline-alert">Loai nghi da co du lieu su dung. Khi xoa, backend co the tra ve loi conflict.</div>
+        <div className="hr-inline-alert">Loai nghi da co du lieu su dung. Khi vo hieu hoa, backend se giu lai lich su don nghi.</div>
       ) : null}
       <form className="hr-form-grid" onSubmit={handleSubmit}>
         <FormField label="Ma loai nghi" name="code" value={form.code} error={errors.code} onChange={handleChange} />
@@ -313,13 +354,13 @@ function DeleteLeaveTypeModal({
   }
 
   return (
-    <ModalShell title="Xac nhan xoa loai nghi" onClose={onClose}>
-      <p className="hr-modal-note">Loai nghi {leaveType.name} se bi xoa khoi danh muc neu backend cho phep.</p>
+    <ModalShell title="Xac nhan vo hieu hoa loai nghi" onClose={onClose}>
+      <p className="hr-modal-note">Loai nghi {leaveType.name} se chuyen sang Inactive va khong xuat hien khi nhan vien tao don moi. Lich su don nghi van duoc giu lai.</p>
       <div className="dashboard-panel__actions hr-form-actions">
         <button type="button" className="dashboard-button dashboard-button--ghost" onClick={onClose}>Huy</button>
         <button type="button" className="dashboard-button hr-button--danger" onClick={onConfirm} disabled={isSaving}>
           <FiTrash2 />
-          {isSaving ? 'Dang xoa...' : 'Xoa'}
+          {isSaving ? 'Dang xu ly...' : 'Vo hieu hoa'}
         </button>
       </div>
     </ModalShell>
@@ -343,4 +384,3 @@ function buildLeaveTypeFromForm(base: Record<string, any>, apiType: Record<strin
 }
 
 export default HRLeaveTypeManagement;
-

@@ -204,8 +204,8 @@ function HRDashboard() {
     departments,
     leaveTypes,
     leaveRequests,
-    timesheets: mockTimesheets,
-    payrollReports: mockPayrollReports,
+    timesheets: API_CONFIG.ENABLE_MOCK_FALLBACK ? mockTimesheets : [],
+    payrollReports: API_CONFIG.ENABLE_MOCK_FALLBACK ? mockPayrollReports : [],
     feedback,
     onFeedback: showFeedback,
   };
@@ -497,12 +497,20 @@ function HROverview({
 }
 
 function buildCurrentHr(session: Record<string, any> | null) {
+  const fallbackHr = API_CONFIG.ENABLE_MOCK_FALLBACK
+    ? mockCurrentHrUser
+    : {
+        id: '',
+        name: session?.name || session?.email || '',
+        permissions: [],
+      };
+
   return {
-    ...mockCurrentHrUser,
+    ...fallbackHr,
     ...session,
-    id: session?.id || mockCurrentHrUser.id,
-    role: 'hr',
-    permissions: session?.permissions?.length ? session.permissions : mockCurrentHrUser.permissions,
+    id: session?.id || fallbackHr.id,
+    role: session?.role || 'hr',
+    permissions: session?.permissions?.length ? session.permissions : fallbackHr.permissions,
   };
 }
 

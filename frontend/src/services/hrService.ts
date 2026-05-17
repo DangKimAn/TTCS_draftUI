@@ -23,6 +23,7 @@ interface LeaveTypePayload {
   code: string;
   name: string;
   isPaid: boolean;
+  status?: string;
 }
 
 export async function fetchHrUsers(departments: Array<Record<string, any>> = []) {
@@ -129,6 +130,7 @@ export async function fetchHrLeaveTypes() {
   try {
     const response = await httpClient.get<BackendResponse<Record<string, any>[]> | Record<string, any>[]>(
       '/type-leave',
+      { params: { includeInactive: true } },
     );
     const leaveTypes = unwrapBackendData<Record<string, any>[]>(response.data);
 
@@ -168,9 +170,40 @@ export async function updateHrLeaveType(typeLeaveID: string, payload: LeaveTypeP
 
 export async function deleteHrLeaveType(typeLeaveID: string) {
   try {
-    await httpClient.delete(`/type-leave/${encodeURIComponent(typeLeaveID)}`);
+    const response = await httpClient.delete<BackendResponse<Record<string, any>> | Record<string, any>>(
+      `/type-leave/${encodeURIComponent(typeLeaveID)}`,
+    );
+    const leaveType = unwrapBackendData<Record<string, any>>(response.data);
+
+    return leaveType ? normalizeHrLeaveType(leaveType) : null;
   } catch (error) {
     throw normalizeHrError(error, 'Khong the xoa loai nghi phep.');
+  }
+}
+
+export async function activateHrLeaveType(typeLeaveID: string) {
+  try {
+    const response = await httpClient.patch<BackendResponse<Record<string, any>> | Record<string, any>>(
+      `/type-leave/${encodeURIComponent(typeLeaveID)}/activate`,
+    );
+    const leaveType = unwrapBackendData<Record<string, any>>(response.data);
+
+    return leaveType ? normalizeHrLeaveType(leaveType) : null;
+  } catch (error) {
+    throw normalizeHrError(error, 'Khong the kich hoat loai nghi phep.');
+  }
+}
+
+export async function deactivateHrLeaveType(typeLeaveID: string) {
+  try {
+    const response = await httpClient.patch<BackendResponse<Record<string, any>> | Record<string, any>>(
+      `/type-leave/${encodeURIComponent(typeLeaveID)}/deactivate`,
+    );
+    const leaveType = unwrapBackendData<Record<string, any>>(response.data);
+
+    return leaveType ? normalizeHrLeaveType(leaveType) : null;
+  } catch (error) {
+    throw normalizeHrError(error, 'Khong the vo hieu hoa loai nghi phep.');
   }
 }
 
@@ -193,6 +226,20 @@ export async function exportPayrollReport(month: number, year: number) {
     downloadBlob(response.data, getDownloadFileName(response.headers, `payroll_report_${month}_${year}.csv`));
   } catch (error) {
     throw normalizeHrError(error, 'Khong the xuat bao cao luong.');
+  }
+}
+
+export async function fetchPayrollPreview(month: number, year: number) {
+  try {
+    const response = await httpClient.get<BackendResponse<Record<string, any>[]> | Record<string, any>[]>(
+      '/payroll/export',
+      { params: { month, year, format: 'json' } },
+    );
+    const rows = unwrapBackendData<Record<string, any>[]>(response.data);
+
+    return Array.isArray(rows) ? rows.map(normalizePayrollPreviewRow) : [];
+  } catch (error) {
+    throw normalizeHrError(error, 'Khong the tai payroll preview.');
   }
 }
 
@@ -329,6 +376,28 @@ function buildLeaveTypePayload(payload: LeaveTypePayload) {
   };
 }
 
+function normalizePayrollPreviewRow(payload: Record<string, any>) {
+  const employee = payload.employee || {};
+  const totalHours = Number(payload.totalHours ?? payload.normalHours ?? 0);
+  const totalExtraHours = Number(payload.totalExtraHours ?? payload.overtimeHours ?? 0);
+  const salaryCoefficient = Number(employee.salaryCoefficient ?? payload.salaryCoefficient ?? 0);
+
+  return {
+    ...payload,
+    id: payload.payrollID || payload.id || `${employee.userID || payload.userID || 'payroll'}-${payload.month || ''}-${payload.year || ''}`,
+    employeeId: employee.userID || payload.userID || '',
+    employeeCode: employee.employeeCode || (employee.userID ? `EMP-${String(employee.userID).slice(0, 8).toUpperCase()}` : '--'),
+    fullName: employee.username || employee.fullName || employee.name || employee.email || payload.userID || '--',
+    departmentId: employee.departmentID || employee.department?.departmentID || payload.departmentId || '',
+    departmentName: employee.department?.departmentName || payload.departmentName || '--',
+    totalHours,
+    totalExtraHours,
+    salaryCoefficient,
+    totalSalaryByHours: payload.totalSalaryByHours ?? payload.salary ?? payload.totalSalary ?? '--',
+    dataStatus: payload.dataStatus || 'Ready',
+  };
+}
+
 function unwrapBackendData<T>(payload: BackendResponse<T> | T): T | undefined {
   if (payload && typeof payload === 'object' && ('data' in payload || 'statusCode' in payload)) {
     return (payload as BackendResponse<T>).data;
@@ -339,7 +408,7 @@ function unwrapBackendData<T>(payload: BackendResponse<T> | T): T | undefined {
 
 function normalizeHrError(error: unknown, fallbackMessage: string) {
   if (axios.isAxiosError(error)) {
-    const message = getResponseMessage(error.response?.data) || error.message || fallbackMessage;
+    const message = getResponseMessage(error.response?.data) || getNetworkErrorMessage(error) || error.message || fallbackMessage;
     const normalizedError = new Error(message) as Error & { code?: string };
     normalizedError.code = String(error.response?.status || error.code || 'HR_API_FAILED');
     return normalizedError;
@@ -350,6 +419,22 @@ function normalizeHrError(error: unknown, fallbackMessage: string) {
   }
 
   return new Error(fallbackMessage);
+}
+
+function getNetworkErrorMessage(error: unknown) {
+  if (!axios.isAxiosError(error) || error.response) {
+    return null;
+  }
+
+  if (error.code === 'ECONNABORTED') {
+    return 'API backend phan hoi qua lau. Kiem tra server backend va ket noi database.';
+  }
+
+  if (error.code === 'ERR_NETWORK' || error.message === 'Network Error') {
+    return 'Khong ket noi duoc API backend. Hay kiem tra backend dang chay tai http://localhost:3000.';
+  }
+
+  return null;
 }
 
 function shouldTryRegisterFallback(error: unknown) {

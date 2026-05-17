@@ -32,9 +32,9 @@ function WorkspaceTopbar() {
         <div className="topbar__profile">
           <div className="topbar__avatar">{initials}</div>
           <div className="topbar__profile-copy">
-            <strong>{session?.name || 'Khách truy cập'}</strong>
+            <strong>{session?.name || 'Khach truy cap'}</strong>
             <span>
-              {session?.role ? getRoleSubtitle(session) : 'Xin chào, chúc bạn một ngày làm việc hiệu quả'}
+              {session?.role ? getRoleSubtitle(session) : 'Xin chao, chuc ban mot ngay lam viec hieu qua'}
             </span>
           </div>
         </div>
@@ -45,27 +45,33 @@ function WorkspaceTopbar() {
 
 function getSearchPlaceholder(role) {
   if (role === 'manager') {
-    return 'Tìm nhân viên, bảng công, đơn nghỉ phép, thông báo...';
+    return 'Tim nhan vien, bang cong, don nghi phep, thong bao...';
   }
 
-  if (role === 'hr') {
-    return 'Tìm nhân sự, chính sách, báo cáo, thông báo...';
+  if (isHrWorkspaceRole(role)) {
+    return 'Tim nhan su, chinh sach, bao cao, thong bao...';
   }
 
-  return 'Tìm kiếm bảng công, đơn nghỉ, thông báo...';
+  return 'Tim kiem bang cong, don nghi, thong bao...';
 }
 
 function getRoleSubtitle(session) {
   switch (session.role) {
     case 'manager':
-      return 'Vai trò: Manager | Phạm vi: nhân sự trực thuộc';
+      return 'Vai tro: Manager | Pham vi: nhan su truc thuoc';
     case 'hr':
-      return 'Vai trò: HR | Quản trị nhân sự và chính sách';
+      return 'Vai tro: HR | Quan tri nhan su va chinh sach';
+    case 'admin':
+      return 'Vai tro: Admin | Quan tri nhan su va chinh sach';
     case 'employee':
-      return `Vai trò: Employee | Hình thức đăng nhập: ${session.provider || 'password'}`;
+      return `Vai tro: Employee | Hinh thuc dang nhap: ${session.provider || 'password'}`;
     default:
-      return `Vai trò: ${session.role}`;
+      return `Vai tro: ${session.role}`;
   }
+}
+
+function isHrWorkspaceRole(role) {
+  return role === 'hr' || role === 'admin';
 }
 
 export default WorkspaceTopbar;

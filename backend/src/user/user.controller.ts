@@ -35,6 +35,7 @@ import {
 } from 'src/common/code';
 import UserDto from './dto/user.dto';
 import updateUserDto from './dto/update-user.dto';
+import { SelfUpdateUserDto } from './dto/self-update-user.dto';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { UserAccessGaurd } from 'src/auth/guards/access.guard';
 import { RequirePermission } from 'src/common/require-permissions.decorator';
@@ -209,6 +210,42 @@ export class UserController {
   }
 
   @ApiOperation({
+    summary: 'for current authenticated user',
+    description:
+      'Allows a user to update only personal profile fields: avatar, phone, address, emergency contact, birthday.',
+  })
+  @ApiBearerAuth()
+  @Patch('/me')
+  @ApiBadRequestResponse()
+  @ApiNotFoundResponse()
+  @ApiOkResponse()
+  @UseGuards(JwtAuthGuard)
+  async updateMe(
+    @Req() req: Request & { user: RequestUser },
+    @Body() selfUpdateDto: SelfUpdateUserDto,
+  ): Promise<ResponseDto<UserDto>> {
+    const userID = req.user?.userID;
+    if (!userID) {
+      throw new BadRequestException('User information not found in request');
+    }
+
+    const { statusCode, message, data }: ResponseDto<UserDto> =
+      await this.userService.updateSelfProfile(userID, selfUpdateDto);
+
+    if (statusCode === NOTFOUND_CODE)
+      throw new NotFoundException(statusCode, message);
+
+    if (statusCode === OK_CODE)
+      return {
+        statusCode,
+        message,
+        data,
+      };
+
+    throw new BadRequestException(statusCode, message);
+  }
+
+  @ApiOperation({
     summary: 'for admin or my manger or me',
   })
   @ApiBearerAuth()
@@ -255,10 +292,7 @@ export class UserController {
     @Req() req: Request & { user: RequestUser },
   ): Promise<ResponseDto<UserDto>> {
     if (req.user.userID === userID) {
-      throw new BadRequestException(
-        OK_CODE,
-        'Cannot deactivate your own account',
-      );
+      throw new BadRequestException('Cannot deactivate your own account');
     }
     const { statusCode, message, data }: ResponseDto<UserDto> =
       await this.userService.deactivateUser(userID);
@@ -321,10 +355,7 @@ export class UserController {
     @Req() req: Request & { user: RequestUser },
   ): Promise<ResponseDto<UserDto>> {
     if (req.user.userID === userID) {
-      throw new BadRequestException(
-        OK_CODE,
-        'Cannot delete your own account',
-      );
+      throw new BadRequestException('Cannot delete your own account');
     }
     const { statusCode, message }: ResponseDto<UserDto> =
       await this.userService.deleteUser(userID);

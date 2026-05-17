@@ -99,9 +99,10 @@ export class RequestCorrectionController {
     @Param('departmentID', new ParseUUIDPipe()) departmentID: string,
     @Query('status') status = 'pending',
   ): Promise<DefaultResponse> {
+    const normalizedStatus = this.parseTimesheetStatus(status);
     const response = await this.requestCorrectionService.getDepartmentRequests(
       departmentID,
-      status as TimesheetStatus,
+      normalizedStatus,
     );
     return this.returnOrThrow(response);
   }
@@ -134,6 +135,22 @@ export class RequestCorrectionController {
       dto,
     );
     return this.returnOrThrow(response);
+  }
+
+  private parseTimesheetStatus(status: string): TimesheetStatus {
+    const normalizedStatus = String(status || TimesheetStatus.PENDING)
+      .trim()
+      .toUpperCase();
+
+    if (
+      Object.values(TimesheetStatus).includes(
+        normalizedStatus as TimesheetStatus,
+      )
+    ) {
+      return normalizedStatus as TimesheetStatus;
+    }
+
+    throw new BadRequestException(`Invalid correction status: ${status}`);
   }
 
   private returnOrThrow(response: DefaultResponse): DefaultResponse {

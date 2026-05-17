@@ -228,7 +228,7 @@ function resolveNotificationPath(notification: NotificationItem, role: Role | st
       return '/dashboard/manager?section=timesheet-approvals';
     }
 
-    if (role === 'hr') {
+    if (role === 'hr' || role === 'admin') {
       return '/dashboard/hr?section=reports';
     }
 

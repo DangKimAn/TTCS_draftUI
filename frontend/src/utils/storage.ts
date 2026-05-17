@@ -17,16 +17,26 @@ function parseStoredValue(value: string | null): AuthSession | null {
 }
 
 export function getAuthSession(): AuthSession | null {
-  const localValue = parseStoredValue(localStorage.getItem(AUTH_STORAGE_KEY));
+  const localRawValue = localStorage.getItem(AUTH_STORAGE_KEY);
+  const localValue = parseStoredValue(localRawValue);
 
   if (localValue?.accessToken || localValue?.token) {
     return localValue;
   }
 
-  const sessionValue = parseStoredValue(sessionStorage.getItem(AUTH_STORAGE_KEY));
+  if (localRawValue) {
+    localStorage.removeItem(AUTH_STORAGE_KEY);
+  }
+
+  const sessionRawValue = sessionStorage.getItem(AUTH_STORAGE_KEY);
+  const sessionValue = parseStoredValue(sessionRawValue);
 
   if (sessionValue?.accessToken || sessionValue?.token) {
     return sessionValue;
+  }
+
+  if (sessionRawValue) {
+    sessionStorage.removeItem(AUTH_STORAGE_KEY);
   }
 
   return null;

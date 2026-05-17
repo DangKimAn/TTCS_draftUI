@@ -1,8 +1,4 @@
-import { Role } from '@prisma/client';
-import { IsAscii, IsNumber, IsOptional, IsString } from 'class-validator';
-import DepartmentDto from 'src/department/dto/department.dto';
-import { RoleDto } from 'src/role/dto/Role.dto';
-import UserDto from 'src/user/dto/user.dto';
+import { IsNumber, IsString } from 'class-validator';
 
 // class ResponseDtoRole{
 
