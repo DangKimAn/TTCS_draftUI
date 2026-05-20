@@ -252,6 +252,56 @@ export class MonthlyTimeSheetService {
     };
   }
 
+  async getMonthlyTimesheetsForReview(
+    month: number,
+    year: number,
+    currentManagerId?: string,
+  ): Promise<DefaultResponse> {
+    if (!currentManagerId) {
+      throw new BadRequestException('Manager userID is required');
+    }
+
+    if (
+      !Number.isInteger(month) ||
+      month < 1 ||
+      month > 12 ||
+      !Number.isInteger(year) ||
+      year < 1900
+    ) {
+      throw new BadRequestException('Invalid month or year');
+    }
+
+    const timesheets = await this.prismaService.monthlyTimesheet.findMany({
+      where: {
+        month,
+        year,
+        status: MonthlyTimesheetStatus.SUBMITTED,
+        employee: {
+          department: {
+            managerID: currentManagerId,
+          },
+        },
+      },
+      include: {
+        employee: {
+          include: {
+            department: true,
+          },
+        },
+        entries: {
+          orderBy: { date: 'asc' },
+        },
+      },
+      orderBy: [{ createdAt: 'desc' }, { monthlyTimesheetID: 'asc' }],
+    });
+
+    return {
+      statusCode: OK_CODE,
+      message: 'get monthly timesheets for review successfull',
+      data: timesheets,
+    };
+  }
+
   async exportPersonalTimesheetCsv(
     userID: string,
     month: number,

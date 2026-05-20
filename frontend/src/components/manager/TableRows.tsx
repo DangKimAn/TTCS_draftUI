@@ -69,37 +69,37 @@ export const TimesheetRow = React.memo(({
   style?: React.CSSProperties;
 }) => {
   return (
-    <div style={style} className="flex items-center hover:bg-slate-50 transition-colors border-b border-slate-100 last:border-0 group">
-      <div className="px-4 py-4 min-w-[100px]">
+    <div style={{ ...style, gridTemplateColumns: 'minmax(72px,0.7fr) minmax(130px,1.35fr) minmax(112px,1fr) minmax(116px,0.95fr) minmax(54px,0.45fr) minmax(54px,0.45fr) minmax(68px,0.55fr) minmax(92px,0.75fr) minmax(108px,1fr) minmax(104px,0.75fr)' }} className="grid items-center hover:bg-slate-50 transition-colors border-b border-slate-100 last:border-0 group">
+      <div className="min-w-0 px-3 py-4">
         <div className="flex flex-col gap-0.5">
           <strong className="text-sm text-slate-800 font-bold truncate">{timesheet.code}</strong>
           <span className="text-[11px] text-slate-400 font-medium truncate">{timesheet.locked ? 'Đã khóa' : 'Có thể xử lý'}</span>
         </div>
       </div>
-      <div className="flex-1 px-4 py-4 min-w-[180px]">
+      <div className="min-w-0 px-3 py-4">
         <div className="flex flex-col gap-0.5">
           <strong className="text-sm text-slate-800 font-bold truncate">{employee?.fullName || '--'}</strong>
           <span className="text-[11px] text-slate-400 font-medium truncate">{employee?.email || '--'}</span>
         </div>
       </div>
-      <div className="flex-1 px-4 py-4 text-sm text-slate-600 font-medium min-w-[140px] truncate">{departmentName}</div>
-      <div className="px-4 py-4 min-w-[120px]">
+      <div className="min-w-0 px-3 py-4 text-sm text-slate-600 font-medium truncate" title={departmentName}>{departmentName}</div>
+      <div className="min-w-0 px-3 py-4">
         <div className="flex flex-col gap-0.5">
           <strong className="text-sm text-slate-800 font-bold truncate">{formatDate(timesheet.workDate)}</strong>
           <span className="text-[11px] text-slate-400 font-medium truncate">{timesheet.periodLabel}</span>
         </div>
       </div>
-      <div className="px-4 py-4 text-sm text-slate-600 font-medium whitespace-nowrap min-w-[80px]">{timesheet.checkIn || '--'}</div>
-      <div className="px-4 py-4 text-sm text-slate-600 font-medium whitespace-nowrap min-w-[80px]">{timesheet.checkOut || '--'}</div>
-      <div className="px-4 py-4 text-sm text-slate-800 font-black whitespace-nowrap min-w-[80px]">{(timesheet.totalHours || 0).toFixed(1)}h</div>
-      <div className="px-4 py-4 min-w-[100px]">
+      <div className="min-w-0 px-2 py-4 text-sm text-slate-600 font-medium whitespace-nowrap">{timesheet.checkIn || '--'}</div>
+      <div className="min-w-0 px-2 py-4 text-sm text-slate-600 font-medium whitespace-nowrap">{timesheet.checkOut || '--'}</div>
+      <div className="min-w-0 px-2 py-4 text-sm text-slate-800 font-black whitespace-nowrap">{(timesheet.totalHours || 0).toFixed(1)}h</div>
+      <div className="min-w-0 px-3 py-4">
         <StatusBadge status={timesheet.status} />
       </div>
-      <div className="flex-1 px-4 py-4 min-w-[120px]">
+      <div className="min-w-0 px-3 py-4 overflow-hidden">
         <WarningList warnings={timesheet.warnings} />
       </div>
-      <div className="px-4 py-4 min-w-[160px]">
-        <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+      <div className="min-w-0 px-3 py-4">
+        <div className="flex items-center gap-1.5">
           <button
             onClick={() => onViewDetail(timesheet.id)}
             className="p-2 rounded-lg bg-slate-50 text-slate-600 border border-slate-200 hover:bg-slate-100 transition-all"
@@ -110,14 +110,14 @@ export const TimesheetRow = React.memo(({
           <button
             onClick={() => onApprove(timesheet.id)}
             disabled={!reviewable}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-600 font-bold text-xs border border-emerald-100 hover:bg-emerald-100 disabled:opacity-40 transition-all"
+            className="flex items-center justify-center gap-1 px-2 py-1.5 rounded-lg bg-emerald-50 text-emerald-600 font-bold text-[10px] border border-emerald-100 hover:bg-emerald-100 disabled:opacity-40 transition-all"
           >
             <FiCheck /> Duyệt
           </button>
           <button
             onClick={() => onReject(timesheet.id)}
             disabled={!reviewable}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-50 text-rose-600 font-bold text-xs border border-rose-100 hover:bg-rose-100 disabled:opacity-40 transition-all"
+            className="flex items-center justify-center gap-1 px-2 py-1.5 rounded-lg bg-rose-50 text-rose-600 font-bold text-[10px] border border-rose-100 hover:bg-rose-100 disabled:opacity-40 transition-all"
           >
             <FiXCircle /> Từ chối
           </button>

@@ -95,6 +95,7 @@ export interface Timesheet {
   code?: string;
   employeeId: string;
   departmentId?: string;
+  departmentName?: string;
   workDate?: string;
   date?: string;
   periodLabel?: string;

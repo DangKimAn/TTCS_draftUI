@@ -28,6 +28,31 @@ export class AttendanceModuleService {
     private readonly notificationService: NotificationService,
   ) {}
 
+  private async reopenCurrentTimesheetForAttendance(
+    monthlyTimesheetID: string,
+    status: MonthlyTimesheetStatus | string | undefined,
+    dbCtx: Prisma.TransactionClient,
+  ): Promise<void> {
+    if (
+      status !== MonthlyTimesheetStatus.APPROVED &&
+      status !== MonthlyTimesheetStatus.SUBMITTED
+    ) {
+      return;
+    }
+
+    await dbCtx.monthlyTimesheet.update({
+      where: { monthlyTimesheetID },
+      data: {
+        status: MonthlyTimesheetStatus.DRAFT,
+        isSubmitted: false,
+        canSubmit: false,
+        reasonReject: null,
+        approvedById: null,
+        reviewedAt: null,
+      },
+    });
+  }
+
   async getAllAttedencOfMonth(
     userID: string,
     getAttedencOfMonth: GetAttendenceDto,
@@ -121,21 +146,12 @@ export class AttendanceModuleService {
           };
         }
 
-        if (timesheet.data.status === MonthlyTimesheetStatus.APPROVED) {
-          return {
-            statusCode: BADREQUEST_CODE,
-            message: 'Approved monthly timesheet is locked',
-          };
-        }
-
-        if (timesheet.data.status === MonthlyTimesheetStatus.SUBMITTED) {
-          return {
-            statusCode: BADREQUEST_CODE,
-            message: 'Submitted monthly timesheet is waiting for review',
-          };
-        }
-
         const monthlyTimesheetID = timesheet.data.monthlyTimesheetID;
+        await this.reopenCurrentTimesheetForAttendance(
+          monthlyTimesheetID,
+          timesheet.data.status,
+          dbCtx,
+        );
 
         const lastEntry = await dbCtx.timesheetEntry.findFirst({
           where: {
@@ -242,19 +258,11 @@ export class AttendanceModuleService {
 
         const monthlyTimesheetID = timesheet.data.monthlyTimesheetID;
 
-        if (timesheet.data.status === MonthlyTimesheetStatus.APPROVED) {
-          return {
-            statusCode: BADREQUEST_CODE,
-            message: 'Approved monthly timesheet is locked',
-          };
-        }
-
-        if (timesheet.data.status === MonthlyTimesheetStatus.SUBMITTED) {
-          return {
-            statusCode: BADREQUEST_CODE,
-            message: 'Submitted monthly timesheet is waiting for review',
-          };
-        }
+        await this.reopenCurrentTimesheetForAttendance(
+          monthlyTimesheetID,
+          timesheet.data.status,
+          dbCtx,
+        );
 
         // --- BƯỚC 3: LẤY LƯỢT CHECK-IN MỚI NHẤT TRONG NGÀY ---
         const lastEntry = await dbCtx.timesheetEntry.findFirst({

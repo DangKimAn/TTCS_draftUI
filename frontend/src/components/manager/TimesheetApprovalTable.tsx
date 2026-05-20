@@ -13,15 +13,32 @@ interface TimesheetApprovalTableProps {
   isLoading: boolean;
 }
 
+const TIMESHEET_GRID_COLUMNS =
+  'minmax(72px,0.7fr) minmax(130px,1.35fr) minmax(112px,1fr) minmax(116px,0.95fr) minmax(54px,0.45fr) minmax(54px,0.45fr) minmax(68px,0.55fr) minmax(92px,0.75fr) minmax(108px,1fr) minmax(104px,0.75fr)';
+
 const TimesheetRowItem = React.memo(({ index, data, style }: any) => {
-  const { rows, getEmployeeById, getDepartmentName, onApprove, onReject, onViewDetail, isTimesheetReviewable } = data;
+  const {
+    rows,
+    getEmployeeById,
+    getDepartmentName,
+    onApprove,
+    onReject,
+    onViewDetail,
+    isTimesheetReviewable,
+  } = data;
   const timesheet = rows[index];
+  const employee = getEmployeeById(timesheet.employeeId);
+  const departmentName =
+    timesheet.departmentName ||
+    employee?.departmentName ||
+    getDepartmentName(timesheet.departmentId);
+
   return (
     <TimesheetRow
       style={style}
       timesheet={timesheet}
-      employee={getEmployeeById(timesheet.employeeId)}
-      departmentName={getDepartmentName(timesheet.departmentId)}
+      employee={employee}
+      departmentName={departmentName}
       onApprove={onApprove}
       onReject={onReject}
       onViewDetail={onViewDetail}
@@ -49,23 +66,24 @@ const TimesheetApprovalTable: React.FC<TimesheetApprovalTableProps> = ({
         <span className="text-[10px] font-black text-blue-500 uppercase tracking-widest block mb-1">Timesheets</span>
         <h2 className="text-xl font-bold text-slate-800 m-0">Danh sách bảng công</h2>
       </div>
-      <div className="overflow-x-auto -mx-6">
-        <div className="min-w-[1200px]">
-          {/* Header */}
-          <div className="flex bg-slate-50/50 border-y border-slate-100">
-            <div className="px-4 py-3 text-left text-[11px] font-black text-slate-400 uppercase tracking-wider min-w-[100px]">Mã</div>
-            <div className="flex-1 px-4 py-3 text-left text-[11px] font-black text-slate-400 uppercase tracking-wider min-w-[180px]">Nhân viên</div>
-            <div className="flex-1 px-4 py-3 text-left text-[11px] font-black text-slate-400 uppercase tracking-wider min-w-[140px]">Phòng ban</div>
-            <div className="px-4 py-3 text-left text-[11px] font-black text-slate-400 uppercase tracking-wider min-w-[120px]">Ngày/Kỳ công</div>
-            <div className="px-4 py-3 text-left text-[11px] font-black text-slate-400 uppercase tracking-wider min-w-[80px]">In</div>
-            <div className="px-4 py-3 text-left text-[11px] font-black text-slate-400 uppercase tracking-wider min-w-[80px]">Out</div>
-            <div className="px-4 py-3 text-left text-[11px] font-black text-slate-400 uppercase tracking-wider min-w-[80px]">Tổng giờ</div>
-            <div className="px-4 py-3 text-left text-[11px] font-black text-slate-400 uppercase tracking-wider min-w-[100px]">Trạng thái</div>
-            <div className="flex-1 px-4 py-3 text-left text-[11px] font-black text-slate-400 uppercase tracking-wider min-w-[120px]">Cảnh báo</div>
-            <div className="px-4 py-3 text-left text-[11px] font-black text-slate-400 uppercase tracking-wider min-w-[160px]">Hành động</div>
+      <div className="-mx-6">
+        <div className="w-full max-w-full">
+          <div
+            className="grid bg-slate-50/50 border-y border-slate-100"
+            style={{ gridTemplateColumns: TIMESHEET_GRID_COLUMNS }}
+          >
+            <div className="px-3 py-3 text-left text-[10px] font-black text-slate-400 uppercase tracking-wider">Mã</div>
+            <div className="px-3 py-3 text-left text-[10px] font-black text-slate-400 uppercase tracking-wider">Nhân viên</div>
+            <div className="px-3 py-3 text-left text-[10px] font-black text-slate-400 uppercase tracking-wider">Phòng ban</div>
+            <div className="px-3 py-3 text-left text-[10px] font-black text-slate-400 uppercase tracking-wider">Ngày/Kỳ công</div>
+            <div className="px-2 py-3 text-left text-[10px] font-black text-slate-400 uppercase tracking-wider">In</div>
+            <div className="px-2 py-3 text-left text-[10px] font-black text-slate-400 uppercase tracking-wider">Out</div>
+            <div className="px-2 py-3 text-left text-[10px] font-black text-slate-400 uppercase tracking-wider">Tổng</div>
+            <div className="px-3 py-3 text-left text-[10px] font-black text-slate-400 uppercase tracking-wider">Trạng thái</div>
+            <div className="px-3 py-3 text-left text-[10px] font-black text-slate-400 uppercase tracking-wider">Cảnh báo</div>
+            <div className="px-3 py-3 text-left text-[10px] font-black text-slate-400 uppercase tracking-wider">Hành động</div>
           </div>
 
-          {/* Body */}
           {rows.length > 0 ? (
             <List
               height={listHeight}

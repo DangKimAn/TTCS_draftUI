@@ -243,6 +243,51 @@ describe('business rules', () => {
       );
     });
 
+    it('reopens a locked current monthly timesheet before check-in', async () => {
+      const tx = {
+        monthlyTimesheet: {
+          update: jest.fn().mockResolvedValue({}),
+        },
+        timesheetEntry: {
+          findFirst: jest.fn().mockResolvedValue(null),
+          create: jest.fn().mockResolvedValue({}),
+        },
+      };
+      const monthlyTimesheetService = {
+        getMonthlyTimeSheet: jest.fn().mockResolvedValue({
+          statusCode: OK_CODE,
+          data: { monthlyTimesheetID: 'monthly-1', status: APPROVED },
+        }),
+        refreshCanSubmit: jest.fn().mockResolvedValue(true),
+      };
+      const service = new AttendanceModuleService(
+        { $transaction: jest.fn((callback) => callback(tx)) } as any,
+        {
+          getUserByUserID: jest
+            .fn()
+            .mockResolvedValue({ statusCode: OK_CODE, data: user }),
+        } as any,
+        monthlyTimesheetService as any,
+        { createNotification: jest.fn() } as any,
+      );
+
+      const result = await service.checkIn(user.userID, '192.168.1.20');
+
+      expect(result.statusCode).toBe(CREATED_RESPONE);
+      expect(tx.monthlyTimesheet.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { monthlyTimesheetID: 'monthly-1' },
+          data: expect.objectContaining({
+            status: DRAFT,
+            isSubmitted: false,
+            approvedById: null,
+            reviewedAt: null,
+          }),
+        }),
+      );
+      expect(tx.timesheetEntry.create).toHaveBeenCalled();
+    });
+
     it('creates missing out warning when check-out is missing at end of day', () => {
       // Simulate system closing a missing checkout
       // This is a placeholder test for business rule validation

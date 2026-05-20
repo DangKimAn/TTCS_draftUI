@@ -89,14 +89,10 @@ function ManagerDashboard() {
   }, []);
 
   const loadReviewTimesheets = async ({ showSuccess = false } = {}) => {
-    if (!currentManager.departmentId) {
-      setFeedback({ type: 'danger', message: 'Khong tim thay phong ban cua manager.' });
-      return;
-    }
     setIsTimesheetLoading(true);
     try {
       const result = await getManagerMonthlyTimesheetsForReview(
-        currentManager.departmentId,
+        currentManager.departmentId || '',
         reviewPeriod.month,
         reviewPeriod.year,
       );

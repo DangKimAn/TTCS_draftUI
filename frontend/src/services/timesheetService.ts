@@ -24,6 +24,11 @@ import {
   isEarlyOut,
   isLate,
 } from '../utils/dateUtils';
+import {
+  calculateWorkingHours,
+  formatTimeFromIso,
+  getTodayDateKey,
+} from '../utils/timeUtils';
 
 type PeriodType = 'week' | 'month' | string;
 type ReviewStatus = 'Approved' | 'Rejected' | 'accepted' | 'rejected' | 'approved';
@@ -47,6 +52,8 @@ interface BackendMonthlyTimesheet {
   isSubmitted?: boolean;
   reviewedAt?: string | null;
   createdAt?: string | null;
+  employee?: BackendDepartmentUser | null;
+  entries?: BackendTimesheetEntry[];
 }
 
 interface BackendDepartmentUser {
@@ -59,9 +66,29 @@ interface BackendDepartmentUser {
   departmentID?: string;
   departmentId?: string;
   departmentName?: string;
+  department?: {
+    departmentID?: string;
+    departmentId?: string;
+    departmentName?: string;
+    name?: string;
+  } | null;
   roleId?: string | null;
   remainDaysofLeave?: number;
   isActive?: boolean;
+}
+
+interface BackendTimesheetEntry {
+  timesheetEntryID?: string;
+  id?: string;
+  monthlyTimesheetID?: string;
+  date?: string;
+  status?: string;
+  checkIn?: string | Date | null;
+  checkOut?: string | Date | null;
+  IPAddress?: string;
+  ipAddress?: string;
+  deviceInfo?: string | null;
+  isWarning?: boolean;
 }
 
 export interface MonthlyTimesheetData extends TimesheetSummary {
@@ -414,14 +441,21 @@ function buildWarningsFromRecords(records: Attendance[]): TimesheetWarning[] {
 function normalizeDepartmentUser(user: BackendDepartmentUser, fallbackDepartmentID: string): Record<string, any> {
   const id = user.userID || user.id || '';
   const fullName = user.fullName || user.name || user.username || user.email || id;
+  const department = user.department || null;
+  const departmentId =
+    user.departmentID ||
+    user.departmentId ||
+    department?.departmentID ||
+    department?.departmentId ||
+    fallbackDepartmentID;
 
   return {
     id,
     employeeCode: id ? `EMP-${id.slice(0, 8)}` : 'EMP',
     fullName,
     email: user.email || '',
-    departmentId: user.departmentID || user.departmentId || fallbackDepartmentID,
-    departmentName: user.departmentName || '',
+    departmentId,
+    departmentName: user.departmentName || department?.departmentName || department?.name || '',
     title: 'Nhan vien',
     role: 'employee',
     status: user.isActive === false ? 'Inactive' : 'Active',
@@ -454,6 +488,7 @@ function buildManagerTimesheet(
     code: `TS-${monthlyTimesheet.year}${monthText}-${shortEmployeeId}`,
     employeeId: employee.id,
     departmentId: employee.departmentId,
+    departmentName: employee.departmentName,
     workDate: lastRecord?.date || `${monthlyTimesheet.year}-${monthText}-01`,
     date: lastRecord?.date || `${monthlyTimesheet.year}-${monthText}-01`,
     periodLabel: monthlyTimesheet.periodLabel,
@@ -849,49 +884,63 @@ export async function getManagerMonthlyTimesheetsForReview(
   month: number,
   year: number,
 ): Promise<ManagerReviewTimesheetResult> {
-  if (!departmentID) {
-    throw createTimesheetError('Missing department ID.', 'TIMESHEET_DEPARTMENT_MISSING');
-  }
-
   validateMonthYear(month, year);
 
   try {
-    const users = await fetchDepartmentUsers(departmentID);
-    const employees = users
-      .map((user) => normalizeDepartmentUser(user, departmentID))
-      .filter((employee) => employee.id);
-    const reviewTimesheets = await Promise.all(
-      employees.map(async (employee) => {
-        try {
-          const monthlyTimesheet = await getMonthlyTimesheet(employee.id, month, year);
+    const response = await httpClient.get<
+      BackendResponse<BackendMonthlyTimesheet[]> | BackendMonthlyTimesheet[]
+    >('/time-sheet/review-list', {
+      params: { month, year },
+    });
+    const payload = unwrapBackendData<BackendMonthlyTimesheet[]>(response.data);
+    const reviewMonthlyTimesheets = Array.isArray(payload) ? payload : [];
+    const employeeById = new Map<string, Record<string, any>>();
+    const timesheets = reviewMonthlyTimesheets.map((monthlyTimesheet) => {
+      const employeePayload: BackendDepartmentUser = monthlyTimesheet.employee || {};
+      const employee = normalizeDepartmentUser(
+        {
+          ...employeePayload,
+          userID: employeePayload.userID || monthlyTimesheet.userID,
+        },
+        departmentID,
+      );
+      const normalizedMonthlyTimesheet = cacheMonthlyTimesheet(
+        normalizeMonthlyTimesheet(
+          monthlyTimesheet,
+          monthlyTimesheet.userID || employee.id,
+          monthlyTimesheet.month || month,
+          monthlyTimesheet.year || year,
+        ),
+      );
+      const records = (monthlyTimesheet.entries || []).map((entry) =>
+        normalizeReviewEntry(entry, normalizedMonthlyTimesheet.userID),
+      );
+      const managerTimesheet = buildManagerTimesheet(
+        normalizedMonthlyTimesheet,
+        employee,
+        records,
+      );
 
-          if (!isReviewableMonthlyTimesheet(monthlyTimesheet)) {
-            return null;
-          }
+      employeeById.set(employee.id, {
+        ...employee,
+        monthlyHours: managerTimesheet.totalHours || employee.monthlyHours || 0,
+      });
 
-          const records = await getMonthlyAttendance(employee.id, month, year).catch(() => []);
-          return buildManagerTimesheet(monthlyTimesheet, employee, records);
-        } catch (error) {
-          if ((error as AppError).code === 'TIMESHEET_NOT_FOUND') {
-            return null;
-          }
-
-          throw error;
-        }
-      }),
-    );
-    const timesheets = reviewTimesheets.filter(Boolean) as Timesheet[];
-    const hoursByEmployee = new Map<string, number>();
-
-    timesheets.forEach((timesheet) => {
-      hoursByEmployee.set(timesheet.employeeId, timesheet.totalHours || 0);
+      return managerTimesheet;
     });
 
+    const employees = [...employeeById.values()];
+
+    if (employees.length === 0 && departmentID) {
+      const users = await fetchDepartmentUsers(departmentID).catch(() => []);
+      users
+        .map((user) => normalizeDepartmentUser(user, departmentID))
+        .filter((employee) => employee.id)
+        .forEach((employee) => employeeById.set(employee.id, employee));
+    }
+
     return {
-      employees: employees.map((employee) => ({
-        ...employee,
-        monthlyHours: hoursByEmployee.get(employee.id) || employee.monthlyHours || 0,
-      })),
+      employees: [...employeeById.values()],
       timesheets,
     };
   } catch (error) {
@@ -1005,6 +1054,61 @@ function normalizeReportRow(row: Timesheet & Record<string, any>): Timesheet {
     totalHours: Number(row.totalHours || 0),
     status: row.status || 'Pending',
     warnings: Array.isArray(row.warnings) ? row.warnings : [],
+  };
+}
+
+function toIsoString(value: string | Date | null | undefined): string | null {
+  if (!value) {
+    return null;
+  }
+
+  if (value instanceof Date) {
+    return value.toISOString();
+  }
+
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
+}
+
+function formatNullableTime(isoValue: string | null): string | null {
+  if (!isoValue) {
+    return null;
+  }
+
+  const formatted = formatTimeFromIso(isoValue);
+  return formatted === '--' ? null : formatted;
+}
+
+function normalizeReviewEntry(entry: BackendTimesheetEntry, userID: string): Attendance {
+  const checkInIso = toIsoString(entry.checkIn);
+  const checkOutIso = toIsoString(entry.checkOut);
+  const date = entry.date || checkInIso?.slice(0, 10) || getTodayDateKey();
+  const normalizedStatus = String(entry.status || '').toLowerCase();
+  const status =
+    normalizedStatus.includes('missing') || (checkInIso && !checkOutIso && date < getTodayDateKey())
+      ? 'Missing Out'
+      : checkInIso && checkOutIso
+        ? 'Completed'
+        : checkInIso
+          ? 'Working'
+          : 'Not Started';
+
+  return {
+    id: entry.timesheetEntryID || entry.id || `${userID}-${date}-${checkInIso || 'empty'}`,
+    userEmail: userID,
+    date,
+    checkInTime: formatNullableTime(checkInIso),
+    checkOutTime: formatNullableTime(checkOutIso),
+    totalHours: calculateWorkingHours(checkInIso, checkOutIso),
+    status,
+    serverTimeAtCheckIn: checkInIso,
+    serverTimeAtCheckOut: checkOutIso,
+    ipAddressAtCheckIn: entry.IPAddress || entry.ipAddress || null,
+    ipAddressAtCheckOut: null,
+    deviceInfoAtCheckIn: entry.deviceInfo || null,
+    deviceInfoAtCheckOut: null,
+    hasIpWarning: Boolean(entry.isWarning),
+    note: status === 'Missing Out' ? 'Ban ghi thieu gio check-out.' : '',
   };
 }
 

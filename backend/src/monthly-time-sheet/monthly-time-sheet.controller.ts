@@ -83,6 +83,39 @@ export class MonthlyTimeSheetController {
     throw new BadRequestException(statusCode, message);
   }
 
+  @Get('/review-list')
+  @ApiOkResponse({
+    description: 'Submitted monthly timesheets for manager review',
+  })
+  @ApiBadRequestResponse()
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, UserAccessGaurd)
+  @RequirePermission('manager')
+  @ApiOperation({
+    summary: 'Get submitted monthly timesheets in current manager scope',
+  })
+  async getMonthlyTimesheetsForReview(
+    @Query() getTimesheetDto: GetTimeSheetDto,
+    @Req() req: AuthenticatedRequest,
+  ): Promise<DefaultResponse> {
+    const { statusCode, message, data } =
+      await this.timeSheetService.getMonthlyTimesheetsForReview(
+        getTimesheetDto.month,
+        getTimesheetDto.year,
+        req.user?.userID,
+      );
+
+    if (statusCode === OK_CODE) {
+      return {
+        statusCode,
+        message,
+        data,
+      };
+    }
+
+    throw new BadRequestException(statusCode, message);
+  }
+
   @Get('/report')
   @ApiOkResponse({ description: 'Timesheet report with filters and summary' })
   @ApiBadRequestResponse()
