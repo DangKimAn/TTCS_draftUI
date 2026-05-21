@@ -464,3 +464,27 @@ export async function verifyAuthSession(): Promise<AuthSession | null> {
     return null;
   }
 }
+
+export async function sendForgotPasswordCode(email: string): Promise<void> {
+  try {
+    await authClient.post('/auth/forgot-password/send-code', { email });
+  } catch (error) {
+    throw normalizeAuthError(error, 'Không thể gửi mã xác nhận. Vui lòng thử lại.');
+  }
+}
+
+export async function verifyForgotPasswordCode(email: string, code: string): Promise<void> {
+  try {
+    await authClient.post('/auth/forgot-password/verify-code', { email, code });
+  } catch (error) {
+    throw normalizeAuthError(error, 'Mã xác nhận không hợp lệ hoặc đã hết hạn.');
+  }
+}
+
+export async function resetPassword(email: string, code: string, newPassword: string): Promise<void> {
+  try {
+    await authClient.post('/auth/forgot-password/reset', { email, code, newPassword });
+  } catch (error) {
+    throw normalizeAuthError(error, 'Không thể đặt lại mật khẩu. Vui lòng thử lại.');
+  }
+}
