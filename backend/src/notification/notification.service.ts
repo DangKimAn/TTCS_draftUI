@@ -22,7 +22,7 @@ export class NotificationService {
     private readonly userService: UserService,
     private readonly prismaService: PrismaService,
     private readonly realtimeService: RealtimeService,
-  ) { }
+  ) {}
 
   async sendNotification(
     senderID: string,
@@ -279,7 +279,11 @@ export class NotificationService {
       }
 
       if (result.statusCode === CREATED_RESPONE && result.data) {
-        this.realtimeService.emitToUser(receiverID, 'new_notification', result.data);
+        this.realtimeService.emitToUser(
+          receiverID,
+          'new_notification',
+          result.data,
+        );
       }
 
       return result;

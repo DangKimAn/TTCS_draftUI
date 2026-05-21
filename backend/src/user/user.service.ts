@@ -35,7 +35,7 @@ export class UserService {
     private bcryptHashedService: BycyptHashedService,
     private departmentService: DepartmentService,
     private cloudinaryService: CloudinaryService,
-  ) { }
+  ) {}
 
   async getAllUser(): Promise<ResponseDto<UserDto[]>> {
     const users: UserDto[] = await this.prismaService.user.findMany({});
@@ -61,10 +61,10 @@ export class UserService {
         department: {
           include: {
             manager: {
-              select: { username: true, email: true }
-            }
-          }
-        }
+              select: { username: true, email: true },
+            },
+          },
+        },
       },
     });
     if (!user)
@@ -95,10 +95,10 @@ export class UserService {
         department: {
           include: {
             manager: {
-              select: { username: true, email: true }
-            }
-          }
-        }
+              select: { username: true, email: true },
+            },
+          },
+        },
       },
     });
     if (!user)
@@ -130,10 +130,10 @@ export class UserService {
         department: {
           include: {
             manager: {
-              select: { username: true, email: true }
-            }
-          }
-        }
+              select: { username: true, email: true },
+            },
+          },
+        },
       },
     });
 
@@ -180,8 +180,8 @@ export class UserService {
         this.roleService.getRoleByRoleName(roleName || nameRole_emloyee),
         departmentName
           ? this.prismaService.department.findUnique({
-            where: { departmentName },
-          })
+              where: { departmentName },
+            })
           : Promise.resolve(null),
       ]);
 
@@ -334,8 +334,8 @@ export class UserService {
 
       const deptResult = departmentName
         ? await this.departmentService.getDepartmentByDeparmentName(
-          departmentName,
-        )
+            departmentName,
+          )
         : null;
       if (
         departmentName &&
@@ -541,9 +541,15 @@ export class UserService {
         return { statusCode: NOTFOUND_CODE, message: 'User not found' };
       }
 
-      const isMatch = await this.bcryptHashedService.compare(dto.oldPassword, currentUser.hashedPassword);
+      const isMatch = await this.bcryptHashedService.compare(
+        dto.oldPassword,
+        currentUser.hashedPassword,
+      );
       if (!isMatch) {
-        return { statusCode: BADREQUEST_CODE, message: 'Mật khẩu cũ không chính xác' };
+        return {
+          statusCode: BADREQUEST_CODE,
+          message: 'Mật khẩu cũ không chính xác',
+        };
       }
 
       data.hashedPassword = await this.bcryptHashedService.hash(dto.password);
@@ -584,10 +590,15 @@ export class UserService {
     }
   }
 
-  async uploadAvatar(userID: string, file: Express.Multer.File): Promise<ResponseDto<UserDto>> {
+  async uploadAvatar(
+    userID: string,
+    file: Express.Multer.File,
+  ): Promise<ResponseDto<UserDto>> {
     try {
-      const uploadResult = await this.cloudinaryService.uploadFile(file);
-      const linkAvatar = uploadResult.secure_url;
+      const uploadResult = (await this.cloudinaryService.uploadFile(file)) as {
+        secure_url?: string;
+      };
+      const linkAvatar = String(uploadResult.secure_url || '');
 
       const updatedUser = await this.prismaService.user.update({
         where: { userID },
@@ -866,8 +877,14 @@ export class UserService {
     };
   }
 
-  async getManagerIdOfUserID(userID: string, tx?: Prisma.TransactionClient): Promise<DefaultResponse> {
-    const userGet: ResponseDto<UserDto> = await this.getUserByUserID(userID, tx);
+  async getManagerIdOfUserID(
+    userID: string,
+    tx?: Prisma.TransactionClient,
+  ): Promise<DefaultResponse> {
+    const userGet: ResponseDto<UserDto> = await this.getUserByUserID(
+      userID,
+      tx,
+    );
 
     if (userGet.statusCode !== OK_CODE || userGet.data === undefined)
       return {
@@ -881,7 +898,10 @@ export class UserService {
         message: 'user is not in any department',
       };
     const departmentGet: ResponseDto<DepartmentDto> =
-      await this.departmentService.getDepartmentById(userGet.data.departmentID, tx);
+      await this.departmentService.getDepartmentById(
+        userGet.data.departmentID,
+        tx,
+      );
 
     if (
       departmentGet.statusCode !== OK_CODE ||

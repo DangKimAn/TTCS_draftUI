@@ -13,33 +13,42 @@ import * as jwt from 'jsonwebtoken';
     origin: '*',
   },
 })
-export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect {
+export class RealtimeGateway
+  implements OnGatewayConnection, OnGatewayDisconnect
+{
   @WebSocketServer()
   server: Server;
 
-  constructor(private readonly configService: ConfigService) { }
+  constructor(private readonly configService: ConfigService) {}
 
   handleConnection(client: Socket) {
     try {
-      const token = client.handshake.auth?.token;
+      const token = client.handshake.auth?.token as string | undefined;
       if (!token) {
         client.disconnect();
         return;
       }
 
-      const secret = this.configService.get<string>('JWT_ACCESS_SECRET') || 'TIMESHEETSYSTEM_ACCESSSECRET';
-      const payload = jwt.verify(token, secret) as any;
+      const secret =
+        this.configService.get<string>('JWT_ACCESS_SECRET') ||
+        'TIMESHEETSYSTEM_ACCESSSECRET';
+      const payload = jwt.verify(token, secret) as jwt.JwtPayload;
 
-      if (!payload || !payload.userID) {
+      if (!payload || typeof payload !== 'object' || !('userID' in payload)) {
         client.disconnect();
         return;
       }
 
-      const userID = payload.userID;
-      client.join(`user_${userID}`);
-      console.log(`Client connected and joined room user_${userID}: ${client.id}`);
-    } catch (error) {
-      console.error('WebSocket connection error:', error.message);
+      const userID = String(payload.userID);
+      void client.join(`user_${userID}`);
+      console.log(
+        `Client connected and joined room user_${userID}: ${client.id}`,
+      );
+    } catch (error: unknown) {
+      console.error(
+        'WebSocket connection error:',
+        error instanceof Error ? error.message : 'Unknown error',
+      );
       client.disconnect();
     }
   }

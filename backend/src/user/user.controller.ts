@@ -13,12 +13,10 @@ import {
   Req,
   UseGuards,
   UseInterceptors,
-  UploadedFile
+  UploadedFile,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { diskStorage } from 'multer';
-import { extname } from 'path';
-import { v4 as uuidv4 } from 'uuid';
+
 import { Request } from 'express';
 import { RequestUser } from 'src/common/types';
 import { UserService } from './user.service';
@@ -48,7 +46,7 @@ import { RequirePermission } from 'src/common/require-permissions.decorator';
 
 @Controller('user')
 export class UserController {
-  constructor(private readonly userService: UserService) { }
+  constructor(private readonly userService: UserService) {}
 
   @ApiOkResponse({
     description: 'get all users successfull',

@@ -88,7 +88,7 @@ function HRDashboard() {
       
       const currentSession = getAuthSession();
       if (currentSession && fetchedProfile?.avatar && currentSession.avatar !== fetchedProfile.avatar) {
-        const nextSession = { ...currentSession, avatar: fetchedProfile.avatar };
+        const nextSession = { ...currentSession, avatar: String(fetchedProfile.avatar) };
         updateAuthSession(nextSession);
         window.dispatchEvent(new Event('avatar_updated'));
       }
@@ -109,7 +109,7 @@ function HRDashboard() {
     
     const currentSession = getAuthSession();
     if (currentSession) {
-      const nextSession = { ...currentSession, avatar: nextProfile.avatar };
+      const nextSession = { ...currentSession, avatar: String(nextProfile.avatar) };
       updateAuthSession(nextSession);
       window.dispatchEvent(new Event('avatar_updated'));
     }
