@@ -93,7 +93,7 @@ const TimesheetRowItem = React.memo(({ index, data, style }: any) => {
 });
 
 function TimesheetTable({ rows, onRequestCorrection }: { rows: any[]; onRequestCorrection: (row: any) => void }) {
-  const rowHeight = 64; 
+  const rowHeight = 84; 
   const maxVisibleRows = 10;
   const listHeight = Math.min(rows.length * rowHeight, maxVisibleRows * rowHeight);
 

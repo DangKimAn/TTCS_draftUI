@@ -30,7 +30,7 @@ export class AttendanceModuleService {
 
   private async reopenCurrentTimesheetForAttendance(
     monthlyTimesheetID: string,
-    status: MonthlyTimesheetStatus | string | undefined,
+    status: MonthlyTimesheetStatus | undefined,
     dbCtx: Prisma.TransactionClient,
   ): Promise<void> {
     if (
@@ -149,7 +149,7 @@ export class AttendanceModuleService {
         const monthlyTimesheetID = timesheet.data.monthlyTimesheetID;
         await this.reopenCurrentTimesheetForAttendance(
           monthlyTimesheetID,
-          timesheet.data.status,
+          timesheet.data.status as MonthlyTimesheetStatus | undefined,
           dbCtx,
         );
 
@@ -195,7 +195,10 @@ export class AttendanceModuleService {
         return await executeLogic(tx);
       }
 
-      return await this.prismaService.$transaction(executeLogic);
+      return await this.prismaService.$transaction(executeLogic, {
+        maxWait: 5000, // Chờ tối đa 5s để lấy connection
+        timeout: 15000, // Cho phép transaction chạy tối đa 15s
+      });
     } catch (error: unknown) {
       console.error('Error in checkIn:', error);
       return {
@@ -260,7 +263,7 @@ export class AttendanceModuleService {
 
         await this.reopenCurrentTimesheetForAttendance(
           monthlyTimesheetID,
-          timesheet.data.status,
+          timesheet.data.status as MonthlyTimesheetStatus | undefined,
           dbCtx,
         );
 
@@ -288,8 +291,10 @@ export class AttendanceModuleService {
           isWarning = true;
 
           // Gửi thông báo cho Manager
-          const managerResult =
-            await this.userService.getManagerIdOfUserID(userID);
+          const managerResult = await this.userService.getManagerIdOfUserID(
+            userID,
+            dbCtx,
+          );
           if (
             managerResult.statusCode === OK_CODE &&
             managerResult.data &&

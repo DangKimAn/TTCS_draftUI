@@ -12,7 +12,11 @@ import {
   Post,
   Req,
   UseGuards,
+  UseInterceptors,
+  UploadedFile,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+
 import { Request } from 'express';
 import { RequestUser } from 'src/common/types';
 import { UserService } from './user.service';
@@ -243,6 +247,36 @@ export class UserController {
       };
 
     throw new BadRequestException(statusCode, message);
+  }
+
+  @ApiOperation({
+    summary: 'Upload avatar for current authenticated user',
+  })
+  @ApiBearerAuth()
+  @Post('/avatar')
+  @UseGuards(JwtAuthGuard)
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadAvatar(
+    @Req() req: Request & { user: RequestUser },
+    @UploadedFile() file: Express.Multer.File,
+  ): Promise<ResponseDto<UserDto>> {
+    const userID = req.user?.userID;
+    if (!userID) {
+      throw new BadRequestException('User information not found in request');
+    }
+    if (!file) {
+      throw new BadRequestException('No file uploaded');
+    }
+
+    const { statusCode, message, data } = await this.userService.uploadAvatar(
+      userID,
+      file,
+    );
+
+    if (statusCode === OK_CODE) {
+      return { statusCode, message, data };
+    }
+    throw new BadRequestException(message);
   }
 
   @ApiOperation({

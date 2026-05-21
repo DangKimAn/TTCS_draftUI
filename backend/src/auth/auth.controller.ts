@@ -266,7 +266,7 @@ export class AuthController {
           'MICROSOFT_SSO_FAILED',
           callbackError instanceof Error
             ? callbackError.message
-          : 'Microsoft authentication failed.',
+            : 'Microsoft authentication failed.',
         ),
       );
     }

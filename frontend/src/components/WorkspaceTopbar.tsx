@@ -1,9 +1,24 @@
+import { useEffect, useState } from 'react';
 import { FiSearch } from 'react-icons/fi';
+import { useNavigate } from 'react-router-dom';
 import NotificationDropdown from './NotificationDropdown';
-import { getAuthSession } from '../utils/storage';
+import { getAuthSession, getDashboardPathByRole } from '../utils/storage';
+import { API_CONFIG } from '../config/api';
 
 function WorkspaceTopbar() {
-  const session = getAuthSession();
+  const [session, setSession] = useState(() => getAuthSession());
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const handleAvatarUpdated = () => {
+      setSession(getAuthSession());
+    };
+    window.addEventListener('avatar_updated', handleAvatarUpdated);
+    return () => {
+      window.removeEventListener('avatar_updated', handleAvatarUpdated);
+    };
+  }, []);
+
   const initials = session?.name
     ? session.name
         .split(' ')
@@ -29,8 +44,26 @@ function WorkspaceTopbar() {
       <div className="topbar__actions">
         <NotificationDropdown userID={session?.userID || session?.id} role={session?.role} />
 
-        <div className="topbar__profile">
-          <div className="topbar__avatar">{initials}</div>
+        <div 
+          className="topbar__profile hover:opacity-80 transition-opacity" 
+          onClick={() => {
+            const basePath = getDashboardPathByRole(session?.role);
+            navigate(`${basePath}?section=profile`);
+          }}
+          style={{ cursor: 'pointer' }}
+          title="Xem hồ sơ cá nhân"
+        >
+          <div className="topbar__avatar" style={{ overflow: 'hidden' }}>
+            {session?.avatar ? (
+              <img 
+                src={session.avatar.startsWith('http') ? session.avatar : `${API_CONFIG.BASE_URL.replace('/api', '')}${session.avatar}`} 
+                alt="Avatar" 
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+              />
+            ) : (
+              initials
+            )}
+          </div>
           <div className="topbar__profile-copy">
             <strong>{session?.name || 'Khach truy cap'}</strong>
             <span>

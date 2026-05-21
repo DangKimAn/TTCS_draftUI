@@ -5,6 +5,7 @@ import { RoleModule } from 'src/role/role.module';
 import { DepartmentModule } from 'src/department/department.module';
 import { BycyptHashedModule } from 'src/common/bycypt-hashed/bycypt-hashed.module';
 import { AuthModule } from 'src/auth/auth.module';
+import { CloudinaryModule } from 'src/common/cloudinary/cloudinary.module';
 
 @Module({
   controllers: [UserController],
@@ -14,6 +15,7 @@ import { AuthModule } from 'src/auth/auth.module';
     forwardRef(() => DepartmentModule),
     BycyptHashedModule,
     forwardRef(() => AuthModule),
+    CloudinaryModule,
   ],
   exports: [UserService],
 })

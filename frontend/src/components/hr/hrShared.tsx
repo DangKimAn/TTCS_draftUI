@@ -95,9 +95,9 @@ export function HRFeedback({ feedback }: { feedback: { type: string; message: st
 
 export function InfoItem({ label, value }: { label: string; value: ReactNode }) {
   return (
-    <div className="employee-info-card">
+    <div className="employee-info-card" style={{ minWidth: 0 }}>
       <span>{label}</span>
-      <strong>{value}</strong>
+      <strong className="truncate" title={typeof value === 'string' || typeof value === 'number' ? String(value) : undefined} style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{value}</strong>
     </div>
   );
 }

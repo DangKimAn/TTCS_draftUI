@@ -487,11 +487,10 @@
   align-items: center;
   justify-content: center;
   width: fit-content;
-  max-width: 100%;
-  min-height: 32px;
-  padding: 0 12px;
+  min-height: 28px;
+  padding: 0 10px;
   border-radius: 999px;
-  font-size: 0.8rem;
+  font-size: 0.72rem;
   font-weight: 600;
   line-height: 1;
   white-space: nowrap;
@@ -590,7 +589,7 @@
 .dashboard-table__head,
 .dashboard-table__row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 0.8fr) minmax(0, 0.8fr) minmax(0, 0.8fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 0.8fr) minmax(0, 0.8fr) minmax(0, 0.8fr) minmax(110px, 1fr);
   align-items: stretch;
   gap: 14px;
 }
@@ -1318,10 +1317,13 @@
 }
 
 .sidebar__item {
+  display: flex;
   width: 100%;
   min-height: 64px;
+  height: max-content;
   padding: 12px 14px;
   align-items: center;
+  text-align: left;
   gap: 14px;
   border-radius: 18px;
   background: rgba(255, 248, 226, 0.03);

@@ -290,7 +290,8 @@ function normalizeRequestStatus(
 }
 
 function getMonthPeriodLabel(month: number, year: number): string {
-  return `Thang ${month}/${year}`;
+  const periodConfig = getPeriodConfig('month', new Date(year, month - 1, 1));
+  return periodConfig.label;
 }
 
 function normalizeMonthlyTimesheet(

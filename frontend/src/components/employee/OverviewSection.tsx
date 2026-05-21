@@ -1,7 +1,7 @@
-﻿import { FiAlertCircle, FiBell, FiCheckCircle } from 'react-icons/fi';
+import { FiAlertCircle, FiBell, FiCheckCircle } from 'react-icons/fi';
 import { formatHours } from '../../utils/timeUtils';
 
-function OverviewSection({ overviewStats, todaySession, quickTasks, notifications }) {
+function OverviewSection({ overviewStats, todaySession, quickTasks, notifications, onNavigate }) {
   return (
     <section className="employee-section">
       <div className="employee-section__header">
@@ -15,7 +15,12 @@ function OverviewSection({ overviewStats, todaySession, quickTasks, notification
         {overviewStats.map((item) => {
           const Icon = item.icon;
           return (
-            <article key={item.label} className="dashboard-stat-card">
+            <article 
+              key={item.label} 
+              className={`dashboard-stat-card ${item.action ? 'cursor-pointer hover:bg-slate-50 transition-colors' : ''}`}
+              onClick={() => item.action && onNavigate && onNavigate(item.action)}
+              style={item.action ? { cursor: 'pointer' } : {}}
+            >
               <div className="dashboard-stat-card__icon">
                 <Icon />
               </div>
@@ -70,7 +75,12 @@ function OverviewSection({ overviewStats, todaySession, quickTasks, notification
 
             <div className="dashboard-list">
               {quickTasks.map((task) => (
-                <div key={task.label} className="dashboard-list__item dashboard-list__item--simple">
+                <div 
+                  key={task.label} 
+                  className={`dashboard-list__item dashboard-list__item--simple ${task.action ? 'cursor-pointer hover:bg-slate-50 transition-colors' : ''}`}
+                  onClick={() => task.action && onNavigate && onNavigate(task.action)}
+                  style={task.action ? { cursor: 'pointer' } : {}}
+                >
                   {task.type === 'warning' ? <FiAlertCircle /> : <FiCheckCircle />}
                   <span>{task.label}</span>
                 </div>
@@ -87,12 +97,16 @@ function OverviewSection({ overviewStats, todaySession, quickTasks, notification
             </div>
 
             <div className="dashboard-list">
-              {notifications.map((item) => (
-                <div key={item} className="dashboard-list__item dashboard-list__item--simple">
+              {notifications && notifications.length > 0 ? notifications.map((item) => (
+                <div key={item.id} className="dashboard-list__item dashboard-list__item--simple">
                   <FiBell />
-                  <span>{item}</span>
+                  <span>{item.content}</span>
                 </div>
-              ))}
+              )) : (
+                <div className="dashboard-list__item dashboard-list__item--simple">
+                  <span className="text-slate-400">Không có thông báo mới.</span>
+                </div>
+              )}
             </div>
           </section>
         </aside>

@@ -1,8 +1,10 @@
-﻿import { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { formatDate } from '../../utils/dateUtils';
+import LeaveRequestModal from '../LeaveRequestModal';
 
 function LeaveBalanceSection({ summary, requests }) {
   const [statusFilter, setStatusFilter] = useState('Tất cả');
+  const [selectedRequest, setSelectedRequest] = useState(null);
 
   const filteredRequests = useMemo(() => {
     if (statusFilter === 'Tất cả') {
@@ -70,11 +72,15 @@ function LeaveBalanceSection({ summary, requests }) {
 
         <div className="dashboard-list">
           {filteredRequests.length > 0 ? filteredRequests.map((item) => (
-            <div key={item.id} className="dashboard-list__item">
+            <div 
+              key={item.id} 
+              className="dashboard-list__item cursor-pointer hover:bg-slate-50 transition-colors"
+              onClick={() => setSelectedRequest(item)}
+              style={{ cursor: 'pointer' }}
+            >
               <div>
                 <strong>{item.type}</strong>
-                <span>{formatDate(item.startDate)} - {formatDate(item.endDate)}</span>
-                <span>{item.totalDays} ngày | {item.isUnpaid ? 'Không lương' : 'Có lương'}</span>
+                <span>{formatDate(item.startDate)} - {formatDate(item.endDate)} | {item.totalDays} ngày | {item.isUnpaid ? 'Không lương' : 'Có lương'}</span>
               </div>
               <div className={`dashboard-status-badge ${getLeaveStatusClass(item.status)}`}>
                 {getLeaveStatusLabel(item.status)}
@@ -85,6 +91,12 @@ function LeaveBalanceSection({ summary, requests }) {
           )}
         </div>
       </section>
+
+      <LeaveRequestModal 
+        isOpen={!!selectedRequest}
+        selectedRequest={selectedRequest}
+        onClose={() => setSelectedRequest(null)}
+      />
     </section>
   );
 }

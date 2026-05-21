@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { FiAlertCircle, FiCheckCircle, FiClock, FiFileText } from 'react-icons/fi';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import EmployeeContentRouter from '../components/employee/EmployeeContentRouter';
+import { useSocket } from '../contexts/SocketContext';
 import { DEFAULT_EMPLOYEE_SECTION, isValidEmployeeSection } from '../config/employeeMenu';
 import {
   checkIn,
@@ -15,7 +16,8 @@ import {
 } from '../services/attendanceService';
 import { createCorrectionRequest } from '../services/correctionService';
 import { createLeaveRequest, getLeaveBalance, getLeaveTypes, getMyLeaveRequests } from '../services/leaveService';
-import { getEmployeeProfile, updateEmployeeProfile } from '../services/profileService';
+import { getEmployeeProfile, updateEmployeeProfile, uploadAvatar } from '../services/profileService';
+import { getMyNotifications } from '../services/notificationService';
 import {
   canSubmitTimesheet,
   getMonthlyTimesheetPeriodData,
@@ -28,7 +30,7 @@ import {
   getWorkdayProgressPercent,
 } from '../utils/timeUtils';
 import { getDateKey } from '../utils/dateUtils';
-import { getAuthSession, getDashboardPathByRole } from '../utils/storage';
+import { getAuthSession, getDashboardPathByRole, updateAuthSession } from '../utils/storage';
 import './EmployeeDashboard.css';
 import '../styles/attendance.css';
 import '../styles/timesheet.css';
@@ -63,6 +65,7 @@ function EmployeeWorkspaceDashboard() {
     remainingDays: 0,
   });
   const [profile, setProfile] = useState(null);
+  const [notifications, setNotifications] = useState([]);
 
   const canManageAttendance = session?.role === 'employee';
 
@@ -185,7 +188,28 @@ function EmployeeWorkspaceDashboard() {
       return;
     }
 
-    getEmployeeProfile(session.email).then(setProfile);
+    getEmployeeProfile(session.email).then((fetchedProfile) => {
+      setProfile(fetchedProfile);
+      
+      const currentSession = getAuthSession();
+      if (currentSession && fetchedProfile?.avatar && currentSession.avatar !== fetchedProfile.avatar) {
+        const nextSession = { ...currentSession, avatar: String(fetchedProfile.avatar) };
+        updateAuthSession(nextSession);
+        window.dispatchEvent(new Event('avatar_updated'));
+      }
+    });
+  };
+
+  const loadNotifications = async () => {
+    const userID = session?.userID || session?.id;
+    if (!userID) return;
+    try {
+      const data = await getMyNotifications(userID);
+      setNotifications(data.slice(0, 3));
+    } catch (error) {
+      console.error('[EmployeeWorkspaceDashboard] Cannot load notifications:', error);
+      setNotifications([]);
+    }
   };
 
   useEffect(() => {
@@ -193,12 +217,46 @@ function EmployeeWorkspaceDashboard() {
       void loadTimesheet();
     });
     void loadLeaveData();
+    void loadNotifications();
     loadProfile();
   }, [session?.email, session?.id, session?.userID]);
 
   useEffect(() => {
     void loadTimesheet();
   }, [session?.email, periodType, anchorDate]);
+
+  const { socket } = useSocket();
+
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleNewNotification = (notification) => {
+      void loadNotifications();
+      
+      if (notification.relatedType === 'LEAVE') {
+        void loadLeaveData();
+      } else if (notification.relatedType === 'TIMESHEET') {
+        void loadTimesheet();
+      }
+      
+      if (Notification.permission === 'granted') {
+        new Notification('Timesheet Manager', { body: notification.content });
+      } else if (Notification.permission !== 'denied') {
+        Notification.requestPermission().then(permission => {
+          if (permission === 'granted') {
+            new Notification('Timesheet Manager', { body: notification.content });
+          }
+        });
+      }
+    };
+
+    socket.on('new_notification', handleNewNotification);
+
+    return () => {
+      socket.off('new_notification', handleNewNotification);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [socket, periodType, anchorDate]);
 
   const workingDuration = useMemo(() => {
     if (todayAttendance?.status !== 'Working' || !todayAttendance?.serverTimeAtCheckIn) {
@@ -218,6 +276,24 @@ function EmployeeWorkspaceDashboard() {
       return { allowed: false, reason: 'Đang tải bảng công...' };
     }
 
+    const summary = timesheetData.summary as any; // Cast to access MonthlyTimesheetData fields
+    
+    if (summary?.status === 'Submitted' || summary?.status === 'Approved') {
+      return { allowed: false, reason: 'Bảng công đã được gửi xác nhận và đang chờ duyệt.' };
+    }
+
+    // Rely on the backend's assessment for the whole month if available
+    if (summary && typeof summary.canSubmit === 'boolean') {
+      if (!summary.canSubmit) {
+        return { 
+          allowed: false, 
+          reason: 'Bạn vẫn còn ngày công thiếu dữ liệu hoặc yêu cầu chỉnh sửa đang chờ duyệt trong tháng này, chưa thể gửi xác nhận.' 
+        };
+      }
+      return { allowed: true, reason: 'Dữ liệu tháng này hợp lệ và sẵn sàng gửi xác nhận đến quản lý.' };
+    }
+
+    // Fallback if no backend canSubmit is available
     const periodCorrections = timesheetData.corrections.filter(
       (item) => item.date >= timesheetData.period.startKey && item.date <= timesheetData.period.endKey,
     );
@@ -235,24 +311,28 @@ function EmployeeWorkspaceDashboard() {
         label: 'Trạng thái hôm nay',
         value: getAttendanceStatusLabel(todayAttendance?.status) || 'Chưa Check-in',
         note: 'Cập nhật theo phiên làm việc hiện tại.',
+        action: 'attendance',
       },
       {
         icon: FiClock,
         label: 'Giờ vào gần nhất',
         value: todayAttendance?.checkInTime || '--',
         note: 'Lấy từ bản ghi chấm công của hôm nay.',
+        action: 'attendance',
       },
       {
         icon: FiFileText,
         label: 'Tổng giờ tuần này',
         value: formatHours(weeklyHours),
         note: 'Tổng hợp nhanh từ lịch sử chấm công.',
+        action: 'timesheet',
       },
       {
         icon: FiAlertCircle,
         label: 'Đơn nghỉ đang chờ',
         value: `${pendingLeaveCount} đơn`,
         note: 'Cần theo dõi kết quả phê duyệt.',
+        action: 'leave-request',
       },
     ];
   }, [history, leaveRequests, todayAttendance]);
@@ -278,32 +358,52 @@ function EmployeeWorkspaceDashboard() {
 
     if (todayAttendance?.status === 'Working') {
       tasks.push({ label: 'Bạn đang mở phiên làm việc, nhớ Check-out đúng giờ.', type: 'warning' });
-    } else {
+    } else if (todayAttendance?.status !== 'Completed') {
       tasks.push({ label: 'Nếu bắt đầu ngày làm việc, hãy Check-in để mở phiên.', type: 'success' });
     }
 
-    tasks.push({
-      label: submitState.allowed
-        ? 'Bảng công kỳ này đã sẵn sàng để gửi xác nhận.'
-        : localizeMessage(submitState.reason),
-      type: submitState.allowed ? 'success' : 'warning',
-    });
+    if (missingCount > 0) {
+      tasks.push({ 
+        label: `Bạn có ${missingCount} ngày công quên Check-out, vui lòng tạo giải trình.`, 
+        type: 'warning',
+        action: 'timesheet'
+      });
+    }
 
-    tasks.push({
-      label: leaveSummary.pendingDays > 0
-        ? `Bạn đang có ${leaveSummary.pendingDays} ngày nghỉ chờ duyệt.`
-        : 'Không có đơn nghỉ nào đang chờ duyệt.',
-      type: leaveSummary.pendingDays > 0 ? 'warning' : 'success',
-    });
+    const tsStatus = timesheetData?.summary?.status;
+    if (tsStatus !== 'Submitted' && tsStatus !== 'Approved') {
+      if (submitState.allowed) {
+        tasks.push({ 
+          label: 'Bảng công kỳ này đã sẵn sàng, vui lòng nộp bảng công.', 
+          type: 'warning',
+          action: 'timesheet'
+        });
+      } else {
+        tasks.push({ 
+          label: localizeMessage(submitState.reason), 
+          type: 'warning',
+          action: 'timesheet'
+        });
+      }
+    }
+
+    if (leaveSummary.pendingDays > 0) {
+      tasks.push({
+        label: `Bạn đang có ${leaveSummary.pendingDays} ngày nghỉ chờ duyệt.`,
+        type: 'warning',
+        action: 'leave-request'
+      });
+    }
 
     return tasks;
-  }, [leaveSummary.pendingDays, submitState.allowed, submitState.reason, todayAttendance?.status]);
-
-  const notifications = [
-    'Hệ thống đã đồng bộ dữ liệu chấm công và bảng công mới nhất.',
-    'Đơn nghỉ phép chờ duyệt sẽ được quản lý xem xét trong ngày.',
-    'Kiểm tra lại các bản ghi quên Check-out trước khi gửi xác nhận bảng công.',
-  ];
+  }, [
+    leaveSummary.pendingDays,
+    submitState.allowed,
+    submitState.reason,
+    todayAttendance?.status,
+    missingCount,
+    timesheetData?.summary?.status,
+  ]);
 
   const profileStats = useMemo(
     () => [
@@ -444,12 +544,39 @@ function EmployeeWorkspaceDashboard() {
     return nextProfile;
   };
 
+  const handleUploadAvatar = async (file) => {
+    const nextProfile = await uploadAvatar(file);
+    if (!nextProfile) {
+      throw new Error('Không thể cập nhật ảnh đại diện.');
+    }
+    setProfile(nextProfile);
+    
+    // Update local storage session and dispatch event
+    const currentSession = getAuthSession();
+    if (currentSession) {
+      const nextSession = { ...currentSession, avatar: String(nextProfile.avatar) };
+      updateAuthSession(nextSession);
+      window.dispatchEvent(new Event('avatar_updated'));
+    }
+    
+    return nextProfile;
+  };
+
+  const handleNavigate = (sectionName) => {
+    if (!sectionName) return;
+    const params = new URLSearchParams(searchParams);
+    params.set('section', sectionName);
+    setSearchParams(params);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   const sectionProps = {
     overview: {
       overviewStats,
       todaySession: overviewSession,
       quickTasks,
       notifications,
+      onNavigate: handleNavigate,
     },
     attendance: {
       attendance: todayAttendance,
@@ -507,6 +634,7 @@ function EmployeeWorkspaceDashboard() {
     profile: {
       profile,
       onSaveProfile: handleSaveProfile,
+      onUploadAvatar: handleUploadAvatar,
       personalStats: profileStats,
     },
   };

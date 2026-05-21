@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 
 type CorrectionFormErrors = {
   date?: string;
@@ -15,6 +15,9 @@ function CorrectionRequestModal({ isOpen, selectedRow, onClose, onSubmit }) {
   });
   const [errors, setErrors] = useState<CorrectionFormErrors>({});
 
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const isSubmittingRef = useRef(false);
+
   useEffect(() => {
     if (!selectedRow) {
       setForm({
@@ -24,6 +27,7 @@ function CorrectionRequestModal({ isOpen, selectedRow, onClose, onSubmit }) {
         reason: '',
       });
       setErrors({});
+      setIsSubmitting(false);
       return;
     }
 
@@ -34,6 +38,7 @@ function CorrectionRequestModal({ isOpen, selectedRow, onClose, onSubmit }) {
       reason: '',
     });
     setErrors({});
+    setIsSubmitting(false);
   }, [selectedRow]);
 
   if (!isOpen) {
@@ -59,14 +64,21 @@ function CorrectionRequestModal({ isOpen, selectedRow, onClose, onSubmit }) {
     return Object.keys(nextErrors).length === 0;
   };
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
 
-    if (!validate()) {
+    if (!validate() || isSubmittingRef.current) {
       return;
     }
 
-    onSubmit(form);
+    isSubmittingRef.current = true;
+    setIsSubmitting(true);
+    try {
+      await onSubmit(form);
+    } finally {
+      isSubmittingRef.current = false;
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -128,10 +140,10 @@ function CorrectionRequestModal({ isOpen, selectedRow, onClose, onSubmit }) {
           </label>
 
           <div className="dashboard-panel__actions">
-            <button type="submit" className="dashboard-button dashboard-button--primary">
-              Gửi yêu cầu
+            <button type="submit" className="dashboard-button dashboard-button--primary" disabled={isSubmitting}>
+              {isSubmitting ? 'Đang gửi...' : 'Gửi yêu cầu'}
             </button>
-            <button type="button" className="dashboard-button dashboard-button--ghost" onClick={onClose}>
+            <button type="button" className="dashboard-button dashboard-button--ghost" onClick={onClose} disabled={isSubmitting}>
               Hủy
             </button>
           </div>

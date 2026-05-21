@@ -40,7 +40,12 @@ function WorkspaceSidebar({ isCollapsed, onToggleCollapse }) {
       aria-label="Điều hướng khu vực làm việc"
     >
       <div className="sidebar__header">
-        <div className="sidebar__brand">
+        <div 
+          className="sidebar__brand" 
+          onClick={() => navigate(roleConfig.getHref(roleConfig.defaultSection))}
+          style={{ cursor: 'pointer' }}
+          title="Về trang tổng quan"
+        >
           <span className="sidebar__brand-mark">TP</span>
           {!isCollapsed ? (
             <div className="sidebar__brand-copy">

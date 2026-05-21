@@ -205,7 +205,7 @@
     minmax(0, 0.7fr)
     minmax(0, 0.7fr)
     minmax(0, 0.8fr)
-    minmax(0, 0.9fr)
+    minmax(120px, 0.9fr)
     minmax(0, 1.1fr);
   gap: 12px;
 }
@@ -287,7 +287,7 @@
       minmax(0, 0.78fr)
       minmax(0, 0.78fr)
       minmax(0, 0.8fr)
-      minmax(0, 0.86fr)
+      minmax(120px, 0.86fr)
       minmax(0, 1fr);
   }
 }

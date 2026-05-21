@@ -1,0 +1,28 @@
+
+/home/na/code/timesheet-manager/test-1/backend/src/attendance-module/attendance-module.service.ts
+  33:13  error  "APPROVED" | "REJECTED" | "DRAFT" | "SUBMITTED" is overridden by string in this union type  @typescript-eslint/no-redundant-type-constituents
+
+/home/na/code/timesheet-manager/test-1/backend/src/common/cloudinary/cloudinary.service.ts
+  20:29  error  Expected the Promise rejection reason to be an Error  @typescript-eslint/prefer-promise-reject-errors
+
+/home/na/code/timesheet-manager/test-1/backend/src/realtime/realtime.gateway.ts
+  26:13  error    Unsafe assignment of an `any` value                                                                                                                                 @typescript-eslint/no-unsafe-assignment
+  35:13  error    Unsafe assignment of an `any` value                                                                                                                                 @typescript-eslint/no-unsafe-assignment
+  35:34  warning  Unsafe argument of type `any` assigned to a parameter of type `string`                                                                                              @typescript-eslint/no-unsafe-argument
+  37:32  error    Unsafe member access .userID on an `any` value                                                                                                                      @typescript-eslint/no-unsafe-member-access
+  42:13  error    Unsafe assignment of an `any` value                                                                                                                                 @typescript-eslint/no-unsafe-assignment
+  42:30  error    Unsafe member access .userID on an `any` value                                                                                                                      @typescript-eslint/no-unsafe-member-access
+  43:7   warning  Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator  @typescript-eslint/no-floating-promises
+  48:58  error    Unsafe member access .message on an `any` value                                                                                                                     @typescript-eslint/no-unsafe-member-access
+
+/home/na/code/timesheet-manager/test-1/backend/src/user/user.controller.ts
+  19:10  error  'diskStorage' is defined but never used  @typescript-eslint/no-unused-vars
+  20:10  error  'extname' is defined but never used      @typescript-eslint/no-unused-vars
+  21:16  error  'uuidv4' is defined but never used       @typescript-eslint/no-unused-vars
+
+/home/na/code/timesheet-manager/test-1/backend/src/user/user.service.ts
+  599:13  error  Unsafe assignment of an `any` value  @typescript-eslint/no-unsafe-assignment
+  603:17  error  Unsafe assignment of an `any` value  @typescript-eslint/no-unsafe-assignment
+
+✖ 15 problems (13 errors, 2 warnings)
+

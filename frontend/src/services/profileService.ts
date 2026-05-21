@@ -45,6 +45,27 @@ export async function fetchProfileByEmail(email: string): Promise<Record<string,
   }
 }
 
+export async function uploadAvatar(file: File): Promise<Record<string, unknown> | null> {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  try {
+    const response = await httpClient.post<Record<string, unknown>>('/user/avatar', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+
+    const payload = response.data;
+    if (payload && typeof payload === 'object' && 'data' in payload) {
+      return normalizeEmployeeProfile((payload as { data: Record<string, unknown> }).data);
+    }
+    return normalizeEmployeeProfile(payload);
+  } catch (error) {
+    throw new Error('Không thể tải lên ảnh đại diện.');
+  }
+}
+
 // --- Demo-fallback layer (localStorage + mockProfile) ---
 // Chỉ dùng cho những trường hợp chưa có endpoint API phù hợp.
 
@@ -81,12 +102,15 @@ function writeProfiles(nextProfiles: Record<string, unknown>[]) {
 
 /** Tra cứu profile qua API, fallback về localStorage nếu bật mock */
 export async function getEmployeeProfile(email: string): Promise<Record<string, unknown> | null> {
-  const apiProfile = await fetchProfileByEmail(email);
-  if (apiProfile) return apiProfile;
-  if (!API_CONFIG.ENABLE_MOCK_FALLBACK) return null;
-  return normalizeEmployeeProfile(
-    ensureProfiles().find((item) => item['email'] === email) ?? null,
-  );
+  let apiProfile = await fetchProfileByEmail(email);
+
+  if (!apiProfile && API_CONFIG.ENABLE_MOCK_FALLBACK) {
+    apiProfile = normalizeEmployeeProfile(
+      ensureProfiles().find((item) => item['email'] === email) ?? null,
+    );
+  }
+
+  return resolveManagerUsername(apiProfile);
 }
 
 /** Demo fallback – cập nhật profile trong localStorage, KHÔNG gọi API (chỉ gọi khi mock) */
@@ -112,9 +136,27 @@ export async function updateEmployeeProfile(
   );
 
   writeProfiles(nextProfiles);
-  return normalizeEmployeeProfile(
+  return resolveManagerUsername(normalizeEmployeeProfile(
     nextProfiles.find((item) => item['email'] === email) ?? null,
-  );
+  ));
+}
+
+async function resolveManagerUsername(profile: Record<string, unknown> | null): Promise<Record<string, unknown> | null> {
+  if (profile && profile.manager && profile.manager !== '--') {
+    if (String(profile.manager).includes('-') || String(profile.manager).length > 10) {
+      try {
+        const managerProfile = await fetchProfileByUserID(String(profile.manager));
+        if (managerProfile && managerProfile.username) {
+          profile.manager = String(managerProfile.username);
+        } else if (managerProfile && managerProfile.name) {
+          profile.manager = String(managerProfile.name);
+        }
+      } catch (e) {
+        // Ignore errors if manager profile cannot be fetched
+      }
+    }
+  }
+  return profile;
 }
 
 async function updateProfileViaApi(payload: Record<string, unknown>) {
@@ -122,10 +164,10 @@ async function updateProfileViaApi(payload: Record<string, unknown>) {
   const responsePayload = response.data;
 
   if (responsePayload && typeof responsePayload === 'object' && 'data' in responsePayload) {
-    return normalizeEmployeeProfile((responsePayload as { data: Record<string, unknown> }).data);
+    return resolveManagerUsername(normalizeEmployeeProfile((responsePayload as { data: Record<string, unknown> }).data));
   }
 
-  return normalizeEmployeeProfile(responsePayload);
+  return resolveManagerUsername(normalizeEmployeeProfile(responsePayload));
 }
 
 function buildSelfUpdatePayload(updates: Record<string, unknown>) {
@@ -135,6 +177,8 @@ function buildSelfUpdatePayload(updates: Record<string, unknown>) {
     address: normalizeNullableString(updates.address),
     emergencyContact: normalizeNullableString(updates.emergencyContact),
     birthday: normalizeNullableString(updates.birthday),
+    ...(updates.password ? { password: updates.password } : {}),
+    ...(updates.oldPassword ? { oldPassword: updates.oldPassword } : {}),
   };
 }
 
@@ -173,8 +217,8 @@ function normalizeEmployeeProfile(
     birthday: payload.birthday || '',
     department: department?.departmentName || payload.departmentName || payload.departmentID || '--',
     position: payload.position || roleName,
-    manager: payload.manager || '--',
-    joinDate: payload.joinDate || '',
+    manager: payload.manager || (department?.manager as any)?.username || department?.managerID || payload.managerID || '--',
+    joinDate: payload.createdAt ? new Date(String(payload.createdAt)).toLocaleDateString('vi-VN') : (payload.joinDate || ''),
     accountStatus: payload.isActive === false ? 'Inactive' : 'Active',
     role: normalizeRole(roleName),
   };

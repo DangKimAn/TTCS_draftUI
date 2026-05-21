@@ -5,6 +5,7 @@ import {
   FiHome,
   FiLogOut,
   FiUsers,
+  FiUser,
 } from 'react-icons/fi';
 
 export const MANAGER_DASHBOARD_PATH = '/dashboard/manager';
@@ -43,6 +44,12 @@ export const managerMenu = [
     label: 'Báo cáo timesheet',
     description: 'Phân tích và xuất báo cáo',
     icon: FiBarChart2,
+  },
+  {
+    key: 'profile',
+    label: 'Hồ sơ cá nhân',
+    description: 'Thông tin tài khoản',
+    icon: FiUser,
   },
 ];
 
