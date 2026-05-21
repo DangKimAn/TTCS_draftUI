@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { FiBarChart2, FiCheckCircle, FiClock, FiDownload, FiFileText } from 'react-icons/fi';
+import { FiBarChart2, FiCheckCircle, FiClock, FiRefreshCw, FiFileText } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
 import CorrectionRequestModal from '../components/CorrectionRequestModal';
 import SubmitTimesheetPanel from '../components/SubmitTimesheetPanel';
@@ -206,7 +206,7 @@ function TimesheetWorkspacePage() {
             className="dashboard-button dashboard-button--primary"
             onClick={() => void loadTimesheet({ showSuccess: true })}
           >
-            <FiDownload />
+            <FiRefreshCw className={isLoading ? 'animate-spin' : ''} />
             Tai lai
           </button>
         </section>
@@ -229,7 +229,7 @@ function TimesheetWorkspacePage() {
             onClick={() => void loadTimesheet({ showSuccess: true })}
             disabled={isLoading}
           >
-            <FiDownload />
+            <FiRefreshCw className={isLoading ? 'animate-spin' : ''} />
             {isLoading ? 'Dang tai...' : 'Tai lai'}
           </button>
           <div

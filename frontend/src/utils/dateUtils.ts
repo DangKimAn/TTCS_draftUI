@@ -78,7 +78,7 @@ export function getCurrentMonthRange(anchorDate = new Date()) {
     endDate,
     startKey: getDateKey(startDate),
     endKey: getDateKey(endDate),
-    label: `Thang ${String(startDate.getMonth() + 1).padStart(2, '0')}/${startDate.getFullYear()}`,
+    label: `${formatDate(getDateKey(startDate))} - ${formatDate(getDateKey(endDate))}`,
   };
 }
 

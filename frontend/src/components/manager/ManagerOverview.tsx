@@ -10,7 +10,7 @@ interface ManagerOverviewProps {
   timesheets: any[];
   leaveRequests: any[];
   departments: any[];
-  onOpenSection: (section: string) => void;
+  onOpenSection: (section: string, highlightId?: string) => void;
 }
 
 const ManagerOverview: React.FC<ManagerOverviewProps> = ({
@@ -55,6 +55,7 @@ const ManagerOverview: React.FC<ManagerOverviewProps> = ({
       value: pendingTimesheets.length,
       note: 'Trong phạm vi quản lý.',
       accent: 'blue' as const,
+      sectionKey: 'timesheet-approvals',
     },
     {
       icon: FiCalendar,
@@ -62,6 +63,7 @@ const ManagerOverview: React.FC<ManagerOverviewProps> = ({
       value: pendingLeaves.length,
       note: 'Nhân viên trực thuộc.',
       accent: 'amber' as const,
+      sectionKey: 'leave-approvals',
     },
     {
       icon: FiUsers,
@@ -69,6 +71,7 @@ const ManagerOverview: React.FC<ManagerOverviewProps> = ({
       value: employees.length,
       note: primaryDepartment,
       accent: 'emerald' as const,
+      sectionKey: 'team',
     },
     {
       icon: FiAlertTriangle,
@@ -76,6 +79,7 @@ const ManagerOverview: React.FC<ManagerOverviewProps> = ({
       value: warningTimesheets.length,
       note: 'Miss Out, đi muộn...',
       accent: 'rose' as const,
+      sectionKey: 'timesheet-reports',
     },
   ];
 
@@ -96,6 +100,7 @@ const ManagerOverview: React.FC<ManagerOverviewProps> = ({
             value={stat.value}
             note={stat.note}
             accent={stat.accent}
+            onClick={() => onOpenSection(stat.sectionKey)}
           />
         ))}
       </div>
@@ -133,7 +138,7 @@ const ManagerOverview: React.FC<ManagerOverviewProps> = ({
                       <span className="text-xs text-slate-400 truncate">{task.meta}</span>
                     </div>
                     <button
-                      onClick={() => onOpenSection(task.section)}
+                      onClick={() => onOpenSection(task.section, task.id)}
                       className="px-4 py-1.5 rounded-lg bg-slate-50 text-slate-600 font-bold text-xs border border-slate-200 hover:bg-slate-100 transition-all"
                     >
                       Xử lý

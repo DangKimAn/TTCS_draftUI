@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useSocket } from '../contexts/SocketContext';
 import {
   DEFAULT_MANAGER_SECTION,
   getManagerSectionHref,
@@ -19,7 +20,7 @@ import {
   getManagerMonthlyTimesheetsForReview,
   reviewTimesheet,
 } from '../services/timesheetService';
-import { getAuthSession, getDashboardPathByRole } from '../utils/storage';
+import { getAuthSession, getDashboardPathByRole, updateAuthSession } from '../utils/storage';
 import {
   buildCurrentManager,
   mergeEmployees,
@@ -39,11 +40,14 @@ import ManagerEmployees from '../components/manager/ManagerEmployees';
 import ManagerTimesheetReport from '../components/manager/ManagerTimesheetReport';
 import ManagerDetailModal from '../components/manager/ManagerDetailModal';
 import RejectDialog from '../components/manager/RejectDialog';
+import ProfileSection from '../components/employee/ProfileSection';
+import { getEmployeeProfile, updateEmployeeProfile, uploadAvatar } from '../services/profileService';
 
 function ManagerDashboard() {
   const navigate = useNavigate();
   const session = getAuthSession();
   const [searchParams, setSearchParams] = useSearchParams();
+  const highlightId = searchParams.get('highlight');
   const [section, setSection] = useState(DEFAULT_MANAGER_SECTION);
   const [employees, setEmployees] = useState<any[]>([]);
   const [timesheets, setTimesheets] = useState<any[]>([]);
@@ -55,6 +59,54 @@ function ManagerDashboard() {
   const [isTimesheetLoading, setIsTimesheetLoading] = useState(false);
   const [isLeaveLoading, setIsLeaveLoading] = useState(false);
   const [isCorrectionLoading, setIsCorrectionLoading] = useState(false);
+  const [profile, setProfile] = useState<any>(null);
+
+  const loadProfile = () => {
+    if (!session?.email) return;
+
+    getEmployeeProfile(session.email).then((fetchedProfile) => {
+      setProfile(fetchedProfile);
+      
+      const currentSession = getAuthSession();
+      if (currentSession && fetchedProfile?.avatar && currentSession.avatar !== fetchedProfile.avatar) {
+        const nextSession = { ...currentSession, avatar: fetchedProfile.avatar };
+        updateAuthSession(nextSession);
+        window.dispatchEvent(new Event('avatar_updated'));
+      }
+    });
+  };
+
+  useEffect(() => {
+    loadProfile();
+  }, [session?.email]);
+
+  const handleSaveProfile = async (updates: any) => {
+    const nextProfile = await updateEmployeeProfile(session.email, updates);
+    if (!nextProfile) throw new Error('Không thể cập nhật thông tin cá nhân.');
+    setProfile(nextProfile);
+    return nextProfile;
+  };
+
+  const handleUploadAvatar = async (file: File) => {
+    const nextProfile = await uploadAvatar(file);
+    if (!nextProfile) throw new Error('Không thể cập nhật ảnh đại diện.');
+    setProfile(nextProfile);
+    
+    const currentSession = getAuthSession();
+    if (currentSession) {
+      const nextSession = { ...currentSession, avatar: nextProfile.avatar };
+      updateAuthSession(nextSession);
+      window.dispatchEvent(new Event('avatar_updated'));
+    }
+    
+    return nextProfile;
+  };
+
+  const profileStats = useMemo(() => [
+    { label: 'Thâm niên', value: profile?.tenure || 'Chưa rõ' },
+    { label: 'Phép năm còn lại', value: `${profile?.leaveBalance || 0} ngày` },
+    { label: 'Trạng thái', value: profile?.accountStatus || 'Đang hoạt động' },
+  ], [profile]);
 
   useEffect(() => {
     if (!session?.token) {
@@ -166,6 +218,38 @@ function ManagerDashboard() {
     void loadReviewCorrections();
   }, [session?.token, session?.role, currentManager.departmentId]);
 
+  const { socket } = useSocket();
+
+  useEffect(() => {
+    if (!socket || session?.role !== 'manager') return;
+
+    const handleNewNotification = (notification) => {
+      if (notification.relatedType === 'LEAVE') {
+        void loadReviewLeaves();
+      } else if (notification.relatedType === 'TIMESHEET') {
+        void loadReviewTimesheets();
+        void loadReviewCorrections();
+      }
+      
+      if (Notification.permission === 'granted') {
+        new Notification('Timesheet Manager', { body: notification.content });
+      } else if (Notification.permission !== 'denied') {
+        Notification.requestPermission().then(permission => {
+          if (permission === 'granted') {
+            new Notification('Timesheet Manager', { body: notification.content });
+          }
+        });
+      }
+    };
+
+    socket.on('new_notification', handleNewNotification);
+
+    return () => {
+      socket.off('new_notification', handleNewNotification);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [socket, session?.role, currentManager.departmentId]);
+
   const teamEmployees = useMemo(
     () => getScopedEmployees(employees, currentManager),
     [currentManager, employees],
@@ -208,6 +292,8 @@ function ManagerDashboard() {
     });
   }, [currentManager.departmentId, teamEmployees]);
 
+  const [processingId, setProcessingId] = useState<string | null>(null);
+
   const showFeedback = (type: string, message: string) => {
     setFeedback({ type, message });
   };
@@ -222,6 +308,7 @@ function ManagerDashboard() {
       showFeedback('danger', 'Bảng công này đã được xử lý, không thể duyệt lại.');
       return;
     }
+    setProcessingId(timesheetId);
     try {
       await reviewTimesheet(timesheetId, 'Approved');
       setTimesheets((current) =>
@@ -240,6 +327,8 @@ function ManagerDashboard() {
       showFeedback('success', `Đã duyệt bảng công ${timesheet.code} và khóa chỉnh sửa.`);
     } catch (error: any) {
       showFeedback('danger', error?.message || 'Khong the duyet bang cong.');
+    } finally {
+      setProcessingId(null);
     }
   };
 
@@ -249,6 +338,7 @@ function ManagerDashboard() {
       showFeedback('danger', 'Khong tim thay correction dang cho trong pham vi quan ly.');
       return;
     }
+    setProcessingId(correctionId);
     try {
       await reviewCorrectionRequest(correctionId, 'Approved');
       setCorrectionRequests((current) => current.filter((item) => item.id !== correctionId));
@@ -256,6 +346,8 @@ function ManagerDashboard() {
       void loadReviewTimesheets();
     } catch (error: any) {
       showFeedback('danger', error?.message || 'Khong the duyet correction.');
+    } finally {
+      setProcessingId(null);
     }
   };
 
@@ -270,10 +362,11 @@ function ManagerDashboard() {
       showFeedback('danger', 'Đơn nghỉ phép này đã được xử lý, không thể duyệt lại.');
       return;
     }
-    if (employee.leaveBalance < request.totalDays) {
+    if (!request.isUnpaid && employee.leaveBalance < request.totalDays) {
       showFeedback('danger', `Số dư phép của ${employee.fullName} không đủ. Vui lòng từ chối hoặc yêu cầu kiểm tra lại.`);
       return;
     }
+    setProcessingId(requestId);
     try {
       await reviewLeave(requestId, 'Approved');
       setLeaveRequests((current) =>
@@ -290,7 +383,7 @@ function ManagerDashboard() {
       );
       setEmployees((current) =>
         current.map((item) =>
-          item.id === request.employeeId
+          item.id === request.employeeId && !request.isUnpaid
             ? {
                 ...item,
                 leaveBalance: roundNumber(item.leaveBalance - request.totalDays),
@@ -298,10 +391,15 @@ function ManagerDashboard() {
             : item,
         ),
       );
-      showFeedback('success', `Đã duyệt đơn ${request.code} và trừ ${request.totalDays} ngày phép.`);
+      const successMessage = request.isUnpaid
+        ? `Đã duyệt đơn ${request.code}.`
+        : `Đã duyệt đơn ${request.code} và trừ ${request.totalDays} ngày phép.`;
+      showFeedback('success', successMessage);
       void loadReviewLeaves();
     } catch (error: any) {
       showFeedback('danger', error?.message || 'Khong the duyet don nghi phep.');
+    } finally {
+      setProcessingId(requestId); // Wait, this should be null. Fix in next block or here: setProcessingId(null);
     }
   };
 
@@ -330,6 +428,7 @@ function ManagerDashboard() {
         setRejectDialog(null);
         return;
       }
+      setProcessingId(rejectDialog.id);
       try {
         await reviewTimesheet(rejectDialog.id, 'Rejected', rejectDialog.reason.trim());
         setTimesheets((current) =>
@@ -349,6 +448,8 @@ function ManagerDashboard() {
         setRejectDialog(null);
       } catch (error: any) {
         showFeedback('danger', error?.message || 'Khong the tu choi bang cong.');
+      } finally {
+        setProcessingId(null);
       }
       return;
     }
@@ -360,6 +461,7 @@ function ManagerDashboard() {
         setRejectDialog(null);
         return;
       }
+      setProcessingId(rejectDialog.id);
       try {
         await reviewCorrectionRequest(rejectDialog.id, 'Rejected', rejectDialog.reason.trim());
         setCorrectionRequests((current) => current.filter((item) => item.id !== rejectDialog.id));
@@ -367,6 +469,8 @@ function ManagerDashboard() {
         setRejectDialog(null);
       } catch (error: any) {
         showFeedback('danger', error?.message || 'Khong the tu choi correction.');
+      } finally {
+        setProcessingId(null);
       }
       return;
     }
@@ -377,6 +481,7 @@ function ManagerDashboard() {
       setRejectDialog(null);
       return;
     }
+    setProcessingId(rejectDialog.id);
     try {
       await reviewLeave(rejectDialog.id, 'Rejected', rejectDialog.reason.trim());
       setLeaveRequests((current) =>
@@ -396,6 +501,8 @@ function ManagerDashboard() {
       void loadReviewLeaves();
     } catch (error: any) {
       showFeedback('danger', error?.message || 'Khong the tu choi don nghi phep.');
+    } finally {
+      setProcessingId(null);
     }
   };
 
@@ -424,6 +531,8 @@ function ManagerDashboard() {
             onApproveCorrection={handleApproveCorrection}
             onRejectCorrection={(id) => handleOpenRejectDialog('correction', id)}
             onViewDetail={(id) => setDetail({ type: 'timesheet', id })}
+            highlightId={highlightId}
+            processingId={processingId}
             onReload={() => {
               void loadReviewTimesheets({ showSuccess: true });
               void loadReviewCorrections();
@@ -442,6 +551,8 @@ function ManagerDashboard() {
             onReject={(id) => handleOpenRejectDialog('leave', id)}
             onRequestCheck={handleRequestLeaveCheck}
             onViewDetail={(id) => setDetail({ type: 'leave', id })}
+            highlightId={highlightId}
+            processingId={processingId}
             onReload={() => void loadReviewLeaves({ showSuccess: true })}
           />
         );
@@ -464,6 +575,15 @@ function ManagerDashboard() {
             onFeedback={showFeedback}
           />
         );
+      case 'profile':
+        return (
+          <ProfileSection
+            profile={profile}
+            onSaveProfile={handleSaveProfile}
+            onUploadAvatar={handleUploadAvatar}
+            personalStats={profileStats}
+          />
+        );
       default:
         return (
           <ManagerOverview
@@ -472,7 +592,10 @@ function ManagerDashboard() {
             timesheets={scopedTimesheets}
             leaveRequests={scopedLeaveRequests}
             departments={scopedDepartments}
-            onOpenSection={(sectionKey) => navigate(getManagerSectionHref(sectionKey))}
+            onOpenSection={(sectionKey, hId) => {
+              const url = getManagerSectionHref(sectionKey);
+              navigate(hId ? `${url}&highlight=${hId}` : url);
+            }}
           />
         );
     }

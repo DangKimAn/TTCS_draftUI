@@ -26,7 +26,7 @@ export class AttendanceModuleService {
     private readonly userService: UserService,
     private readonly monthlyTimesheetService: MonthlyTimeSheetService,
     private readonly notificationService: NotificationService,
-  ) {}
+  ) { }
 
   private async reopenCurrentTimesheetForAttendance(
     monthlyTimesheetID: string,
@@ -195,7 +195,12 @@ export class AttendanceModuleService {
         return await executeLogic(tx);
       }
 
-      return await this.prismaService.$transaction(executeLogic);
+      return await this.prismaService.$transaction(executeLogic,
+        {
+          maxWait: 5000, // Chờ tối đa 5s để lấy connection
+          timeout: 15000 // Cho phép transaction chạy tối đa 15s
+        }
+      );
     } catch (error: unknown) {
       console.error('Error in checkIn:', error);
       return {
@@ -289,7 +294,7 @@ export class AttendanceModuleService {
 
           // Gửi thông báo cho Manager
           const managerResult =
-            await this.userService.getManagerIdOfUserID(userID);
+            await this.userService.getManagerIdOfUserID(userID, dbCtx);
           if (
             managerResult.statusCode === OK_CODE &&
             managerResult.data &&

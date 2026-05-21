@@ -1,4 +1,4 @@
-import { FiFileText, FiHome, FiLogOut, FiShield, FiUsers } from 'react-icons/fi';
+import { FiFileText, FiHome, FiLogOut, FiShield, FiUsers, FiUser } from 'react-icons/fi';
 
 export const HR_DASHBOARD_PATH = '/dashboard/hr';
 export const DEFAULT_HR_SECTION = 'overview';
@@ -30,6 +30,12 @@ export const hrMenu = [
     label: 'Chính sách',
     description: 'Thiết lập và phân quyền',
     icon: FiShield,
+  },
+  {
+    key: 'profile',
+    label: 'Hồ sơ cá nhân',
+    description: 'Thông tin tài khoản',
+    icon: FiUser,
   },
 ];
 

@@ -19,6 +19,8 @@ import { UserModule } from './user/user.module';
 import { WarningModule } from './warning/warning.module';
 import { RequestCorrectionModule } from './request-correction/request-correction.module';
 import { EmailModule } from './common/email.module';
+import { RealtimeModule } from './realtime/realtime.module';
+import { CloudinaryModule } from './common/cloudinary/cloudinary.module';
 
 @Module({
   imports: [
@@ -43,6 +45,8 @@ import { EmailModule } from './common/email.module';
     PayrollModule,
     RequestCorrectionModule,
     EmailModule,
+    RealtimeModule,
+    CloudinaryModule,
   ],
   controllers: [AppController],
   providers: [AppService, SeedService],

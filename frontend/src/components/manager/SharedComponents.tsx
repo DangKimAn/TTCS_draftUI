@@ -65,9 +65,9 @@ export const WarningList: React.FC<{ warnings?: WarningItem[] }> = ({ warnings }
 };
 
 export const InfoItem: React.FC<{ label: string; value: string | number }> = ({ label, value }) => (
-  <div className="p-4 rounded-2xl bg-white/80 border border-slate-200/80 shadow-sm flex flex-col gap-1">
-    <span className="text-[0.75rem] text-slate-500 uppercase tracking-wider font-bold">{label}</span>
-    <strong className="text-slate-800 text-[1rem]">{value}</strong>
+  <div className="p-4 rounded-2xl bg-white/80 border border-slate-200/80 shadow-sm flex flex-col gap-1 min-w-0">
+    <span className="text-[0.75rem] text-slate-500 uppercase tracking-wider font-bold truncate" title={label}>{label}</span>
+    <strong className="text-slate-800 text-[1rem] truncate" title={String(value)}>{value}</strong>
   </div>
 );
 

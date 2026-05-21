@@ -166,5 +166,9 @@ export default class FullUserDto {
     departmentID: string;
     departmentName: string;
     managerID: string | null;
+    manager?: {
+      username: string;
+      email: string;
+    } | null;
   } | null;
 }

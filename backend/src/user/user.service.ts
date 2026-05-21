@@ -26,6 +26,7 @@ import updateUserDto from './dto/update-user.dto';
 import FullUserDto from './dto/full-user.dto';
 import { RequestUser } from 'src/common/types';
 import { SelfUpdateUserDto } from './dto/self-update-user.dto';
+import { CloudinaryService } from 'src/common/cloudinary/cloudinary.service';
 @Injectable()
 export class UserService {
   constructor(
@@ -33,7 +34,8 @@ export class UserService {
     private roleService: RoleService,
     private bcryptHashedService: BycyptHashedService,
     private departmentService: DepartmentService,
-  ) {}
+    private cloudinaryService: CloudinaryService,
+  ) { }
 
   async getAllUser(): Promise<ResponseDto<UserDto[]>> {
     const users: UserDto[] = await this.prismaService.user.findMany({});
@@ -54,7 +56,16 @@ export class UserService {
       where: {
         userID,
       },
-      include: { role: true, department: true },
+      include: {
+        role: true,
+        department: {
+          include: {
+            manager: {
+              select: { username: true, email: true }
+            }
+          }
+        }
+      },
     });
     if (!user)
       return {
@@ -79,7 +90,16 @@ export class UserService {
       where: {
         username,
       },
-      include: { role: true, department: true },
+      include: {
+        role: true,
+        department: {
+          include: {
+            manager: {
+              select: { username: true, email: true }
+            }
+          }
+        }
+      },
     });
     if (!user)
       return {
@@ -105,7 +125,16 @@ export class UserService {
       where: {
         email,
       },
-      include: { role: true, department: true },
+      include: {
+        role: true,
+        department: {
+          include: {
+            manager: {
+              select: { username: true, email: true }
+            }
+          }
+        }
+      },
     });
 
     if (!user)
@@ -151,8 +180,8 @@ export class UserService {
         this.roleService.getRoleByRoleName(roleName || nameRole_emloyee),
         departmentName
           ? this.prismaService.department.findUnique({
-              where: { departmentName },
-            })
+            where: { departmentName },
+          })
           : Promise.resolve(null),
       ]);
 
@@ -305,8 +334,8 @@ export class UserService {
 
       const deptResult = departmentName
         ? await this.departmentService.getDepartmentByDeparmentName(
-            departmentName,
-          )
+          departmentName,
+        )
         : null;
       if (
         departmentName &&
@@ -495,6 +524,30 @@ export class UserService {
       data.emergencyContact = dto.emergencyContact;
     }
     if (dto.birthday !== undefined) data.birthday = dto.birthday;
+    if (dto.password !== undefined && dto.password.trim() !== '') {
+      if (!dto.oldPassword) {
+        return {
+          statusCode: BADREQUEST_CODE,
+          message: 'Vui lòng nhập mật khẩu cũ',
+        };
+      }
+
+      const currentUser = await this.prismaService.user.findUnique({
+        where: { userID },
+        select: { hashedPassword: true },
+      });
+
+      if (!currentUser) {
+        return { statusCode: NOTFOUND_CODE, message: 'User not found' };
+      }
+
+      const isMatch = await this.bcryptHashedService.compare(dto.oldPassword, currentUser.hashedPassword);
+      if (!isMatch) {
+        return { statusCode: BADREQUEST_CODE, message: 'Mật khẩu cũ không chính xác' };
+      }
+
+      data.hashedPassword = await this.bcryptHashedService.hash(dto.password);
+    }
 
     try {
       const updatedUser = await this.prismaService.user.update({
@@ -527,6 +580,44 @@ export class UserService {
       return {
         statusCode: Interval_Server_Network_Exeception_Code,
         message: 'Internal server error during self profile update',
+      };
+    }
+  }
+
+  async uploadAvatar(userID: string, file: Express.Multer.File): Promise<ResponseDto<UserDto>> {
+    try {
+      const uploadResult = await this.cloudinaryService.uploadFile(file);
+      const linkAvatar = uploadResult.secure_url;
+
+      const updatedUser = await this.prismaService.user.update({
+        where: { userID },
+        data: { linkAvatar },
+      });
+
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { hashedPassword: _, ...userDto } = updatedUser;
+      return {
+        statusCode: OK_CODE,
+        message: 'Avatar uploaded successfully',
+        data: userDto as unknown as UserDto,
+      };
+    } catch (error: unknown) {
+      if (
+        error &&
+        typeof error === 'object' &&
+        'code' in error &&
+        error.code === 'P2025'
+      ) {
+        return {
+          statusCode: NOTFOUND_CODE,
+          message: 'User not found',
+        };
+      }
+
+      console.error('Error uploading avatar:', error);
+      return {
+        statusCode: Interval_Server_Network_Exeception_Code,
+        message: 'Internal server error during avatar upload',
       };
     }
   }
@@ -775,8 +866,8 @@ export class UserService {
     };
   }
 
-  async getManagerIdOfUserID(userID: string): Promise<DefaultResponse> {
-    const userGet: ResponseDto<UserDto> = await this.getUserByUserID(userID);
+  async getManagerIdOfUserID(userID: string, tx?: Prisma.TransactionClient): Promise<DefaultResponse> {
+    const userGet: ResponseDto<UserDto> = await this.getUserByUserID(userID, tx);
 
     if (userGet.statusCode !== OK_CODE || userGet.data === undefined)
       return {
@@ -790,7 +881,7 @@ export class UserService {
         message: 'user is not in any department',
       };
     const departmentGet: ResponseDto<DepartmentDto> =
-      await this.departmentService.getDepartmentById(userGet.data.departmentID);
+      await this.departmentService.getDepartmentById(userGet.data.departmentID, tx);
 
     if (
       departmentGet.statusCode !== OK_CODE ||
