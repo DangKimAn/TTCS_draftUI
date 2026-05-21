@@ -48,7 +48,7 @@ import { RequirePermission } from 'src/common/require-permissions.decorator';
 
 @Controller('user')
 export class UserController {
-  constructor(private readonly userService: UserService) {}
+  constructor(private readonly userService: UserService) { }
 
   @ApiOkResponse({
     description: 'get all users successfull',

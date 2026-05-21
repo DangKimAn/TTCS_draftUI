@@ -60,7 +60,7 @@ interface RequestWithUser extends Request {
 @ApiTags('auth')
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(private readonly authService: AuthService) { }
 
   @Post('/login')
   async login(@Body() loginDto: LoginDto): Promise<ResponseDto<AuthDto>> {
@@ -266,7 +266,7 @@ export class AuthController {
           'MICROSOFT_SSO_FAILED',
           callbackError instanceof Error
             ? callbackError.message
-          : 'Microsoft authentication failed.',
+            : 'Microsoft authentication failed.',
         ),
       );
     }

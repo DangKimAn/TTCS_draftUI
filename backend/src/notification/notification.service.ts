@@ -22,7 +22,7 @@ export class NotificationService {
     private readonly userService: UserService,
     private readonly prismaService: PrismaService,
     private readonly realtimeService: RealtimeService,
-  ) {}
+  ) { }
 
   async sendNotification(
     senderID: string,
