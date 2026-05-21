@@ -149,7 +149,7 @@ export class AttendanceModuleService {
         const monthlyTimesheetID = timesheet.data.monthlyTimesheetID;
         await this.reopenCurrentTimesheetForAttendance(
           monthlyTimesheetID,
-          timesheet.data.status,
+          timesheet.data.status as MonthlyTimesheetStatus | undefined,
           dbCtx,
         );
 
@@ -263,7 +263,7 @@ export class AttendanceModuleService {
 
         await this.reopenCurrentTimesheetForAttendance(
           monthlyTimesheetID,
-          timesheet.data.status,
+          timesheet.data.status as MonthlyTimesheetStatus | undefined,
           dbCtx,
         );
 
