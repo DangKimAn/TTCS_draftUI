@@ -286,7 +286,10 @@ export class AuthController {
     if (result.statusCode === NOTFOUND_CODE) {
       throw new NotFoundException(result.message);
     }
-    if (result.statusCode !== OK_CODE && result.statusCode !== CREATED_RESPONE) {
+    if (
+      result.statusCode !== OK_CODE &&
+      result.statusCode !== CREATED_RESPONE
+    ) {
       throw new BadRequestException(result.message);
     }
     return result;
@@ -298,7 +301,10 @@ export class AuthController {
       verifyCodeDto.email,
       verifyCodeDto.code,
     );
-    if (result.statusCode !== OK_CODE && result.statusCode !== CREATED_RESPONE) {
+    if (
+      result.statusCode !== OK_CODE &&
+      result.statusCode !== CREATED_RESPONE
+    ) {
       throw new BadRequestException(result.message);
     }
     return result;
@@ -311,7 +317,10 @@ export class AuthController {
       resetPasswordDto.code,
       resetPasswordDto.newPassword,
     );
-    if (result.statusCode !== OK_CODE && result.statusCode !== CREATED_RESPONE) {
+    if (
+      result.statusCode !== OK_CODE &&
+      result.statusCode !== CREATED_RESPONE
+    ) {
       throw new BadRequestException(result.message);
     }
     return result;
