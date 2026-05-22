@@ -321,10 +321,14 @@
 
 .login-submit,
 .login-sso__button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 100%;
   min-height: 56px;
   border-radius: 18px;
   font-weight: 700;
+  text-decoration: none;
   transition:
     transform 0.25s ease,
     box-shadow 0.25s ease,

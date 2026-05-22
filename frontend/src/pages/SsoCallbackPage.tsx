@@ -52,9 +52,11 @@ function SsoCallbackPage() {
           <h2>Dang nhap bang SSO</h2>
           <p>{message}</p>
         </div>
-        <Link className="login-submit" to="/login">
-          Quay lai dang nhap
-        </Link>
+        <div className="login-form">
+          <Link className="login-submit" to="/login">
+            Quay lai dang nhap
+          </Link>
+        </div>
       </section>
     </main>
   );
