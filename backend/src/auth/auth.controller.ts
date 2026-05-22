@@ -37,6 +37,11 @@ import {
 import LoginDto from './dto/login.dto';
 import { RefreshTokenDto } from './dto/refreshToken.dto';
 import AuthDto from './dto/auth.dto';
+import {
+  SendCodeDto,
+  VerifyCodeDto,
+  ResetPasswordDto,
+} from './dto/forgot-password.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { GoogleAuthGuard } from './guards/google-auth.guard';
 import type { Request } from 'express';
@@ -270,5 +275,29 @@ export class AuthController {
         ),
       );
     }
+  }
+
+  // FORGOT PASSWORD OTP FLOW
+
+  @Post('forgot-password/send-code')
+  async sendResetCode(@Body() sendCodeDto: SendCodeDto) {
+    return this.authService.sendResetCode(sendCodeDto.email);
+  }
+
+  @Post('forgot-password/verify-code')
+  async verifyResetCode(@Body() verifyCodeDto: VerifyCodeDto) {
+    return this.authService.verifyResetCode(
+      verifyCodeDto.email,
+      verifyCodeDto.code,
+    );
+  }
+
+  @Post('forgot-password/reset')
+  async resetPassword(@Body() resetPasswordDto: ResetPasswordDto) {
+    return this.authService.resetPassword(
+      resetPasswordDto.email,
+      resetPasswordDto.code,
+      resetPasswordDto.newPassword,
+    );
   }
 }

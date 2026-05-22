@@ -27,6 +27,8 @@ model User {
   totalDaysofLeave  Int       @default(12)
   isActive          Boolean?  @default(true)
   refreshToken      String?  
+  resetPasswordCode String?
+  resetPasswordExpires DateTime?
 
   // Foreign keys
   roleId            String   
