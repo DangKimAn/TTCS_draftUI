@@ -5,6 +5,7 @@ import ResponseDto, { AnotherError } from 'src/common/response.dto';
 import {
   BADREQUEST_CODE,
   CREATED_RESPONE,
+  NOTFOUND_CODE,
   OK_CODE,
   UNAUTHORIZED_CODE,
 } from 'src/common/code';
@@ -539,10 +540,9 @@ export class AuthService {
   async sendResetCode(email: string): Promise<ResponseDto<any>> {
     const userResult = await this.userService.getUserByEmail(email);
     if (userResult.statusCode !== OK_CODE || !userResult.data) {
-      // Return success even if user not found to prevent email enumeration
       return {
-        statusCode: OK_CODE,
-        message: 'If the email exists, a reset code has been sent.',
+        statusCode: NOTFOUND_CODE,
+        message: 'User not found. Please contact administrator.',
       };
     }
 
