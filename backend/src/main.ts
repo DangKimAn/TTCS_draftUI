@@ -6,6 +6,8 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { join } from 'path';
 import { AppModule } from './app.module';
 import { ResponseEnvelopeInterceptor } from './common/interceptors/response-envelope.interceptor';
+import { SystemLogInterceptor } from './common/interceptors/system-log.interceptor';
+import { PrismaService } from './prisma/prisma.service';
 
 interface TrustProxyHttpServer {
   set(setting: 'trust proxy', value: boolean): void;
@@ -62,9 +64,12 @@ async function bootstrap() {
     .getInstance() as unknown as TrustProxyHttpServer;
   httpServer.set('trust proxy', true);
 
+  const prismaService = app.get(PrismaService);
+
   app.useGlobalInterceptors(
     new ClassSerializerInterceptor(reflector),
     new ResponseEnvelopeInterceptor(),
+    new SystemLogInterceptor(prismaService),
   );
 
   const port = configService.get<number>('PORT') || 3000;
