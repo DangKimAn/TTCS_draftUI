@@ -47,9 +47,16 @@ interface ImportEmployeeError {
   message: string;
 }
 
+interface ImportEmployeeSuccess {
+  row: number;
+  userID: string;
+  username: string;
+}
+
 interface ImportEmployeesResult {
   importedCount: number;
   errors: ImportEmployeeError[];
+  successes: ImportEmployeeSuccess[];
 }
 
 type ImportSheetRow = unknown[];
@@ -330,6 +337,7 @@ export class UserService {
       return {
         importedCount: 0,
         errors: [{ row: 0, message: 'Vui long chon file Excel de import.' }],
+        successes: [],
       };
     }
 
@@ -337,6 +345,7 @@ export class UserService {
       return {
         importedCount: 0,
         errors: [{ row: 0, message: 'Chi chap nhan file .xlsx hoac .xls.' }],
+        successes: [],
       };
     }
 
@@ -357,6 +366,7 @@ export class UserService {
       return {
         importedCount: 0,
         errors: [{ row: 0, message: 'Khong the doc noi dung file Excel.' }],
+        successes: [],
       };
     }
 
@@ -364,12 +374,13 @@ export class UserService {
       return {
         importedCount: 0,
         errors: [{ row: 0, message: 'File Excel chua co du lieu nhan vien.' }],
+        successes: [],
       };
     }
 
     const headerMap = buildHeaderMap(sheetRows[0]);
     const requiredHeaders = [
-      'ho ten',
+      'username',
       'email',
       'mat khau tam thoi',
       'phong ban',
@@ -388,6 +399,7 @@ export class UserService {
             message: `Thieu cot bat buoc: ${missingHeaders.join(', ')}.`,
           },
         ],
+        successes: [],
       };
     }
 
@@ -426,7 +438,7 @@ export class UserService {
         return;
       }
 
-      const username = getCellValue(row, headerMap, 'ho ten');
+      const username = getCellValue(row, headerMap, 'username');
       const email = getCellValue(row, headerMap, 'email').toLowerCase();
       const password = getCellValue(row, headerMap, 'mat khau tam thoi');
       const departmentName = getCellValue(row, headerMap, 'phong ban');
@@ -450,11 +462,11 @@ export class UserService {
       const rowErrors: string[] = [];
 
       if (!username) {
-        rowErrors.push('Ho ten khong duoc trong');
+        rowErrors.push('Username khong duoc trong');
       } else if (existingUsernames.has(username.toLowerCase())) {
-        rowErrors.push('Ho ten/username da ton tai');
+        rowErrors.push('Username da ton tai');
       } else if (seenUsernames.has(username.toLowerCase())) {
-        rowErrors.push('Ho ten/username bi trung trong file');
+        rowErrors.push('Username bi trung trong file');
       }
 
       if (!email) {
@@ -522,12 +534,9 @@ export class UserService {
       });
     }
 
-    if (errors.length > 0) {
-      return { importedCount: 0, errors };
-    }
-
     let importedCount = 0;
     const importErrors: ImportEmployeeError[] = [];
+    const successes: ImportEmployeeSuccess[] = [];
 
     for (const row of rows) {
       const result = await this.createUser({
@@ -543,7 +552,13 @@ export class UserService {
       });
 
       if (result.statusCode === CREATED_RESPONE) {
+        const successResult = result as ResponseDto<UserDto>;
         importedCount += 1;
+        successes.push({
+          row: row.rowNumber,
+          userID: successResult.data?.userID || '',
+          username: row.username,
+        });
       } else {
         importErrors.push({
           row: row.rowNumber,
@@ -552,7 +567,7 @@ export class UserService {
       }
     }
 
-    return { importedCount, errors: importErrors };
+    return { importedCount, errors: [...errors, ...importErrors], successes };
   }
   async updateUser(
     userID: string,

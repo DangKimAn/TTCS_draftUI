@@ -1,4 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
+import { createPortal } from 'react-dom';
+import { getDateKey } from '../utils/dateUtils';
 
 type CorrectionFormErrors = {
   date?: string;
@@ -6,7 +8,7 @@ type CorrectionFormErrors = {
   reason?: string;
 };
 
-function CorrectionRequestModal({ isOpen, selectedRow, onClose, onSubmit }) {
+function CorrectionRequestModal({ isOpen, selectedRow, onClose, onSubmit, rows = [] }) {
   const [form, setForm] = useState({
     date: '',
     requestedCheckIn: '',
@@ -50,6 +52,17 @@ function CorrectionRequestModal({ isOpen, selectedRow, onClose, onSubmit }) {
 
     if (!form.date) {
       nextErrors.date = 'Vui lòng chọn ngày.';
+    } else {
+      const today = getDateKey();
+      if (form.date > today) {
+        nextErrors.date = 'Không được chỉnh sửa ngày sau ngày hiện tại.';
+      } else if (form.date === today) {
+        const todayRow = rows.find((r) => r.date === today);
+        const hasCheckedOutToday = todayRow && todayRow.checkOutTime && todayRow.checkOutTime !== '--';
+        if (!hasCheckedOutToday) {
+          nextErrors.date = 'Hôm nay chưa check-out, chỉ được chỉnh sửa ngày trước đó.';
+        }
+      }
     }
 
     if (!form.reason.trim()) {
@@ -81,7 +94,7 @@ function CorrectionRequestModal({ isOpen, selectedRow, onClose, onSubmit }) {
     }
   };
 
-  return (
+  return createPortal(
     <div className="modal-backdrop">
       <div className="modal-card correction-modal">
         <div className="dashboard-panel__heading">
@@ -98,7 +111,17 @@ function CorrectionRequestModal({ isOpen, selectedRow, onClose, onSubmit }) {
             <input
               type="date"
               value={form.date}
-              onChange={(event) => setForm((prev) => ({ ...prev, date: event.target.value }))}
+              max={getDateKey()}
+              onChange={(event) => {
+                const newDate = event.target.value;
+                const dateRow = rows.find((r) => r.date === newDate);
+                setForm((prev) => ({
+                  ...prev,
+                  date: newDate,
+                  requestedCheckIn: dateRow?.checkInTime && dateRow.checkInTime !== '--' ? dateRow.checkInTime : '',
+                  requestedCheckOut: dateRow?.checkOutTime && dateRow.checkOutTime !== '--' ? dateRow.checkOutTime : '',
+                }));
+              }}
             />
             {errors.date ? <small>{errors.date}</small> : null}
           </label>
@@ -109,6 +132,7 @@ function CorrectionRequestModal({ isOpen, selectedRow, onClose, onSubmit }) {
               <input
                 type="time"
                 value={form.requestedCheckIn}
+                disabled
                 onChange={(event) =>
                   setForm((prev) => ({ ...prev, requestedCheckIn: event.target.value }))
                 }
@@ -149,7 +173,8 @@ function CorrectionRequestModal({ isOpen, selectedRow, onClose, onSubmit }) {
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 

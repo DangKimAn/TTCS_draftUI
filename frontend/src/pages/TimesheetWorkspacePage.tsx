@@ -216,6 +216,13 @@ function TimesheetWorkspacePage() {
 
   return (
     <div className="dashboard-page timesheet-page">
+      {isLoading && timesheetData && (
+        <div className="global-loading-overlay">
+          <FiRefreshCw className="animate-spin overlay-spinner-icon" />
+          <p>Đang tải dữ liệu...</p>
+        </div>
+      )}
+      
       <section className="dashboard-panel timesheet-page__hero">
         <div>
           <span className="dashboard-panel__eyebrow">Timesheet Management</span>
@@ -357,6 +364,7 @@ function TimesheetWorkspacePage() {
           setSelectedRow(null);
         }}
         onSubmit={handleCorrectionSubmit}
+        rows={timesheetData.rows}
       />
     </div>
   );

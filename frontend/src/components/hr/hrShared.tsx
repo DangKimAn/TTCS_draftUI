@@ -1,4 +1,5 @@
 import { ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { FiX } from 'react-icons/fi';
 import { formatDate } from '../../utils/dateUtils';
 
@@ -40,7 +41,7 @@ export function ModalShell({
   children: ReactNode;
   onClose: () => void;
 }) {
-  return (
+  return createPortal(
     <div className="modal-backdrop" role="presentation">
       <article className="modal-card hr-modal" role="dialog" aria-modal="true" aria-label={title}>
         <div className="hr-modal__header">
@@ -51,7 +52,8 @@ export function ModalShell({
         </div>
         {children}
       </article>
-    </div>
+    </div>,
+    document.body
   );
 }
 

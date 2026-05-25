@@ -422,6 +422,7 @@ export class EmployeeImportController {
     ResponseDto<{
       importedCount: number;
       errors: Array<{ row: number; message: string }>;
+      successes: Array<{ row: number; userID: string; username: string }>;
     }>
   > {
     const result = await this.userService.importEmployeesFromExcel(file);
@@ -430,6 +431,7 @@ export class EmployeeImportController {
       throw new BadRequestException({
         message: 'Import Excel that bai. Vui long kiem tra cac dong loi.',
         errors: result.errors,
+        successes: [],
       });
     }
 

@@ -8,6 +8,7 @@ import {
   FiRefreshCw,
   FiSearch,
   FiUpload,
+  FiCopy,
 } from 'react-icons/fi';
 import { formatDate } from '../../utils/dateUtils';
 import {
@@ -290,7 +291,7 @@ function HRUserManagement({
             <thead>
               <tr>
                 <th>Mã nhân viên</th>
-                <th>Họ tên</th>
+                <th>Username</th>
                 <th>Email</th>
                 <th>Phòng ban</th>
                 <th>Chức vụ</th>
@@ -305,7 +306,7 @@ function HRUserManagement({
                 filteredEmployees.map((employee) => (
                   <tr key={employee.id}>
                     <td data-label="Mã nhân viên" className="cell-nowrap"><strong>{employee.employeeCode}</strong></td>
-                    <td data-label="Họ tên"><strong>{employee.fullName}</strong></td>
+                    <td data-label="Username"><strong>{employee.fullName}</strong></td>
                     <td data-label="Email">{employee.email}</td>
                     <td data-label="Phòng ban">{getDepartmentName(departments, employee.departmentId)}</td>
                     <td data-label="Chức vụ">{employee.title}</td>
@@ -440,7 +441,7 @@ function EmployeeModal({
     return (
       <ModalShell title={`Chi tiết nhân viên ${employee.employeeCode}`} onClose={onClose}>
         <div className="employee-info-grid hr-detail-grid">
-          <InfoItem label="Họ tên" value={employee.fullName} />
+          <InfoItem label="Username" value={employee.fullName} />
           <InfoItem label="Email" value={employee.email} />
           <InfoItem label="Phòng ban" value={getDepartmentName(departments, employee.departmentId)} />
           <InfoItem label="Chức vụ" value={employee.title} />
@@ -500,7 +501,7 @@ function EmployeeModal({
   return (
     <ModalShell title={modal.mode === 'edit' ? 'Sửa thông tin nhân viên' : 'Thêm nhân viên'} onClose={onClose}>
       <form className="hr-form-grid" onSubmit={handleSubmit}>
-        <FormField label="Họ tên" name="fullName" value={form.fullName} error={errors.fullName} onChange={handleChange} />
+        <FormField label="Username" name="fullName" value={form.fullName} error={errors.fullName} onChange={handleChange} />
         <FormField label="Email" name="email" type="email" value={form.email} error={errors.email} onChange={handleChange} />
         <FormField
           label={modal.mode === 'edit' ? 'Mật khẩu mới (nếu đổi)' : 'Mật khẩu tạm thời'}
@@ -561,10 +562,11 @@ function ImportEmployeeModal({
 }: {
   isOpen: boolean;
   onClose: () => void;
-  onImport: (file: File) => Promise<{ importedCount: number; errors: HrImportError[] }>;
+  onImport: (file: File) => Promise<{ importedCount: number; errors: HrImportError[], successes?: { row: number, employeeCode: string, username: string }[] }>;
 }) {
   const [file, setFile] = useState<File | null>(null);
   const [errors, setErrors] = useState<HrImportError[]>([]);
+  const [successes, setSuccesses] = useState<{ row: number, employeeCode: string, username: string }[]>([]);
   const [helperMessage, setHelperMessage] = useState('');
   const [isImporting, setIsImporting] = useState(false);
 
@@ -572,6 +574,7 @@ function ImportEmployeeModal({
     if (isOpen) {
       setFile(null);
       setErrors([]);
+      setSuccesses([]);
       setHelperMessage('');
       setIsImporting(false);
     }
@@ -584,6 +587,7 @@ function ImportEmployeeModal({
   const handleFileChange = (event: any) => {
     const selectedFile = event.target.files?.[0] || null;
     setErrors([]);
+    setSuccesses([]);
     setHelperMessage('');
 
     if (!selectedFile) {
@@ -610,46 +614,111 @@ function ImportEmployeeModal({
 
     setIsImporting(true);
     setErrors([]);
+    setSuccesses([]);
     setHelperMessage('');
 
     try {
       const result = await onImport(file);
       setErrors(result.errors);
-      if (result.errors.length > 0) {
+      setSuccesses(result.successes || []);
+      if (result.errors.length > 0 && (result.successes?.length || 0) > 0) {
         setHelperMessage(`Đã import ${result.importedCount} nhân viên, một số dòng bị lỗi.`);
+      } else if (result.errors.length === 0 && (result.successes?.length || 0) > 0) {
+        setHelperMessage(`Import thành công ${result.importedCount} nhân viên.`);
+      } else if (result.errors.length > 0 && result.importedCount === 0) {
+        setHelperMessage(`Import thất bại. Tất cả các dòng đều bị lỗi.`);
       }
     } catch (error) {
       const importErrors = (error as Error & { importErrors?: HrImportError[] }).importErrors || [];
+      const importSuccesses = (error as Error & { importSuccesses?: { row: number, employeeCode: string, username: string }[] }).importSuccesses || [];
       setErrors(importErrors);
+      setSuccesses(importSuccesses);
       setHelperMessage(error instanceof Error ? error.message : 'Không thể import nhân viên từ Excel.');
     } finally {
       setIsImporting(false);
     }
   };
 
+  const failedMembersCount = new Set(errors.filter(e => e.row > 0).map(e => e.row)).size;
+
   return (
     <ModalShell title="Import Excel nhân viên" onClose={onClose}>
       <form className="hr-form-grid" onSubmit={handleSubmit}>
         <label className="hr-form-full">
           <span>File Excel</span>
-          <input type="file" accept=".xlsx,.xls" onChange={handleFileChange} />
+          <input
+            type="file"
+            accept=".xlsx,.xls"
+            onChange={handleFileChange}
+            onClick={(e) => {
+              (e.target as HTMLInputElement).value = '';
+            }}
+          />
           {helperMessage ? <small>{helperMessage}</small> : null}
         </label>
 
         <div className="hr-modal-section hr-form-full">
-          <h3>Các cột hỗ trợ</h3>
-          <p className="hr-modal-note">
-            Họ tên, Email, Mật khẩu tạm thời, Phòng ban, Chức vụ, Vai trò, Hệ số lương, Số ngày phép mặc định, Trạng thái.
-          </p>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+            <h3 style={{ margin: 0 }}>Các cột hỗ trợ</h3>
+            <button
+              type="button"
+              className="dashboard-button dashboard-button--ghost"
+              style={{ padding: '4px 8px', fontSize: '13px' }}
+              onClick={() => {
+                const headers = ['Username', 'Email', 'Mật khẩu tạm thời', 'Phòng ban', 'Chức vụ', 'Vai trò', 'Hệ số lương', 'Số ngày phép mặc định', 'Trạng thái'];
+                navigator.clipboard.writeText(headers.join('\t'));
+                const btn = document.getElementById('copy-header-btn');
+                if (btn) {
+                  const originalText = btn.innerText;
+                  btn.innerText = 'Đã Copy!';
+                  setTimeout(() => {
+                    btn.innerText = originalText;
+                  }, 2000);
+                }
+              }}
+              id="copy-header-btn"
+            >
+              <FiCopy style={{ marginRight: '4px' }} /> Copy cấu trúc
+            </button>
+          </div>
+          <div style={{ overflowX: 'auto', border: '1px solid var(--border-color, #e5e7eb)', borderRadius: '6px' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', whiteSpace: 'nowrap', fontSize: '14px' }}>
+              <tbody>
+                <tr>
+                  {['Username', 'Email', 'Mật khẩu tạm thời', 'Phòng ban', 'Chức vụ', 'Vai trò', 'Hệ số lương', 'Số ngày phép mặc định', 'Trạng thái'].map((col, idx) => (
+                    <td key={idx} style={{ padding: '10px 16px', borderRight: '1px solid var(--border-color, #e5e7eb)', background: 'var(--bg-color-secondary, #f9fafb)', fontWeight: 500 }}>
+                      {col}
+                    </td>
+                  ))}
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
 
+        {successes.length > 0 ? (
+          <div className="hr-import-successes hr-form-full" style={{ color: 'var(--color-success, #16a34a)', padding: '12px', background: 'var(--color-success-bg, #f0fdf4)', borderRadius: '8px', marginBottom: '12px' }}>
+            <h4 style={{ margin: '0 0 8px', fontWeight: 'bold' }}>Thành công {successes.length} thành viên</h4>
+            <ul style={{ margin: 0, paddingLeft: '20px' }}>
+              {successes.map((success, index) => (
+                <li key={`success-${success.row}-${index}`}>
+                  Dòng {success.row}: {success.employeeCode} - {success.username}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+
         {errors.length > 0 ? (
-          <div className="hr-import-errors hr-form-full">
-            {errors.map((error, index) => (
-              <div key={`${error.row}-${error.message}-${index}`}>
-                Dòng {error.row || '-'}: {error.message}
-              </div>
-            ))}
+          <div className="hr-import-errors hr-form-full" style={{ color: 'var(--color-danger, #dc2626)', padding: '12px', background: 'var(--color-danger-bg, #fef2f2)', borderRadius: '8px' }}>
+            <h4 style={{ margin: '0 0 8px', fontWeight: 'bold' }}>Không thành công {failedMembersCount || errors.length} thành viên</h4>
+            <ul style={{ margin: 0, paddingLeft: '20px' }}>
+              {errors.map((error, index) => (
+                <li key={`error-${error.row}-${index}`}>
+                  Dòng {error.row || '-'}: {error.message}
+                </li>
+              ))}
+            </ul>
           </div>
         ) : null}
 

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { FiBarChart2, FiClock, FiDownload, FiFileText } from 'react-icons/fi';
+import { FiBarChart2, FiClock, FiDownload, FiFileText, FiRefreshCw } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
 import CorrectionRequestModal from '../components/CorrectionRequestModal';
 import SubmitTimesheetPanel from '../components/SubmitTimesheetPanel';
@@ -131,6 +131,7 @@ function ConnectedTimesheetPage() {
   const [selectedRow, setSelectedRow] = useState(null);
   const [isCorrectionOpen, setIsCorrectionOpen] = useState(false);
   const [feedback, setFeedback] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     if (!session?.token) {
@@ -148,8 +149,12 @@ function ConnectedTimesheetPage() {
       return;
     }
 
-    const nextData = getTimesheetByPeriod(session.email, periodType, new Date(anchorDate));
-    setTimesheetData(nextData);
+    setIsLoading(true);
+    setTimeout(() => {
+      const nextData = getTimesheetByPeriod(session.email, periodType, new Date(anchorDate));
+      setTimesheetData(nextData);
+      setIsLoading(false);
+    }, 400);
   };
 
   useEffect(() => {
@@ -235,6 +240,13 @@ function ConnectedTimesheetPage() {
 
   return (
     <div className="dashboard-page timesheet-page">
+      {isLoading && timesheetData && (
+        <div className="global-loading-overlay">
+          <FiRefreshCw className="animate-spin overlay-spinner-icon" />
+          <p>Đang tải dữ liệu...</p>
+        </div>
+      )}
+
       <section className="dashboard-panel timesheet-page__hero">
         <div>
           <span className="dashboard-panel__eyebrow">UC-03 CONFIRM TIMESHEET</span>
@@ -336,6 +348,7 @@ function ConnectedTimesheetPage() {
           setSelectedRow(null);
         }}
         onSubmit={handleCorrectionSubmit}
+        rows={timesheetData.rows}
       />
     </div>
   );

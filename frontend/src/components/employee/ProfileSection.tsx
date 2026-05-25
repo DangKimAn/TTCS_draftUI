@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { API_CONFIG } from '../../config/api';
 
 const editableDefaults = {
@@ -306,7 +307,7 @@ function ProfileSection({ profile, onSaveProfile, onUploadAvatar, personalStats 
         </aside>
       </div>
 
-      {isPasswordModalOpen && (
+      {isPasswordModalOpen && createPortal(
         <div className="modal-backdrop" onClick={() => !isSavingPassword && setIsPasswordModalOpen(false)}>
           <div className="modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '400px' }}>
             <div className="dashboard-panel__heading" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px' }}>
@@ -379,7 +380,8 @@ function ProfileSection({ profile, onSaveProfile, onUploadAvatar, personalStats 
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </section>
   );
