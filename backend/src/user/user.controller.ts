@@ -418,9 +418,12 @@ export class EmployeeImportController {
   @UseGuards(JwtAuthGuard, UserAccessGaurd)
   @RequirePermission('admin')
   @UseInterceptors(FileInterceptor('file'))
-  async importEmployees(
-    @UploadedFile() file: Express.Multer.File,
-  ): Promise<ResponseDto<{ importedCount: number; errors: Array<{ row: number; message: string }> }>> {
+  async importEmployees(@UploadedFile() file: Express.Multer.File): Promise<
+    ResponseDto<{
+      importedCount: number;
+      errors: Array<{ row: number; message: string }>;
+    }>
+  > {
     const result = await this.userService.importEmployeesFromExcel(file);
 
     if (result.errors.length > 0 && result.importedCount === 0) {

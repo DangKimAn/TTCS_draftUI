@@ -347,11 +347,11 @@ export class UserService {
       const firstSheetName = workbook.SheetNames[0];
       const worksheet = firstSheetName ? workbook.Sheets[firstSheetName] : null;
       sheetRows = worksheet
-        ? (XLSX.utils.sheet_to_json(worksheet, {
+        ? XLSX.utils.sheet_to_json(worksheet, {
             header: 1,
             defval: '',
             raw: false,
-          }) as ImportSheetRow[])
+          })
         : [];
     } catch {
       return {
@@ -440,7 +440,9 @@ export class UserService {
         getCellValue(row, headerMap, 'so ngay phep mac dinh'),
         12,
       );
-      const isActive = parseImportStatus(getCellValue(row, headerMap, 'trang thai'));
+      const isActive = parseImportStatus(
+        getCellValue(row, headerMap, 'trang thai'),
+      );
       const normalizedRoleName = normalizeImportRole(rawRoleName);
       const matchedDepartment = departmentsByName.get(
         normalizeImportText(departmentName),
@@ -469,7 +471,10 @@ export class UserService {
         rowErrors.push('Mat khau tam thoi khong duoc trong');
       }
 
-      if (!normalizedRoleName || !rolesByName.has(normalizeImportText(normalizedRoleName))) {
+      if (
+        !normalizedRoleName ||
+        !rolesByName.has(normalizeImportText(normalizedRoleName))
+      ) {
         rowErrors.push('Vai tro khong hop le');
       }
 
@@ -488,7 +493,9 @@ export class UserService {
       }
 
       if (rowErrors.length > 0) {
-        rowErrors.forEach((message) => errors.push({ row: rowNumber, message }));
+        rowErrors.forEach((message) =>
+          errors.push({ row: rowNumber, message }),
+        );
         return;
       }
 
@@ -509,7 +516,10 @@ export class UserService {
     });
 
     if (rows.length === 0 && errors.length === 0) {
-      errors.push({ row: 0, message: 'File Excel khong co dong du lieu hop le.' });
+      errors.push({
+        row: 0,
+        message: 'File Excel khong co dong du lieu hop le.',
+      });
     }
 
     if (errors.length > 0) {
@@ -1214,21 +1224,38 @@ function getRawCellValue(value: unknown): string {
     return value.toISOString();
   }
 
+  if (
+    typeof value === 'string' ||
+    typeof value === 'number' ||
+    typeof value === 'boolean' ||
+    typeof value === 'bigint'
+  ) {
+    return String(value);
+  }
+
   if (typeof value === 'object') {
-    if ('text' in value && value.text) {
-      return String(value.text);
+    const cell = value as Record<string, unknown>;
+
+    if (cell.text !== undefined) {
+      return getRawCellValue(cell.text);
     }
 
-    if ('result' in value && value.result !== undefined) {
-      return String(value.result);
+    if (cell.result !== undefined) {
+      return getRawCellValue(cell.result);
     }
 
-    if ('richText' in value && Array.isArray(value.richText)) {
-      return value.richText.map((item) => item.text).join('');
+    if (Array.isArray(cell.richText)) {
+      return cell.richText
+        .map((item) =>
+          typeof item === 'object' && item !== null
+            ? getRawCellValue((item as Record<string, unknown>).text)
+            : '',
+        )
+        .join('');
     }
   }
 
-  return String(value);
+  return '';
 }
 
 function isEmptyExcelRow(row: ImportSheetRow): boolean {
@@ -1296,7 +1323,11 @@ function registerDepartmentAliases(
 function normalizeImportRole(value: string): string {
   const normalized = normalizeImportText(value).replace(/[\s_-]+/g, '');
 
-  if (normalized === 'hr' || normalized === 'admin' || normalized === 'hradmin') {
+  if (
+    normalized === 'hr' ||
+    normalized === 'admin' ||
+    normalized === 'hradmin'
+  ) {
     return 'admin';
   }
 
