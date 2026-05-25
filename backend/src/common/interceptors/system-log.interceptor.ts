@@ -12,10 +12,14 @@ import {
 import { Observable } from 'rxjs';
 import { tap } from 'rxjs/operators';
 import { PrismaService } from '../../prisma/prisma.service';
+import { RealtimeService } from '../../realtime/realtime.service';
 
 @Injectable()
 export class SystemLogInterceptor implements NestInterceptor {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly realtimeService?: RealtimeService,
+  ) {}
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
     const ctx = context.switchToHttp();
@@ -62,7 +66,7 @@ export class SystemLogInterceptor implements NestInterceptor {
           resData?.userID ||
           null;
 
-        await this.prisma.systemLog.create({
+        const newLog = await this.prisma.systemLog.create({
           data: {
             action: method, // POST, PUT, PATCH, DELETE
             entity: entity,
@@ -74,6 +78,10 @@ export class SystemLogInterceptor implements NestInterceptor {
             responseMessage: responseMessage,
           },
         });
+
+        if (this.realtimeService) {
+          this.realtimeService.emitToAdmin('new_system_log', newLog);
+        }
       } catch (error) {
         console.error('Lỗi khi ghi log hệ thống:', error);
       }

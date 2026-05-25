@@ -110,7 +110,24 @@ export function isDateWithinRange(dateKey, startKey, endKey) {
   return dateKey >= startKey && dateKey <= endKey;
 }
 
+export function getLastMonthRange(anchorDate = new Date()) {
+  const date = normalizeDate(anchorDate);
+  // Get 1st day of last month
+  const startDate = new Date(date.getFullYear(), date.getMonth() - 1, 1);
+  // Get last day of last month
+  const endDate = new Date(date.getFullYear(), date.getMonth(), 0);
+
+  return {
+    startDate,
+    endDate,
+    startKey: getDateKey(startDate),
+    endKey: getDateKey(endDate),
+    label: `${formatDate(getDateKey(startDate))} - ${formatDate(getDateKey(endDate))}`,
+  };
+}
+
 export function getPeriodConfig(periodType, anchorDate = new Date()) {
+  if (periodType === 'last_month') return getLastMonthRange(anchorDate);
   return periodType === 'month'
     ? getCurrentMonthRange(anchorDate)
     : getCurrentWeekRange(anchorDate);

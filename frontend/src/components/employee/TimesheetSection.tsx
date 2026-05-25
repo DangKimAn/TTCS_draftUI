@@ -6,6 +6,7 @@ import TimesheetTable from '../TimesheetTable';
 
 function TimesheetSection({
   timesheetData,
+  displayRows,
   periodType,
   anchorDate,
   submitState,
@@ -21,7 +22,20 @@ function TimesheetSection({
   onSubmitCorrection,
 }) {
   if (!timesheetData) {
-    return null;
+    return (
+      <div className="employee-section">
+        <div className="employee-section__header">
+          <h2>Bảng công của tôi</h2>
+        </div>
+        {feedback ? (
+          <div className={`submit-timesheet-panel__helper ${feedback.type === 'success' ? 'is-success' : 'is-danger'}`}>
+            {feedback.message}
+          </div>
+        ) : (
+          <div className="dashboard-content__loading">Đang tải dữ liệu bảng công...</div>
+        )}
+      </div>
+    );
   }
 
   return (
@@ -77,11 +91,12 @@ function TimesheetSection({
 
       <div className="dashboard-content">
         <div className="dashboard-content__main">
-          <TimesheetTable rows={timesheetData.rows} onRequestCorrection={onOpenCorrection} />
+          <TimesheetTable rows={displayRows || timesheetData.rows} onRequestCorrection={onOpenCorrection} />
         </div>
 
         <aside className="dashboard-content__side">
           <SubmitTimesheetPanel
+            title={`Gửi bảng công Tháng ${new Date(timesheetData.period.startDate).getMonth() + 1}/${new Date(timesheetData.period.startDate).getFullYear()}`}
             stats={timesheetData.stats}
             summaryStatus={timesheetData.summary.status}
             submitState={submitState}

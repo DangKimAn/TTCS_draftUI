@@ -17,6 +17,7 @@ function SubmitTimesheetPanel({
   stats,
   summaryStatus,
   submitState,
+  title,
   onSubmit,
 }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -40,7 +41,7 @@ function SubmitTimesheetPanel({
       <div className="dashboard-panel__heading">
         <div>
           <span className="dashboard-panel__eyebrow">Gửi bảng công</span>
-          <h2>Gửi xác nhận bảng công</h2>
+          <h2>{title || 'Gửi xác nhận bảng công'}</h2>
           <p>Chỉ được nộp khi dữ liệu đã đầy đủ và không còn yêu cầu chỉnh sửa đang chờ duyệt.</p>
         </div>
         <div

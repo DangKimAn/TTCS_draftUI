@@ -332,6 +332,7 @@ function ConnectedTimesheetPage() {
 
         <aside className="dashboard-content__side">
           <SubmitTimesheetPanel
+            title="Gửi xác nhận bảng công"
             stats={timesheetData.stats}
             summaryStatus={timesheetData.summary.status}
             submitState={submitState}

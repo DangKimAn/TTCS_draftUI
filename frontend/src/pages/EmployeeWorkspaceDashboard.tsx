@@ -29,7 +29,7 @@ import {
   getElapsedMinutes,
   getWorkdayProgressPercent,
 } from '../utils/timeUtils';
-import { getDateKey } from '../utils/dateUtils';
+import { getDateKey, getCurrentWeekRange, getPeriodConfig } from '../utils/dateUtils';
 import { getAuthSession, getDashboardPathByRole, updateAuthSession } from '../utils/storage';
 import './EmployeeDashboard.css';
 import '../styles/attendance.css';
@@ -141,23 +141,33 @@ function EmployeeWorkspaceDashboard() {
 
   const loadTimesheet = async () => {
     const userID = session?.userID || session?.id;
+    const userEmail = session?.email || userID;
 
-    if (!session?.email || !userID) {
+    if (!userID || !userEmail) {
       return;
     }
 
-    const date = new Date(anchorDate);
-    const nextData = await getMonthlyTimesheetPeriodData({
-      userID,
-      userEmail: session.email,
-      month: date.getMonth() + 1,
-      year: date.getFullYear(),
-      periodType,
-      anchorDate: date,
-      createIfMissing: true,
-    });
+    const anchorDateObj = typeof anchorDate === 'string' ? new Date(anchorDate) : anchorDate;
+    const periodConfig = getPeriodConfig(periodType, anchorDateObj);
+    const month = periodConfig.startDate.getMonth() + 1;
+    const year = periodConfig.startDate.getFullYear();
+    const date = getDateKey(periodConfig.startDate);
 
-    setTimesheetData(nextData);
+    try {
+      const nextData = await getMonthlyTimesheetPeriodData({
+        userID,
+        userEmail,
+        month,
+        year,
+        periodType: periodType === 'week' ? 'week' : 'month',
+        anchorDate: anchorDateObj,
+        createIfMissing: true,
+      });
+
+      setTimesheetData(nextData);
+    } catch (error) {
+      setTimesheetFeedback({ type: 'danger', message: error?.message || 'Khong the tai du lieu bang cong tu API.' });
+    }
   };
 
   const loadLeaveData = async () => {
@@ -255,7 +265,7 @@ function EmployeeWorkspaceDashboard() {
     return () => {
       socket.off('new_notification', handleNewNotification);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [socket, periodType, anchorDate]);
 
   const workingDuration = useMemo(() => {
@@ -300,6 +310,15 @@ function EmployeeWorkspaceDashboard() {
 
     return canSubmitTimesheet(timesheetData.rows, periodCorrections, timesheetData.summary);
   }, [timesheetData]);
+
+  const displayRows = useMemo(() => {
+    if (!timesheetData) return [];
+    if (periodType === 'month') return timesheetData.rows;
+
+    const anchorDateObj2 = typeof anchorDate === 'string' ? new Date(anchorDate) : anchorDate;
+    const { startKey, endKey } = getCurrentWeekRange(anchorDateObj2);
+    return timesheetData.rows.filter((r) => r.date >= startKey && r.date <= endKey);
+  }, [timesheetData, periodType, anchorDate]);
 
   const overviewStats = useMemo(() => {
     const pendingLeaveCount = leaveRequests.filter((item) => item.status === 'Pending').length;
@@ -473,14 +492,10 @@ function EmployeeWorkspaceDashboard() {
 
   const handleSubmitCorrection = async (formData) => {
     try {
-      const attendanceRow =
-        selectedRow ||
-        timesheetData?.rows.find((row) => row.date === formData.date) ||
-        null;
+      const attendanceRow = timesheetData?.rows.find((row) => row.date === formData.date) || null;
 
       if (!attendanceRow?.id) {
-        setTimesheetFeedback({ type: 'danger', message: 'Không tìm thấy bản ghi cần chỉnh sửa.' });
-        return;
+        throw new Error('Không tìm thấy bản ghi cần chỉnh sửa.');
       }
 
       await createCorrectionRequest({
@@ -499,13 +514,11 @@ function EmployeeWorkspaceDashboard() {
       setTimesheetFeedback({ type: 'success', message: 'Yêu cầu chỉnh sửa đã được gửi.' });
       void loadTimesheet();
     } catch (error) {
-      setTimesheetFeedback({
-        type: 'danger',
-        message:
-          error.code === 'CORRECTION_PENDING_EXISTS'
-            ? 'Ngày này đã có yêu cầu chỉnh sửa đang chờ duyệt.'
-            : 'Không thể tạo yêu cầu chỉnh sửa.',
-      });
+      throw new Error(
+        error.code === 'CORRECTION_PENDING_EXISTS'
+          ? 'Ngày này đã có yêu cầu chỉnh sửa đang chờ duyệt.'
+          : error.message || 'Không thể tạo yêu cầu chỉnh sửa.',
+      );
     }
   };
 
@@ -601,6 +614,7 @@ function EmployeeWorkspaceDashboard() {
     },
     timesheet: {
       timesheetData,
+      displayRows,
       periodType,
       anchorDate,
       submitState,

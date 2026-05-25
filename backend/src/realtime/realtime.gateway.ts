@@ -41,6 +41,14 @@ export class RealtimeGateway
 
       const userID = String(payload.userID);
       void client.join(`user_${userID}`);
+
+      if (
+        typeof payload.roleName === 'string' &&
+        payload.roleName.toLowerCase() === 'admin'
+      ) {
+        void client.join('admin_room');
+      }
+
       console.log(
         `Client connected and joined room user_${userID}: ${client.id}`,
       );

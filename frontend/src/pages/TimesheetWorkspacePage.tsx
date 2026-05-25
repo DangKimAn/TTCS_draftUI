@@ -12,7 +12,7 @@ import {
   getMonthlyTimesheetPeriodData,
   submitTimesheet,
 } from '../services/timesheetService';
-import { getDateKey } from '../utils/dateUtils';
+import { getDateKey, getCurrentWeekRange, getPeriodConfig } from '../utils/dateUtils';
 import { getAuthSession, getDashboardPathByRole } from '../utils/storage';
 import './EmployeeDashboard.css';
 import './WorkspacePages.css';
@@ -74,7 +74,11 @@ function TimesheetWorkspacePage() {
       return;
     }
 
-    const { month, year, date } = getMonthYear(anchorDate);
+    const anchorDateObj = typeof anchorDate === 'string' ? new Date(anchorDate) : anchorDate;
+    const periodConfig = getPeriodConfig(periodType, anchorDateObj);
+    const month = periodConfig.startDate.getMonth() + 1;
+    const year = periodConfig.startDate.getFullYear();
+    const date = getDateKey(periodConfig.startDate);
 
     setIsLoading(true);
 
@@ -84,8 +88,8 @@ function TimesheetWorkspacePage() {
         userEmail,
         month,
         year,
-        periodType,
-        anchorDate: date,
+        periodType: periodType === 'week' ? 'week' : 'month',
+        anchorDate: anchorDateObj,
         createIfMissing: true,
       });
 
@@ -119,6 +123,16 @@ function TimesheetWorkspacePage() {
     return canSubmitTimesheet(timesheetData.rows, periodCorrections, timesheetData.summary);
   }, [isLoading, timesheetData]);
 
+  const displayRows = useMemo(() => {
+    if (!timesheetData) return [];
+    if (periodType === 'month') return timesheetData.rows;
+
+    const anchorDateObj2 = typeof anchorDate === 'string' ? new Date(anchorDate) : anchorDate;
+    const { startKey, endKey } = getCurrentWeekRange(anchorDateObj2);
+    return timesheetData.rows.filter((r) => r.date >= startKey && r.date <= endKey);
+  }, [timesheetData, periodType, anchorDate]);
+
+
   const handleOpenCorrection = (row = null) => {
     setSelectedRow(row || timesheetData?.rows[0] || null);
     setIsCorrectionOpen(true);
@@ -126,14 +140,10 @@ function TimesheetWorkspacePage() {
 
   const handleCorrectionSubmit = async (formData) => {
     try {
-      const attendanceRow =
-        selectedRow ||
-        timesheetData?.rows.find((row) => row.date === formData.date) ||
-        null;
+      const attendanceRow = timesheetData?.rows.find((row) => row.date === formData.date) || null;
 
       if (!attendanceRow?.id) {
-        setFeedback('Khong tim thay ban ghi cham cong de tao yeu cau.');
-        return;
+        throw new Error('Không tìm thấy bản ghi chấm công để tạo yêu cầu.');
       }
 
       await createCorrectionRequest({
@@ -149,13 +159,13 @@ function TimesheetWorkspacePage() {
 
       setIsCorrectionOpen(false);
       setSelectedRow(null);
-      setFeedback('Yeu cau chinh sua da duoc gui.');
+      setFeedback('Yêu cầu chỉnh sửa đã được gửi.');
       void loadTimesheet();
     } catch (error) {
-      setFeedback(
+      throw new Error(
         error.code === 'CORRECTION_PENDING_EXISTS'
-          ? 'Ngay nay da co yeu cau chinh sua cho duyet.'
-          : error.message || 'Khong the tao yeu cau chinh sua. Vui long thu lai.',
+          ? 'Ngày này đã có yêu cầu chỉnh sửa chờ duyệt.'
+          : error.message || 'Không thể tạo yêu cầu chỉnh sửa. Vui lòng thử lại.',
       );
     }
   };
@@ -340,11 +350,12 @@ function TimesheetWorkspacePage() {
 
       <div className="dashboard-content">
         <div className="dashboard-content__main">
-          <TimesheetTable rows={timesheetData.rows} onRequestCorrection={handleOpenCorrection} />
+          <TimesheetTable rows={displayRows} onRequestCorrection={handleOpenCorrection} />
         </div>
 
         <aside className="dashboard-content__side">
           <SubmitTimesheetPanel
+            title={`Gửi bảng công Tháng ${new Date(timesheetData.period.startDate).getMonth() + 1}/${new Date(timesheetData.period.startDate).getFullYear()}`}
             stats={timesheetData.stats}
             summaryStatus={timesheetData.summary.status}
             submitState={{

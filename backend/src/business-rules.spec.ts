@@ -353,6 +353,9 @@ describe('business rules', () => {
     }
 
     it('blocks submit while a correction is pending', async () => {
+      // Mock current date to the 1st of month so submission window check passes
+      jest.useFakeTimers().setSystemTime(new Date('2026-05-01T10:00:00'));
+
       const tx = {
         monthlyTimesheet: {
           findUnique: jest
@@ -360,6 +363,8 @@ describe('business rules', () => {
             .mockResolvedValueOnce({
               monthlyTimesheetID: 'monthly-1',
               userID: user.userID,
+              month: 4,
+              year: 2026,
               status: DRAFT,
               isSubmitted: false,
             })
@@ -376,6 +381,8 @@ describe('business rules', () => {
       await expect(
         createMonthlyService(tx).SubmitMonthlyTimesheet('monthly-1'),
       ).rejects.toThrow('cannot');
+
+      jest.useRealTimers();
     });
 
     it('persists approved status and locks entries after manager approval', async () => {
