@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { FiRefreshCw } from 'react-icons/fi';
 import { fetchSystemLogs, toggleSystemLogAnomaly } from '../../services/hrService';
 import { HRFeedback } from './hrShared';
+import { useSocket } from '../../contexts/SocketContext';
 
 interface SystemLog {
   logID: string;
@@ -48,6 +49,29 @@ export default function HRSystemLogs() {
   useEffect(() => {
     loadLogs();
   }, []);
+
+  const { socket } = useSocket();
+
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleNewLog = (newLog: SystemLog) => {
+      // Prepend the new log to the list
+      setLogs((prev) => {
+        // Avoid duplicates if multiple events fire
+        if (prev.some((log) => log.logID === newLog.logID)) {
+          return prev;
+        }
+        return [newLog, ...prev].slice(0, 200); // keep max 200 to match limit
+      });
+    };
+
+    socket.on('new_system_log', handleNewLog);
+
+    return () => {
+      socket.off('new_system_log', handleNewLog);
+    };
+  }, [socket]);
 
   const toggleAnomalous = async (logId: string) => {
     setAnomalousLogs((prev) => {

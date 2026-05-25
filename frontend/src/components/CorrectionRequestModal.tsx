@@ -1,6 +1,10 @@
 import { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
+<<<<<<< HEAD
 import { getDateKey } from '../utils/dateUtils';
+=======
+import { getCurrentMonthRange, getDateKey } from '../utils/dateUtils';
+>>>>>>> 8ba8c6a (fix : log realtime + submit timesheet)
 
 type CorrectionFormErrors = {
   date?: string;
@@ -19,6 +23,7 @@ function CorrectionRequestModal({ isOpen, selectedRow, onClose, onSubmit, rows =
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const isSubmittingRef = useRef(false);
+  const [submitError, setSubmitError] = useState('');
 
   useEffect(() => {
     if (!selectedRow) {
@@ -40,6 +45,7 @@ function CorrectionRequestModal({ isOpen, selectedRow, onClose, onSubmit, rows =
       reason: '',
     });
     setErrors({});
+    setSubmitError('');
     setIsSubmitting(false);
   }, [selectedRow]);
 
@@ -86,8 +92,11 @@ function CorrectionRequestModal({ isOpen, selectedRow, onClose, onSubmit, rows =
 
     isSubmittingRef.current = true;
     setIsSubmitting(true);
+    setSubmitError('');
     try {
       await onSubmit(form);
+    } catch (error) {
+      setSubmitError(error.message || 'Có lỗi xảy ra khi gửi yêu cầu.');
     } finally {
       isSubmittingRef.current = false;
       setIsSubmitting(false);
@@ -105,13 +114,24 @@ function CorrectionRequestModal({ isOpen, selectedRow, onClose, onSubmit, rows =
           </div>
         </div>
 
+        {submitError ? (
+          <div className="alert alert--danger" style={{ margin: '0 24px 16px 24px', padding: '12px', backgroundColor: '#fee2e2', color: '#b91c1c', borderRadius: '6px', fontSize: '14px' }}>
+            {submitError}
+          </div>
+        ) : null}
+
         <form className="correction-form" onSubmit={handleSubmit}>
           <label>
             <span>Ngày cần chỉnh sửa</span>
             <input
               type="date"
               value={form.date}
+<<<<<<< HEAD
               max={getDateKey()}
+=======
+              min={getCurrentMonthRange().startKey}
+              max={getCurrentMonthRange().endKey > getDateKey() ? getDateKey() : getCurrentMonthRange().endKey}
+>>>>>>> 8ba8c6a (fix : log realtime + submit timesheet)
               onChange={(event) => {
                 const newDate = event.target.value;
                 const dateRow = rows.find((r) => r.date === newDate);

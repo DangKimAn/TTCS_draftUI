@@ -8,6 +8,7 @@ import { AppModule } from './app.module';
 import { ResponseEnvelopeInterceptor } from './common/interceptors/response-envelope.interceptor';
 import { SystemLogInterceptor } from './common/interceptors/system-log.interceptor';
 import { PrismaService } from './prisma/prisma.service';
+import { RealtimeService } from './realtime/realtime.service';
 
 interface TrustProxyHttpServer {
   set(setting: 'trust proxy', value: boolean): void;
@@ -65,11 +66,12 @@ async function bootstrap() {
   httpServer.set('trust proxy', true);
 
   const prismaService = app.get(PrismaService);
+  const realtimeService = app.get(RealtimeService);
 
   app.useGlobalInterceptors(
     new ClassSerializerInterceptor(reflector),
     new ResponseEnvelopeInterceptor(),
-    new SystemLogInterceptor(prismaService),
+    new SystemLogInterceptor(prismaService, realtimeService),
   );
 
   const port = configService.get<number>('PORT') || 3000;

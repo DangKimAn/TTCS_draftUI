@@ -349,8 +349,9 @@ function findCachedMonthlyTimesheet(
 function findCachedSummaryForPeriod(
   userKey: string,
   periodType: PeriodType,
-  anchorDate: Date,
+  anchorDateInput: Date | string,
 ): MonthlyTimesheetData | null {
+  const anchorDate = typeof anchorDateInput === 'string' ? new Date(anchorDateInput) : anchorDateInput;
   const month = anchorDate.getMonth() + 1;
   const year = anchorDate.getFullYear();
 
@@ -859,6 +860,10 @@ export async function getMonthlyTimesheetPeriodData({
 }): Promise<TimesheetPeriodData> {
   validateUserID(userID);
   validateMonthYear(month, year);
+  
+  if (typeof anchorDate === 'string') {
+    anchorDate = new Date(anchorDate);
+  }
 
   let monthlyTimesheet: MonthlyTimesheetData;
 
@@ -1023,6 +1028,39 @@ export function canSubmitTimesheet(
       allowed: false,
       reason: 'Vui long doi quan ly duyet yeu cau chinh sua truoc khi chot cong.',
     };
+  }
+
+  // Time window validation: Only allowed between 1st and 5th of current month for previous month's timesheet.
+  if (records.length > 0) {
+    const timesheetDate = new Date(records[0].date);
+    const tsMonth = timesheetDate.getMonth() + 1;
+    const tsYear = timesheetDate.getFullYear();
+
+    const currentDate = new Date();
+    const currentDay = currentDate.getDate();
+    const currentMonth = currentDate.getMonth() + 1;
+    const currentYear = currentDate.getFullYear();
+
+    if (currentDay < 1 || currentDay > 5) {
+      return {
+        allowed: false,
+        reason: 'Chỉ có thể nộp bảng công từ ngày 1 đến ngày 5 hàng tháng.',
+      };
+    }
+
+    let expectedMonth = currentMonth - 1;
+    let expectedYear = currentYear;
+    if (expectedMonth === 0) {
+      expectedMonth = 12;
+      expectedYear = currentYear - 1;
+    }
+
+    if (tsMonth !== expectedMonth || tsYear !== expectedYear) {
+      return {
+        allowed: false,
+        reason: `Chỉ được nộp bảng công của tháng trước (${expectedMonth}/${expectedYear}).`,
+      };
+    }
   }
 
   return {

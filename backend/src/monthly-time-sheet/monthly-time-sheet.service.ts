@@ -684,8 +684,9 @@ export class MonthlyTimeSheetService {
       };
 
       if (tx) return await executeLogic(tx);
-      return await this.prismaService.$transaction(async (tx) =>
-        executeLogic(tx),
+      return await this.prismaService.$transaction(
+        async (tx) => executeLogic(tx),
+        { timeout: 30000 },
       );
     } catch (error) {
       console.error('Error in checkIn:', error);
@@ -725,6 +726,26 @@ export class MonthlyTimeSheetService {
 
         if (monthGet.status === MonthlyTimesheetStatus.APPROVED)
           throw new BadRequestException('Approved monthly timesheet is locked');
+
+        const currentDate = new Date();
+        const currentDay = currentDate.getDate();
+        const currentMonth = currentDate.getMonth() + 1;
+        const currentYear = currentDate.getFullYear();
+
+        if (currentDay < 1 || currentDay > 5) {
+          throw new BadRequestException('Bạn chỉ có thể nộp bảng công từ ngày 1 đến ngày 5 hàng tháng.');
+        }
+
+        let expectedMonth = currentMonth - 1;
+        let expectedYear = currentYear;
+        if (expectedMonth === 0) {
+          expectedMonth = 12;
+          expectedYear = currentYear - 1;
+        }
+
+        if (monthGet.month !== expectedMonth || monthGet.year !== expectedYear) {
+          throw new BadRequestException(`Bạn chỉ được phép nộp bảng công của tháng trước (${expectedMonth}/${expectedYear}).`);
+        }
 
         const canSubmit = await this.refreshCanSubmit(
           monthGet.monthlyTimesheetID,
@@ -824,8 +845,9 @@ export class MonthlyTimeSheetService {
 
       if (tx) return await executeLogic(tx);
 
-      return await this.prismaService.$transaction(async (tx) =>
-        executeLogic(tx),
+      return await this.prismaService.$transaction(
+        async (tx) => executeLogic(tx),
+        { timeout: 30000 },
       );
     } catch (error) {
       if (error instanceof HttpException) {
@@ -995,8 +1017,9 @@ export class MonthlyTimeSheetService {
 
       if (tx) return await executeLogic(tx);
 
-      return await this.prismaService.$transaction(async (tx) =>
-        executeLogic(tx),
+      return await this.prismaService.$transaction(
+        async (tx) => executeLogic(tx),
+        { timeout: 30000 },
       );
     } catch (error) {
       if (error instanceof HttpException) throw error;

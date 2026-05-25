@@ -19,6 +19,7 @@ function TimesheetFilterBar({
           >
             <option value="week">Tuần này</option>
             <option value="month">Tháng này</option>
+            <option value="last_month">Tháng trước</option>
           </select>
         </label>
 
