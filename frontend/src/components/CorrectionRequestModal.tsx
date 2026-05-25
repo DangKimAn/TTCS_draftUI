@@ -1,10 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
-<<<<<<< HEAD
-import { getDateKey } from '../utils/dateUtils';
-=======
 import { getCurrentMonthRange, getDateKey } from '../utils/dateUtils';
->>>>>>> 8ba8c6a (fix : log realtime + submit timesheet)
 
 type CorrectionFormErrors = {
   date?: string;
@@ -126,12 +122,8 @@ function CorrectionRequestModal({ isOpen, selectedRow, onClose, onSubmit, rows =
             <input
               type="date"
               value={form.date}
-<<<<<<< HEAD
-              max={getDateKey()}
-=======
               min={getCurrentMonthRange().startKey}
               max={getCurrentMonthRange().endKey > getDateKey() ? getDateKey() : getCurrentMonthRange().endKey}
->>>>>>> 8ba8c6a (fix : log realtime + submit timesheet)
               onChange={(event) => {
                 const newDate = event.target.value;
                 const dateRow = rows.find((r) => r.date === newDate);

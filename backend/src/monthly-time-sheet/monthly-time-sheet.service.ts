@@ -733,7 +733,9 @@ export class MonthlyTimeSheetService {
         const currentYear = currentDate.getFullYear();
 
         if (currentDay < 1 || currentDay > 5) {
-          throw new BadRequestException('Bạn chỉ có thể nộp bảng công từ ngày 1 đến ngày 5 hàng tháng.');
+          throw new BadRequestException(
+            'Bạn chỉ có thể nộp bảng công từ ngày 1 đến ngày 5 hàng tháng.',
+          );
         }
 
         let expectedMonth = currentMonth - 1;
@@ -743,8 +745,13 @@ export class MonthlyTimeSheetService {
           expectedYear = currentYear - 1;
         }
 
-        if (monthGet.month !== expectedMonth || monthGet.year !== expectedYear) {
-          throw new BadRequestException(`Bạn chỉ được phép nộp bảng công của tháng trước (${expectedMonth}/${expectedYear}).`);
+        if (
+          monthGet.month !== expectedMonth ||
+          monthGet.year !== expectedYear
+        ) {
+          throw new BadRequestException(
+            `Bạn chỉ được phép nộp bảng công của tháng trước (${expectedMonth}/${expectedYear}).`,
+          );
         }
 
         const canSubmit = await this.refreshCanSubmit(

@@ -74,7 +74,8 @@ function TimesheetWorkspacePage() {
       return;
     }
 
-    const periodConfig = getPeriodConfig(periodType, anchorDate);
+    const anchorDateObj = typeof anchorDate === 'string' ? new Date(anchorDate) : anchorDate;
+    const periodConfig = getPeriodConfig(periodType, anchorDateObj);
     const month = periodConfig.startDate.getMonth() + 1;
     const year = periodConfig.startDate.getFullYear();
     const date = getDateKey(periodConfig.startDate);
@@ -88,7 +89,7 @@ function TimesheetWorkspacePage() {
         month,
         year,
         periodType: periodType === 'week' ? 'week' : 'month',
-        anchorDate: date,
+        anchorDate: anchorDateObj,
         createIfMissing: true,
       });
 
@@ -126,7 +127,8 @@ function TimesheetWorkspacePage() {
     if (!timesheetData) return [];
     if (periodType === 'month') return timesheetData.rows;
 
-    const { startKey, endKey } = getCurrentWeekRange(anchorDate);
+    const anchorDateObj2 = typeof anchorDate === 'string' ? new Date(anchorDate) : anchorDate;
+    const { startKey, endKey } = getCurrentWeekRange(anchorDateObj2);
     return timesheetData.rows.filter((r) => r.date >= startKey && r.date <= endKey);
   }, [timesheetData, periodType, anchorDate]);
 
