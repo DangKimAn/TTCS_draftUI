@@ -94,111 +94,131 @@ export class AttendanceModuleService {
     tx?: Prisma.TransactionClient,
   ): Promise<DefaultResponse> {
     if (!IPAddress) {
-      return {
-        statusCode: BADREQUEST_CODE,
-        message: 'IP address is missing',
-      };
+      return { statusCode: BADREQUEST_CODE, message: 'IP address is missing' };
     }
 
     try {
       const executeLogic = async (
         dbCtx: Prisma.TransactionClient,
       ): Promise<ResponseDto<any>> => {
-        const userGet = await this.userService.getUserByUserID(userID, dbCtx);
-        if (userGet.statusCode !== OK_CODE || !userGet.data) {
-          return {
-            statusCode: userGet.statusCode,
-            message: userGet.message || 'User not found',
-          };
-        }
-
         const now = new Date();
+        const month = now.getMonth() + 1;
+        const year = now.getFullYear();
+        const currentDateString = `${year}-${String(month).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
-        const currentDateString = [
-          now.getFullYear(),
-          String(now.getMonth() + 1).padStart(2, '0'),
-          String(now.getDate()).padStart(2, '0'),
-        ].join('-');
+        // 1. TỐI ƯU: Chạy song song tìm User và Timesheet + Select
+        const [user, timesheet] = await Promise.all([
+          dbCtx.user.findUnique({
+            where: { userID },
+            select: {
+              departmentID: true,
+              department: { select: { managerID: true } },
+            },
+          }),
+          dbCtx.monthlyTimesheet.findFirst({
+            where: { userID, month, year },
+            select: { monthlyTimesheetID: true, status: true },
+          }),
+        ]);
 
-        let timesheet = await this.monthlyTimesheetService.getMonthlyTimeSheet(
-          userID,
-          { month: now.getMonth() + 1, year: now.getFullYear() },
-          dbCtx,
-        );
-
-        if (timesheet.statusCode === NOTFOUND_CODE) {
-          timesheet = await this.monthlyTimesheetService.createMonthlyTimeSheet(
-            userID,
-            { month: now.getMonth() + 1, year: now.getFullYear() },
-            dbCtx,
-          );
-        }
-
-        if (
-          (timesheet.statusCode !== CREATED_RESPONE &&
-            timesheet.statusCode !== OK_CODE) ||
-          !timesheet.data
-        ) {
+        if (!user)
+          return { statusCode: NOTFOUND_CODE, message: 'User not found' };
+        if (!user.departmentID)
+          return {
+            statusCode: BADREQUEST_CODE,
+            message: 'Please add departmentID to this employee',
+          };
+        if (!user.department?.managerID)
           return {
             statusCode: BADREQUEST_CODE,
             message:
-              timesheet.message || 'Failed to get/create monthly timesheet',
+              'Please update managerID for this department before create monthly timesheet for this user !!!! ',
           };
+
+        let timesheetID: string;
+        let needsTimesheetUpdate = false;
+        let timesheetUpdateData: Prisma.MonthlyTimesheetUncheckedUpdateInput = {
+          canSubmit: false,
+        };
+
+        // 2. TỐI ƯU: Xử lý Bảng công tháng
+        if (!timesheet) {
+          const newTimesheet = await dbCtx.monthlyTimesheet.create({
+            data: {
+              userID,
+              month,
+              year,
+              status: MonthlyTimesheetStatus.DRAFT,
+              canSubmit: false,
+            },
+            select: { monthlyTimesheetID: true },
+          });
+          timesheetID = newTimesheet.monthlyTimesheetID;
+        } else {
+          timesheetID = timesheet.monthlyTimesheetID;
+          needsTimesheetUpdate = true;
+
+          if (
+            timesheet.status === MonthlyTimesheetStatus.APPROVED ||
+            timesheet.status === MonthlyTimesheetStatus.SUBMITTED
+          ) {
+            timesheetUpdateData = {
+              ...timesheetUpdateData,
+              status: MonthlyTimesheetStatus.DRAFT,
+              isSubmitted: false,
+              reasonReject: null,
+              approvedById: null,
+              reviewedAt: null,
+            };
+          }
         }
 
-        const monthlyTimesheetID = timesheet.data.monthlyTimesheetID;
-        await this.reopenCurrentTimesheetForAttendance(
-          monthlyTimesheetID,
-          timesheet.data.status as MonthlyTimesheetStatus | undefined,
-          dbCtx,
-        );
-
+        // 3. Tìm lượt Check-in gần nhất (Select lấy duy nhất checkOut)
         const lastEntry = await dbCtx.timesheetEntry.findFirst({
           where: {
             date: currentDateString,
-            monthlyTimesheetID: monthlyTimesheetID,
+            monthlyTimesheetID: timesheetID,
           },
           orderBy: { checkIn: 'desc' },
+          select: { checkOut: true },
         });
 
-        if (!lastEntry || lastEntry.checkOut !== null) {
-          await dbCtx.timesheetEntry.create({
-            data: {
-              monthlyTimesheetID: monthlyTimesheetID,
-              date: currentDateString,
-              IPAddress,
-              deviceInfo,
-              checkIn: now,
-              status: TimesheetStatus.PENDING,
-            },
-          });
-
-          await this.monthlyTimesheetService.refreshCanSubmit(
-            monthlyTimesheetID,
-            dbCtx,
-          );
-
-          return {
-            statusCode: CREATED_RESPONE,
-            message: 'Check-in successful!',
-          };
-        } else {
+        if (lastEntry && lastEntry.checkOut === null) {
           return {
             statusCode: BADREQUEST_CODE,
             message:
               'You have already checked in. Please check out first before checking in again.',
           };
         }
+
+        // 4. TỐI ƯU: Chạy song song việc tạo Entry và cập nhật Timesheet
+        const createEntryPromise = dbCtx.timesheetEntry.create({
+          data: {
+            monthlyTimesheetID: timesheetID,
+            date: currentDateString,
+            IPAddress,
+            deviceInfo,
+            checkIn: now,
+            status: TimesheetStatus.PENDING,
+          },
+        });
+
+        if (needsTimesheetUpdate) {
+          const updateTimesheetPromise = dbCtx.monthlyTimesheet.update({
+            where: { monthlyTimesheetID: timesheetID },
+            data: timesheetUpdateData,
+          });
+          await Promise.all([createEntryPromise, updateTimesheetPromise]);
+        } else {
+          await createEntryPromise;
+        }
+
+        return { statusCode: CREATED_RESPONE, message: 'Check-in successful!' };
       };
 
-      if (tx) {
-        return await executeLogic(tx);
-      }
-
-      return await this.prismaService.$transaction(executeLogic, {
-        maxWait: 5000, // Chờ tối đa 5s để lấy connection
-        timeout: 15000, // Cho phép transaction chạy tối đa 15s
-      });
+      if (tx) return await executeLogic(tx);
+      // KHÔNG SỬ DỤNG $transaction ĐỂ TRÁNH NGẼN POOL VÀ CHO PHÉP PROMISE.ALL TỰ DO CHẠY
+      return await executeLogic(this.prismaService);
     } catch (error: unknown) {
       console.error('Error in checkIn:', error);
       return {
@@ -207,77 +227,74 @@ export class AttendanceModuleService {
       };
     }
   }
+
   async checkOut(
     userID: string,
     IPAddress: string | undefined,
     deviceInfo?: string,
     tx?: Prisma.TransactionClient,
   ): Promise<DefaultResponse> {
-    // 1. FAIL-FAST
     if (!IPAddress) {
-      return {
-        statusCode: BADREQUEST_CODE,
-        message: 'IP address is missing',
-      };
+      return { statusCode: BADREQUEST_CODE, message: 'IP address is missing' };
     }
 
     try {
+      let isWarning = false;
+      let managerIdToNotify: string | null = null;
+      let userName: string = '';
+
       const executeLogic = async (
         dbCtx: Prisma.TransactionClient,
       ): Promise<ResponseDto<any>> => {
-        // --- BƯỚC 1: KIỂM TRA USER ---
-        const userGet = await this.userService.getUserByUserID(userID, dbCtx);
-        if (userGet.statusCode !== OK_CODE || !userGet.data) {
-          return {
-            statusCode: userGet.statusCode,
-            message: userGet.message || 'User not found',
-          };
-        }
-
         const now = new Date();
+        const month = now.getMonth() + 1;
+        const year = now.getFullYear();
+        const currentDateString = `${year}-${String(month).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
-        // Chuẩn hóa format ngày (YYYY-MM-DD)
-        const currentDateString = [
-          now.getFullYear(),
-          String(now.getMonth() + 1).padStart(2, '0'),
-          String(now.getDate()).padStart(2, '0'),
-        ].join('-');
+        // 1. TỐI ƯU: Chạy song song lấy User và Timesheet + Select
+        const [user, timesheet] = await Promise.all([
+          dbCtx.user.findUnique({
+            where: { userID },
+            select: {
+              username: true,
+              department: { select: { managerID: true } },
+            },
+          }),
+          dbCtx.monthlyTimesheet.findFirst({
+            where: { userID, month, year },
+            select: { monthlyTimesheetID: true, status: true },
+          }),
+        ]);
 
-        // --- BƯỚC 2: LẤY BẢNG CÔNG THÁNG CỦA USER NÀY ---
-        const timesheet =
-          await this.monthlyTimesheetService.getMonthlyTimeSheet(
-            userID,
-            { month: now.getMonth() + 1, year: now.getFullYear() },
-            dbCtx,
-          );
+        if (!user)
+          return { statusCode: NOTFOUND_CODE, message: 'User not found' };
+        userName = user.username || 'Employee';
+        managerIdToNotify = user.department?.managerID || null;
 
-        // Nếu tháng này chưa có bảng công -> Chắc chắn chưa từng Check-in
-        if (timesheet.statusCode !== OK_CODE || !timesheet.data) {
+        if (!timesheet) {
           return {
             statusCode: BADREQUEST_CODE,
             message: "You haven't checked in yet.",
           };
         }
 
-        const monthlyTimesheetID = timesheet.data.monthlyTimesheetID;
+        const timesheetID = timesheet.monthlyTimesheetID;
 
-        await this.reopenCurrentTimesheetForAttendance(
-          monthlyTimesheetID,
-          timesheet.data.status as MonthlyTimesheetStatus | undefined,
-          dbCtx,
-        );
-
-        // --- BƯỚC 3: LẤY LƯỢT CHECK-IN MỚI NHẤT TRONG NGÀY ---
+        // 2. TỐI ƯU: Lấy lượt Check-in chưa check-out gần nhất + Select
         const lastEntry = await dbCtx.timesheetEntry.findFirst({
           where: {
-            monthlyTimesheetID: monthlyTimesheetID,
+            monthlyTimesheetID: timesheetID,
             date: currentDateString,
           },
-          orderBy: { checkIn: 'desc' }, // Lấy bản ghi trễ nhất
+          orderBy: { checkIn: 'desc' },
+          select: {
+            timesheetEntryID: true,
+            checkOut: true,
+            IPAddress: true,
+            deviceInfo: true,
+          },
         });
 
-        // --- BƯỚC 4: KIỂM TRA CÁC ĐIỀU KIỆN ---
-        // 1. Không có lượt chấm công nào, hoặc lượt gần nhất đã check-out rồi
         if (!lastEntry || lastEntry.checkOut !== null) {
           return {
             statusCode: BADREQUEST_CODE,
@@ -285,38 +302,32 @@ export class AttendanceModuleService {
           };
         }
 
-        // 2. Kiểm tra tính hợp lệ của IP
-        let isWarning = false;
         if (lastEntry.IPAddress !== IPAddress) {
           isWarning = true;
-
-          // Gửi thông báo cho Manager
-          const managerResult = await this.userService.getManagerIdOfUserID(
-            userID,
-            dbCtx,
-          );
-          if (
-            managerResult.statusCode === OK_CODE &&
-            managerResult.data &&
-            typeof managerResult.data === 'object' &&
-            'managerID' in managerResult.data
-          ) {
-            const managerData = managerResult.data as { managerID: string };
-            await this.notificationService.createNotification(
-              'system',
-              managerData.managerID,
-              `Cảnh báo: Nhân viên ${userGet.data.username} Check-out với IP khác (${IPAddress}) so với lúc Check-in (${lastEntry.IPAddress}).`,
-              NotificationRelatedType.WARNING,
-              dbCtx,
-            );
-          }
         }
 
-        // --- BƯỚC 5: CẬP NHẬT THỜI GIAN CHECK-OUT ---
-        await dbCtx.timesheetEntry.update({
-          where: {
-            timesheetEntryID: lastEntry.timesheetEntryID,
-          },
+        let needsTimesheetUpdate = false;
+        let timesheetUpdateData: Prisma.MonthlyTimesheetUncheckedUpdateInput =
+          {};
+
+        if (
+          timesheet.status === MonthlyTimesheetStatus.APPROVED ||
+          timesheet.status === MonthlyTimesheetStatus.SUBMITTED
+        ) {
+          needsTimesheetUpdate = true;
+          timesheetUpdateData = {
+            status: MonthlyTimesheetStatus.DRAFT,
+            isSubmitted: false,
+            canSubmit: false,
+            reasonReject: null,
+            approvedById: null,
+            reviewedAt: null,
+          };
+        }
+
+        // 3. TỐI ƯU: Cập nhật Check-out và Timesheet song song
+        const updateEntryPromise = dbCtx.timesheetEntry.update({
+          where: { timesheetEntryID: lastEntry.timesheetEntryID },
           data: {
             checkOut: now,
             deviceInfo: deviceInfo ?? lastEntry.deviceInfo,
@@ -324,10 +335,20 @@ export class AttendanceModuleService {
           },
         });
 
-        await this.monthlyTimesheetService.refreshCanSubmit(
-          monthlyTimesheetID,
-          dbCtx,
-        );
+        if (needsTimesheetUpdate) {
+          const updateTimesheetPromise = dbCtx.monthlyTimesheet.update({
+            where: { monthlyTimesheetID: timesheetID },
+            data: timesheetUpdateData,
+          });
+          await Promise.all([updateEntryPromise, updateTimesheetPromise]);
+        } else {
+          await updateEntryPromise;
+        }
+
+        // 4. CHẠY NGẦM: Tính toán lại quyền Submit bảng công (không block kết quả trả về)
+        this.monthlyTimesheetService
+          .refreshCanSubmit(timesheetID, this.prismaService)
+          .catch(console.error);
 
         return {
           statusCode: OK_CODE,
@@ -337,12 +358,28 @@ export class AttendanceModuleService {
         };
       };
 
-      // THỰC THI TRANSACTION
+      let result: ResponseDto<any>;
       if (tx) {
-        return await executeLogic(tx);
+        result = await executeLogic(tx);
+      } else {
+        result = await executeLogic(this.prismaService);
       }
 
-      return await this.prismaService.$transaction(executeLogic);
+      // 5. CHẠY NGẦM: Gửi thông báo CẢNH BÁO IP
+      if (result.statusCode === OK_CODE && isWarning && managerIdToNotify) {
+        this.notificationService
+          .createNotification(
+            'system',
+            managerIdToNotify,
+            `Cảnh báo: Nhân viên ${userName} Check-out với IP khác (${IPAddress}) so với lúc Check-in.`,
+            NotificationRelatedType.WARNING,
+          )
+          .catch((err) =>
+            console.error('Error pushing IP warning notification:', err),
+          );
+      }
+
+      return result;
     } catch (error: unknown) {
       if (
         error &&
@@ -352,7 +389,6 @@ export class AttendanceModuleService {
       ) {
         throw error;
       }
-
       console.error('Error in checkOut:', error);
       return {
         statusCode: Interval_Server_Network_Exeception_Code,

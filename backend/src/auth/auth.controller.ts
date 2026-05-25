@@ -32,11 +32,17 @@ import {
   CONFLIG_CODE,
   CREATED_RESPONE,
   NOTFOUND_CODE,
+  OK_CODE,
   UNAUTHORIZED_CODE,
 } from 'src/common/code';
 import LoginDto from './dto/login.dto';
 import { RefreshTokenDto } from './dto/refreshToken.dto';
 import AuthDto from './dto/auth.dto';
+import {
+  SendCodeDto,
+  VerifyCodeDto,
+  ResetPasswordDto,
+} from './dto/forgot-password.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { GoogleAuthGuard } from './guards/google-auth.guard';
 import type { Request } from 'express';
@@ -270,5 +276,53 @@ export class AuthController {
         ),
       );
     }
+  }
+
+  // FORGOT PASSWORD OTP FLOW
+
+  @Post('forgot-password/send-code')
+  async sendResetCode(@Body() sendCodeDto: SendCodeDto) {
+    const result = await this.authService.sendResetCode(sendCodeDto.email);
+    if (result.statusCode === NOTFOUND_CODE) {
+      throw new NotFoundException(result.message);
+    }
+    if (
+      result.statusCode !== OK_CODE &&
+      result.statusCode !== CREATED_RESPONE
+    ) {
+      throw new BadRequestException(result.message);
+    }
+    return result;
+  }
+
+  @Post('forgot-password/verify-code')
+  async verifyResetCode(@Body() verifyCodeDto: VerifyCodeDto) {
+    const result = await this.authService.verifyResetCode(
+      verifyCodeDto.email,
+      verifyCodeDto.code,
+    );
+    if (
+      result.statusCode !== OK_CODE &&
+      result.statusCode !== CREATED_RESPONE
+    ) {
+      throw new BadRequestException(result.message);
+    }
+    return result;
+  }
+
+  @Post('forgot-password/reset')
+  async resetPassword(@Body() resetPasswordDto: ResetPasswordDto) {
+    const result = await this.authService.resetPassword(
+      resetPasswordDto.email,
+      resetPasswordDto.code,
+      resetPasswordDto.newPassword,
+    );
+    if (
+      result.statusCode !== OK_CODE &&
+      result.statusCode !== CREATED_RESPONE
+    ) {
+      throw new BadRequestException(result.message);
+    }
+    return result;
   }
 }

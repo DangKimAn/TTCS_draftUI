@@ -142,8 +142,28 @@ describe('business rules', () => {
 
   describe('attendance', () => {
     function createAttendanceService(tx: any) {
+      const defaultTx = {
+        user: {
+          findUnique: jest.fn().mockResolvedValue({
+            departmentID: 'dept-1',
+            department: { managerID: 'manager-1' },
+          }),
+        },
+        monthlyTimesheet: {
+          findFirst: jest.fn().mockResolvedValue({
+            monthlyTimesheetID: 'monthly-1',
+            status: DRAFT,
+          }),
+          update: jest.fn().mockResolvedValue({}),
+        },
+        ...tx,
+      };
+
       return new AttendanceModuleService(
-        { $transaction: jest.fn((callback) => callback(tx)) } as any,
+        {
+          $transaction: jest.fn((callback) => callback(defaultTx)),
+          ...defaultTx,
+        },
         {
           getUserByUserID: jest
             .fn()
@@ -247,10 +267,20 @@ describe('business rules', () => {
       const tx = {
         monthlyTimesheet: {
           update: jest.fn().mockResolvedValue({}),
+          findFirst: jest.fn().mockResolvedValue({
+            monthlyTimesheetID: 'monthly-1',
+            status: APPROVED,
+          }),
         },
         timesheetEntry: {
           findFirst: jest.fn().mockResolvedValue(null),
           create: jest.fn().mockResolvedValue({}),
+        },
+        user: {
+          findUnique: jest.fn().mockResolvedValue({
+            departmentID: 'dept-1',
+            department: { managerID: 'manager-1' },
+          }),
         },
       };
       const monthlyTimesheetService = {
@@ -261,7 +291,10 @@ describe('business rules', () => {
         refreshCanSubmit: jest.fn().mockResolvedValue(true),
       };
       const service = new AttendanceModuleService(
-        { $transaction: jest.fn((callback) => callback(tx)) } as any,
+        {
+          $transaction: jest.fn((callback) => callback(tx)),
+          ...tx,
+        },
         {
           getUserByUserID: jest
             .fn()

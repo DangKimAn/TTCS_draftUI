@@ -648,3 +648,23 @@ function downloadBlob(data: BlobPart, fileName: string) {
   document.body.removeChild(link);
   URL.revokeObjectURL(url);
 }
+
+export async function fetchSystemLogs(limit: number = 200, skip: number = 0, startDate?: string, endDate?: string) {
+  try {
+    const response = await httpClient.get('/system-log/all', {
+      params: { limit, skip, startDate, endDate },
+    });
+    return unwrapBackendData(response.data) || { logs: [], total: 0 };
+  } catch (error) {
+    throw normalizeHrError(error, 'Khong the tai nhat ky he thong.');
+  }
+}
+
+export async function toggleSystemLogAnomaly(logID: string) {
+  try {
+    const response = await httpClient.patch(`/system-log/toggle-anomaly/${encodeURIComponent(logID)}`);
+    return unwrapBackendData(response.data);
+  } catch (error) {
+    throw normalizeHrError(error, 'Khong the thay doi trang thai log.');
+  }
+}

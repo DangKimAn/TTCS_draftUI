@@ -177,9 +177,15 @@ function normalizeTimesheetError(
   fallbackMessage: string,
   fallbackCode = 'TIMESHEET_API_FAILED',
 ): AppError {
-  if (axios.isAxiosError(error)) {
-    const status = error.response?.status;
-    const message = getResponseMessage(error.response?.data) || error.message || fallbackMessage;
+  const isAxios = axios.isAxiosError(error);
+  const isNormalized = error instanceof Error && 'status' in error;
+
+  if (isAxios || isNormalized) {
+    const errObj = error as any;
+    const status = isAxios ? errObj.response?.status : errObj.status;
+    const message = isAxios 
+      ? getResponseMessage(errObj.response?.data) || errObj.message || fallbackMessage
+      : errObj.message || fallbackMessage;
 
     if (status === 404) {
       return createTimesheetError(message, 'TIMESHEET_NOT_FOUND');

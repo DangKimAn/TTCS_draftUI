@@ -13,6 +13,7 @@ import HRLeaveTypeManagement from '../components/hr/HRLeaveTypeManagement';
 import HRPayrollReport from '../components/hr/HRPayrollReport';
 import HRTimesheetExport from '../components/hr/HRTimesheetExport';
 import HRUserManagement from '../components/hr/HRUserManagement';
+import HRSystemLogs from '../components/hr/HRSystemLogs';
 import {
   formatHrRole,
   getToneClass,
@@ -322,6 +323,8 @@ function HRContentRouter({
           onLeaveTypesChange={onLeaveTypesChange}
         />
       );
+    case 'system-logs':
+      return <HRSystemLogs />;
     case 'profile':
       return (
         <ProfileSection

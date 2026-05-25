@@ -5,6 +5,7 @@ import ResponseDto, { AnotherError } from 'src/common/response.dto';
 import {
   BADREQUEST_CODE,
   CREATED_RESPONE,
+  NOTFOUND_CODE,
   OK_CODE,
   UNAUTHORIZED_CODE,
 } from 'src/common/code';
@@ -15,6 +16,8 @@ import AuthDto, { AuthUserDto } from './dto/auth.dto';
 import FullUserDto from 'src/user/dto/full-user.dto';
 import { ENV } from 'src/common/env';
 import { createHmac, randomBytes, timingSafeEqual } from 'crypto';
+import { PrismaService } from 'src/prisma/prisma.service';
+import { EmailService } from 'src/common/email.service';
 
 interface MicrosoftTokenResponse {
   access_token?: string;
@@ -44,6 +47,8 @@ export class AuthService {
   constructor(
     private userService: UserService,
     private bcryptHashedservice: BycyptHashedService,
+    private prismaService: PrismaService,
+    private emailService: EmailService,
   ) {}
 
   async login(loginDto: LoginDto): Promise<ResponseDto<AuthDto>> {
@@ -527,6 +532,117 @@ export class AuthService {
       departmentID: data.departmentID,
       role: data.role,
       department: data.department,
+    };
+  }
+
+  // FORGOT PASSWORD OTP FLOW
+
+  async sendResetCode(email: string): Promise<ResponseDto<any>> {
+    const userResult = await this.userService.getUserByEmail(email);
+    if (userResult.statusCode !== OK_CODE || !userResult.data) {
+      return {
+        statusCode: NOTFOUND_CODE,
+        message: 'User not found. Please contact administrator.',
+      };
+    }
+
+    // Generate 6-digit OTP
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const expires = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes from now
+
+    // Save to DB
+    await this.prismaService.user.update({
+      where: { userID: userResult.data.userID },
+      data: {
+        resetPasswordCode: code,
+        resetPasswordExpires: expires,
+      },
+    });
+
+    // Send Email
+    await this.emailService.send({
+      to: email,
+      subject: '[HRM] Mã xác nhận đặt lại mật khẩu',
+      text: `Xin chào ${userResult.data.username},\n\nMã xác nhận để đặt lại mật khẩu của bạn là: ${code}\n\nMã này sẽ hết hạn sau 5 phút.\nNếu bạn không yêu cầu đặt lại mật khẩu, xin vui lòng bỏ qua email này.\n\nTrân trọng,\nHệ thống HRM`,
+    });
+
+    return {
+      statusCode: OK_CODE,
+      message: 'If the email exists, a reset code has been sent.',
+    };
+  }
+
+  async verifyResetCode(
+    email: string,
+    code: string,
+  ): Promise<ResponseDto<any>> {
+    const userResult = await this.userService.getUserByEmail(email);
+    if (userResult.statusCode !== OK_CODE || !userResult.data) {
+      return {
+        statusCode: BADREQUEST_CODE,
+        message: 'Invalid code or email.',
+      };
+    }
+
+    const user = await this.prismaService.user.findUnique({
+      where: { userID: userResult.data.userID },
+    });
+
+    if (!user || user.resetPasswordCode !== code) {
+      return {
+        statusCode: BADREQUEST_CODE,
+        message: 'Invalid code or email.',
+      };
+    }
+
+    if (!user.resetPasswordExpires || user.resetPasswordExpires < new Date()) {
+      return {
+        statusCode: BADREQUEST_CODE,
+        message: 'Code has expired. Please request a new one.',
+      };
+    }
+
+    return {
+      statusCode: OK_CODE,
+      message: 'Code is valid.',
+    };
+  }
+
+  async resetPassword(
+    email: string,
+    code: string,
+    newPassword: string,
+  ): Promise<ResponseDto<any>> {
+    // Verify code first
+    const verifyResult = await this.verifyResetCode(email, code);
+    if (verifyResult.statusCode !== OK_CODE) {
+      return verifyResult;
+    }
+
+    const userResult = await this.userService.getUserByEmail(email);
+    if (userResult.statusCode !== OK_CODE || !userResult.data) {
+      return {
+        statusCode: BADREQUEST_CODE,
+        message: 'Invalid code or email.',
+      };
+    }
+
+    // Hash the new password
+    const hashedPassword = await this.bcryptHashedservice.hash(newPassword);
+
+    // Update the password and clear the reset code
+    await this.prismaService.user.update({
+      where: { userID: userResult.data.userID },
+      data: {
+        hashedPassword: hashedPassword,
+        resetPasswordCode: null,
+        resetPasswordExpires: null,
+      },
+    });
+
+    return {
+      statusCode: OK_CODE,
+      message: 'Password has been successfully reset.',
     };
   }
 }

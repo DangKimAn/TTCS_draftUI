@@ -7,6 +7,7 @@ import { AttendanceModuleModule } from './attendance-module/attendance-module.mo
 import { AuthModule } from './auth/auth.module';
 import { BycyptHashedModule } from './common/bycypt-hashed/bycypt-hashed.module';
 import { SeedService } from './common/seed.service';
+import { SystemLogCleanupService } from './common/system-log-cleanup.service';
 import { DepartmentModule } from './department/department.module';
 import { LeaveApplicationModule } from './leave-application/leave-application.module';
 import { MonthlyTimeSheetModule } from './monthly-time-sheet/monthly-time-sheet.module';
@@ -21,6 +22,7 @@ import { RequestCorrectionModule } from './request-correction/request-correction
 import { EmailModule } from './common/email.module';
 import { RealtimeModule } from './realtime/realtime.module';
 import { CloudinaryModule } from './common/cloudinary/cloudinary.module';
+import { SystemLogModule } from './system-log/system-log.module';
 
 @Module({
   imports: [
@@ -47,8 +49,9 @@ import { CloudinaryModule } from './common/cloudinary/cloudinary.module';
     EmailModule,
     RealtimeModule,
     CloudinaryModule,
+    SystemLogModule,
   ],
   controllers: [AppController],
-  providers: [AppService, SeedService],
+  providers: [AppService, SeedService, SystemLogCleanupService],
 })
 export class AppModule {}
