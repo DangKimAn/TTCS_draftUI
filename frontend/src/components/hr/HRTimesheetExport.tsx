@@ -7,6 +7,7 @@ import { formatDate } from '../../utils/dateUtils';
 import {
   getDepartmentName,
   getEmployeeById,
+  formatHrStatus,
   getStatusClass,
 } from './hrShared';
 
@@ -59,7 +60,7 @@ function HRTimesheetExport({
       } catch (error) {
         if (isMounted) {
           setReportData({ filters, rows: [], summary: EMPTY_SUMMARY });
-          onFeedback('danger', error instanceof Error ? error.message : 'Khong the tai bao cao timesheet tu API.');
+          onFeedback('danger', error instanceof Error ? error.message : 'Không thể tải báo cáo timesheet từ API.');
         }
       } finally {
         if (isMounted) {
@@ -88,20 +89,20 @@ function HRTimesheetExport({
 
   const handleExportPdf = () => {
     if (previewRows.length === 0) {
-      onFeedback('danger', 'Khong co du lieu de xuat PDF.');
+      onFeedback('danger', 'Không có dữ liệu để xuất PDF.');
       return;
     }
 
     try {
       exportTimesheetReportPdf({
-        title: 'Bao cao timesheet HR',
+        title: 'Báo cáo timesheet HR',
         filters: reportData?.filters || filters,
         rows: previewRows,
         summary,
       });
-      onFeedback('success', `Da mo ban PDF cho ${previewRows.length} dong timesheet.`);
+      onFeedback('success', `Đã mở bản PDF cho ${previewRows.length} dòng timesheet.`);
     } catch (error) {
-      onFeedback('danger', error instanceof Error ? error.message : 'Khong the xuat PDF.');
+      onFeedback('danger', error instanceof Error ? error.message : 'Không thể xuất PDF.');
     }
   };
 
@@ -109,41 +110,41 @@ function HRTimesheetExport({
     <>
       <section className="dashboard-stat-grid dashboard-cards">
         <article className="dashboard-stat-card">
-          <span>Tong dong</span>
+          <span>Tổng dòng</span>
           <strong>{summary.totalRecords}</strong>
-          <p>Ban ghi timesheet phu hop bo loc.</p>
+          <p>Bản ghi timesheet phù hợp bộ lọc.</p>
         </article>
         <article className="dashboard-stat-card">
-          <span>Nhan vien</span>
+          <span>Nhân viên</span>
           <strong>{summary.totalEmployees}</strong>
-          <p>So nhan vien co du lieu trong bao cao.</p>
+          <p>Số nhân viên có dữ liệu trong báo cáo.</p>
         </article>
         <article className="dashboard-stat-card">
-          <span>Tong gio</span>
+          <span>Tổng giờ</span>
           <strong>{Number(summary.totalHours || 0).toFixed(1)}h</strong>
-          <p>Tong hop tu bang timesheet.</p>
+          <p>Tổng hợp từ bảng timesheet.</p>
         </article>
         <article className="dashboard-stat-card">
-          <span>Canh bao</span>
+          <span>Cảnh báo</span>
           <strong>{summary.warningRecords}</strong>
-          <p>Missing Out hoac ban ghi can kiem tra.</p>
+          <p>Missing Out hoặc bản ghi cần kiểm tra.</p>
         </article>
       </section>
 
       <section className="dashboard-panel">
         <div className="hr-report-filter">
           <label>
-            <span>Tu ngay</span>
+            <span>Từ ngày</span>
             <input type="date" name="fromDate" value={filters.fromDate} onChange={handleChange} />
           </label>
           <label>
-            <span>Den ngay</span>
+            <span>Đến ngày</span>
             <input type="date" name="toDate" value={filters.toDate} onChange={handleChange} />
           </label>
           <label>
-            <span>Phong ban</span>
+            <span>Phòng ban</span>
             <select name="departmentId" value={filters.departmentId} onChange={handleChange}>
-              <option value="all">Tat ca phong ban</option>
+              <option value="all">Tất cả phòng ban</option>
               {departments.map((department) => (
                 <option key={department.id || department.departmentID} value={department.id || department.departmentID}>
                   {department.name || department.departmentName}
@@ -152,31 +153,31 @@ function HRTimesheetExport({
             </select>
           </label>
           <label>
-            <span>Nhan vien</span>
+            <span>Nhân viên</span>
             <select name="employeeId" value={filters.employeeId} onChange={handleChange}>
-              <option value="all">Tat ca nhan vien</option>
+              <option value="all">Tất cả nhân viên</option>
               {employees.map((employee) => (
                 <option key={employee.id} value={employee.id}>{employee.fullName}</option>
               ))}
             </select>
           </label>
           <label>
-            <span>Trang thai</span>
+            <span>Trạng thái</span>
             <select name="status" value={filters.status} onChange={handleChange}>
-              <option value="all">Tat ca trang thai</option>
-              <option value="Pending">Pending</option>
-              <option value="Submitted">Submitted</option>
-              <option value="Approved">Approved</option>
-              <option value="Rejected">Rejected</option>
+              <option value="all">Tất cả trạng thái</option>
+              <option value="Pending">{formatHrStatus('Pending')}</option>
+              <option value="Submitted">{formatHrStatus('Submitted')}</option>
+              <option value="Approved">{formatHrStatus('Approved')}</option>
+              <option value="Rejected">{formatHrStatus('Rejected')}</option>
             </select>
           </label>
           <button type="button" className="dashboard-button dashboard-button--ghost" onClick={() => setReloadKey((value) => value + 1)} disabled={isLoading}>
             <FiRefreshCw />
-            Tai lai
+            Tải lại
           </button>
           <button type="button" className="dashboard-button dashboard-button--primary" onClick={handleExportPdf} disabled={isLoading || previewRows.length === 0}>
             <FiDownload />
-            Xuat PDF
+            Xuất PDF
           </button>
         </div>
       </section>
@@ -186,15 +187,15 @@ function HRTimesheetExport({
           <table className="hr-table hr-table--timesheet hr-table-carded">
             <thead>
               <tr>
-                <th>Ma bang cong</th>
-                <th>Nhan vien</th>
-                <th>Phong ban</th>
-                <th>Ngay</th>
+                <th>Mã bảng công</th>
+                <th>Nhân viên</th>
+                <th>Phòng ban</th>
+                <th>Ngày</th>
                 <th>Check-in</th>
                 <th>Check-out</th>
-                <th>Tong gio</th>
-                <th>Trang thai</th>
-                <th>Canh bao</th>
+                <th>Tổng giờ</th>
+                <th>Trạng thái</th>
+                <th>Cảnh báo</th>
               </tr>
             </thead>
             <tbody>
@@ -205,24 +206,24 @@ function HRTimesheetExport({
 
                   return (
                     <tr key={timesheet.id}>
-                      <td data-label="Ma bang cong" className="cell-nowrap"><strong>{timesheet.code}</strong></td>
-                      <td data-label="Nhan vien">{timesheet.employeeName || employee?.fullName || '--'}</td>
-                      <td data-label="Phong ban">{(timesheet as any).departmentName || getDepartmentName(departments, timesheet.departmentId || employee?.departmentId)}</td>
-                      <td data-label="Ngay" className="cell-nowrap">{formatDate(timesheet.workDate)}</td>
+                      <td data-label="Mã bảng công" className="cell-nowrap"><strong>{timesheet.code}</strong></td>
+                      <td data-label="Nhân viên">{timesheet.employeeName || employee?.fullName || '--'}</td>
+                      <td data-label="Phòng ban">{(timesheet as any).departmentName || getDepartmentName(departments, timesheet.departmentId || employee?.departmentId)}</td>
+                      <td data-label="Ngày" className="cell-nowrap">{formatDate(timesheet.workDate)}</td>
                       <td data-label="Check-in" className="cell-nowrap">{timesheet.checkIn || '--'}</td>
                       <td data-label="Check-out" className="cell-nowrap">{timesheet.checkOut || '--'}</td>
-                      <td data-label="Tong gio" className="cell-nowrap">{Number(timesheet.totalHours || 0).toFixed(1)}h</td>
-                      <td data-label="Trang thai">
-                        <span className={`dashboard-status-badge ${getStatusClass(timesheet.status)}`}>{timesheet.status}</span>
+                      <td data-label="Tổng giờ" className="cell-nowrap">{Number(timesheet.totalHours || 0).toFixed(1)}h</td>
+                      <td data-label="Trạng thái">
+                        <span className={`dashboard-status-badge ${getStatusClass(timesheet.status)}`}>{formatHrStatus(timesheet.status)}</span>
                       </td>
-                      <td data-label="Canh bao">{warnings || '--'}</td>
+                      <td data-label="Cảnh báo">{warnings || '--'}</td>
                     </tr>
                   );
                 })
               ) : (
                 <tr>
                   <td colSpan={9} className="hr-table-empty">
-                    {isLoading ? 'Dang tai bao cao timesheet...' : 'Khong co du lieu preview.'}
+                    {isLoading ? 'Đang tải báo cáo timesheet...' : 'Không có dữ liệu xem trước.'}
                   </td>
                 </tr>
               )}

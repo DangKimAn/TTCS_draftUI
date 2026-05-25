@@ -14,6 +14,7 @@ import HRPayrollReport from '../components/hr/HRPayrollReport';
 import HRTimesheetExport from '../components/hr/HRTimesheetExport';
 import HRUserManagement from '../components/hr/HRUserManagement';
 import {
+  formatHrRole,
   getToneClass,
   HRFeedback,
   InfoItem,
@@ -359,8 +360,8 @@ function HRReports({
       <div className="employee-section__header">
         <div>
           <span className="dashboard-panel__eyebrow">UC-08 / UC-09</span>
-          <h1>Bao cao</h1>
-          <p>Xuat bao cao luong va timesheet phong ban qua API backend.</p>
+          <h1>Báo cáo</h1>
+          <p>Xuất báo cáo lương và timesheet phòng ban qua API backend.</p>
         </div>
       </div>
 
@@ -369,10 +370,10 @@ function HRReports({
       <section className="dashboard-panel">
         <div className="hr-tabs">
           <button type="button" className={activeTab === 'payroll' ? 'is-active' : ''} onClick={() => setActiveTab('payroll')}>
-            Bao cao luong
+            Báo cáo lương
           </button>
           <button type="button" className={activeTab === 'timesheet' ? 'is-active' : ''} onClick={() => setActiveTab('timesheet')}>
-            Bao cao timesheet
+            Báo cáo timesheet
           </button>
         </div>
       </section>
@@ -433,40 +434,40 @@ function HROverview({
   const recentInactive = safeEmployees.filter((employee) => employee.profileStatus === 'inactive-recent');
 
   const stats = [
-    { icon: FiUsers, label: 'Tong ho so nhan vien', value: safeEmployees.length, tone: 'info' },
-    { icon: FiCheck, label: 'Nhan vien Active', value: activeCount, tone: 'success' },
-    { icon: FiPower, label: 'Nhan vien Inactive', value: inactiveCount, tone: 'neutral' },
-    { icon: FiFileText, label: 'Bao cao luong san sang', value: payrollReady, tone: 'info' },
-    { icon: FiShield, label: 'Loai nghi dang ap dung', value: activeLeaveTypes, tone: 'success' },
-    { icon: FiAlertTriangle, label: 'Du lieu con anh huong luong', value: pendingDataCount, tone: 'warning' },
+    { icon: FiUsers, label: 'Tổng hồ sơ nhân viên', value: safeEmployees.length, tone: 'info' },
+    { icon: FiCheck, label: 'Nhân viên đang hoạt động', value: activeCount, tone: 'success' },
+    { icon: FiPower, label: 'Nhân viên ngừng hoạt động', value: inactiveCount, tone: 'neutral' },
+    { icon: FiFileText, label: 'Báo cáo lương sẵn sàng', value: payrollReady, tone: 'info' },
+    { icon: FiShield, label: 'Loại nghỉ đang áp dụng', value: activeLeaveTypes, tone: 'success' },
+    { icon: FiAlertTriangle, label: 'Dữ liệu còn ảnh hưởng lương', value: pendingDataCount, tone: 'warning' },
   ];
 
   const tasks = [
     ...newProfiles.map((employee) => ({
       id: `new-${employee.id}`,
-      title: 'Nhan vien moi can kiem tra ho so',
+      title: 'Nhân viên mới cần kiểm tra hồ sơ',
       meta: `${employee.fullName} | ${employee.email}`,
       section: 'employees',
       tone: 'info',
     })),
     ...recentInactive.map((employee) => ({
       id: `inactive-${employee.id}`,
-      title: 'Tai khoan inactive gan day',
+      title: 'Tài khoản mới ngừng hoạt động',
       meta: `${employee.fullName} | ${employee.employeeCode}`,
       section: 'employees',
       tone: 'neutral',
     })),
     {
       id: 'payroll-current',
-      title: 'Bao cao luong thang hien tai',
-      meta: pendingDataCount > 0 ? 'Can kiem tra du lieu chua approved.' : 'Du lieu da san sang de xuat.',
+      title: 'Báo cáo lương tháng hiện tại',
+      meta: pendingDataCount > 0 ? 'Cần kiểm tra dữ liệu chưa duyệt.' : 'Dữ liệu đã sẵn sàng để xuất.',
       section: 'reports',
       tone: pendingDataCount > 0 ? 'warning' : 'success',
     },
     {
       id: 'pending-data',
-      title: 'Canh bao timesheet/leave chua approved',
-      meta: `${pendingDataCount} ban ghi can kiem tra truoc khi chot luong.`,
+      title: 'Cảnh báo timesheet/đơn nghỉ chưa duyệt',
+      meta: `${pendingDataCount} bản ghi cần kiểm tra trước khi chốt lương.`,
       section: 'reports',
       tone: pendingDataCount > 0 ? 'warning' : 'success',
     },
@@ -477,8 +478,8 @@ function HROverview({
       <div className="employee-section__header">
         <div>
           <span className="dashboard-panel__eyebrow">HR Workspace</span>
-          <h1>Tong quan HR</h1>
-          <p>{String(currentHr?.name ?? '')} dang xem du lieu nhan su, chinh sach va bao cao toan cong ty.</p>
+          <h1>Tổng quan HR</h1>
+          <p>{String(currentHr?.name ?? '')} đang xem dữ liệu nhân sự, chính sách và báo cáo toàn công ty.</p>
         </div>
       </div>
 
@@ -504,21 +505,21 @@ function HROverview({
           <section className="dashboard-panel">
             <div className="dashboard-panel__heading">
               <div>
-                <span className="dashboard-panel__eyebrow">Viec can xu ly</span>
-                <h2>Cong viec HR can xu ly</h2>
+                <span className="dashboard-panel__eyebrow">Việc cần xử lý</span>
+                <h2>Công việc HR cần xử lý</h2>
               </div>
               <div className="dashboard-panel__actions hr-panel-actions">
                 <button type="button" className="dashboard-button dashboard-button--ghost" onClick={() => onNavigate('employees')}>
                   <FiUsers />
-                  Nhan su
+                  Nhân sự
                 </button>
                 <button type="button" className="dashboard-button dashboard-button--primary" onClick={() => onNavigate('reports')}>
                   <FiBarChart2 />
-                  Bao cao
+                  Báo cáo
                 </button>
                 <button type="button" className="dashboard-button dashboard-button--ghost" onClick={() => onNavigate('policies')}>
                   <FiShield />
-                  Chinh sach
+                  Chính sách
                 </button>
               </div>
             </div>
@@ -531,7 +532,7 @@ function HROverview({
                     <strong>{task.meta}</strong>
                   </div>
                   <button type="button" className="dashboard-button dashboard-button--ghost hr-small-button" onClick={() => onNavigate(task.section)}>
-                    Xu ly
+                    Xử lý
                   </button>
                 </div>
               ))}
@@ -543,14 +544,14 @@ function HROverview({
           <section className="dashboard-panel employee-section__panel">
             <div className="dashboard-panel__heading">
               <div>
-                <span className="dashboard-panel__eyebrow">Quyen HR</span>
-                <h2>Pham vi thao tac</h2>
+                <span className="dashboard-panel__eyebrow">Quyền HR</span>
+                <h2>Phạm vi thao tác</h2>
               </div>
             </div>
             <div className="employee-info-grid employee-info-grid--single">
-              <InfoItem label="Nguoi dung" value={String(currentHr?.name ?? '')} />
-              <InfoItem label="Vai tro" value={String(currentHr?.role ?? '')} />
-              <InfoItem label="Quyen" value={Array.isArray(currentHr?.permissions) ? (currentHr.permissions as string[]).join(', ') : ''} />
+              <InfoItem label="Người dùng" value={String(currentHr?.name ?? '')} />
+              <InfoItem label="Vai trò" value={formatHrRole(String(currentHr?.role ?? ''))} />
+              <InfoItem label="Quyền" value={Array.isArray(currentHr?.permissions) ? (currentHr.permissions as string[]).join(', ') : ''} />
             </div>
           </section>
         </aside>

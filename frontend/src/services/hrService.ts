@@ -19,6 +19,16 @@ interface HrUserPayload {
   isActive: boolean;
 }
 
+export interface HrImportError {
+  row: number;
+  message: string;
+}
+
+export interface HrImportResult {
+  importedCount: number;
+  errors: HrImportError[];
+}
+
 interface LeaveTypePayload {
   code: string;
   name: string;
@@ -35,7 +45,7 @@ export async function fetchHrUsers(departments: Array<Record<string, any>> = [])
 
     return Array.isArray(users) ? users.map((user) => normalizeHrEmployee(user, departments)).filter((user) => user.id) : [];
   } catch (error) {
-    throw normalizeHrError(error, 'Khong the tai danh sach nhan vien.');
+    throw normalizeHrError(error, 'Không thể tải danh sách nhân viên.');
   }
 }
 
@@ -45,7 +55,7 @@ export async function fetchDepartments() {
     const departments = unwrapBackendData<Record<string, any>[]>(response.data);
     return Array.isArray(departments) ? departments : [];
   } catch (error) {
-    throw normalizeHrError(error, 'Khong the tai danh sach phong ban.');
+    throw normalizeHrError(error, 'Không thể tải danh sách phòng ban.');
   }
 }
 
@@ -62,7 +72,7 @@ export async function createHrUser(payload: HrUserPayload, departments: Array<Re
     return user ? normalizeHrEmployee(user, departments) : null;
   } catch (error) {
     if (!shouldTryRegisterFallback(error)) {
-      throw normalizeHrError(error, 'Khong the tao nhan vien.');
+      throw normalizeHrError(error, 'Không thể tạo nhân viên.');
     }
 
     try {
@@ -79,8 +89,40 @@ export async function createHrUser(payload: HrUserPayload, departments: Array<Re
 
       return user ? normalizeHrEmployee(user, departments) : null;
     } catch (fallbackError) {
-      throw normalizeHrError(fallbackError, 'Khong the tao nhan vien.');
+      throw normalizeHrError(fallbackError, 'Không thể tạo nhân viên.');
     }
+  }
+}
+
+export async function importHrUsersExcel(file: File): Promise<HrImportResult> {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  try {
+    const response = await httpClient.post<BackendResponse<HrImportResult> | HrImportResult>(
+      '/employees/import',
+      formData,
+      { headers: { 'Content-Type': 'multipart/form-data' } },
+    );
+    const result = unwrapBackendData<HrImportResult>(response.data);
+
+    return {
+      importedCount: Number(result?.importedCount || 0),
+      errors: Array.isArray(result?.errors) ? result.errors : [],
+    };
+  } catch (error) {
+    const normalizedError = normalizeHrError(error, 'Không thể import nhân viên từ Excel.') as Error & {
+      details?: unknown;
+      importErrors?: HrImportError[];
+    };
+
+    if (axios.isAxiosError(error)) {
+      normalizedError.importErrors = getImportErrors(error.response?.data);
+    } else {
+      normalizedError.importErrors = getImportErrors((error as { details?: unknown })?.details);
+    }
+
+    throw normalizedError;
   }
 }
 
@@ -98,7 +140,7 @@ export async function updateHrUser(
 
     return user ? normalizeHrEmployee(user, departments) : null;
   } catch (error) {
-    throw normalizeHrError(error, 'Khong the cap nhat nhan vien.');
+    throw normalizeHrError(error, 'Không thể cập nhật nhân viên.');
   }
 }
 
@@ -110,7 +152,7 @@ export async function deactivateHrUser(userID: string) {
 
     return unwrapBackendData<Record<string, any>>(response.data);
   } catch (error) {
-    throw normalizeHrError(error, 'Khong the vo hieu hoa nhan vien.');
+    throw normalizeHrError(error, 'Không thể vô hiệu hóa nhân viên.');
   }
 }
 
@@ -122,7 +164,7 @@ export async function activateHrUser(userID: string) {
 
     return unwrapBackendData<Record<string, any>>(response.data);
   } catch (error) {
-    throw normalizeHrError(error, 'Khong the kich hoat lai nhan vien.');
+    throw normalizeHrError(error, 'Không thể kích hoạt lại nhân viên.');
   }
 }
 
@@ -136,7 +178,7 @@ export async function fetchHrLeaveTypes() {
 
     return Array.isArray(leaveTypes) ? leaveTypes.map(normalizeHrLeaveType).filter((type) => type.id) : [];
   } catch (error) {
-    throw normalizeHrError(error, 'Khong the tai loai nghi phep.');
+    throw normalizeHrError(error, 'Không thể tải loại nghỉ phép.');
   }
 }
 
@@ -150,7 +192,7 @@ export async function createHrLeaveType(payload: LeaveTypePayload) {
 
     return leaveType ? normalizeHrLeaveType(leaveType) : null;
   } catch (error) {
-    throw normalizeHrError(error, 'Khong the tao loai nghi phep.');
+    throw normalizeHrError(error, 'Không thể tạo loại nghỉ phép.');
   }
 }
 
@@ -164,7 +206,7 @@ export async function updateHrLeaveType(typeLeaveID: string, payload: LeaveTypeP
 
     return leaveType ? normalizeHrLeaveType(leaveType) : null;
   } catch (error) {
-    throw normalizeHrError(error, 'Khong the cap nhat loai nghi phep.');
+    throw normalizeHrError(error, 'Không thể cập nhật loại nghỉ phép.');
   }
 }
 
@@ -177,7 +219,7 @@ export async function deleteHrLeaveType(typeLeaveID: string) {
 
     return leaveType ? normalizeHrLeaveType(leaveType) : null;
   } catch (error) {
-    throw normalizeHrError(error, 'Khong the xoa loai nghi phep.');
+    throw normalizeHrError(error, 'Không thể xóa loại nghỉ phép.');
   }
 }
 
@@ -190,7 +232,7 @@ export async function activateHrLeaveType(typeLeaveID: string) {
 
     return leaveType ? normalizeHrLeaveType(leaveType) : null;
   } catch (error) {
-    throw normalizeHrError(error, 'Khong the kich hoat loai nghi phep.');
+    throw normalizeHrError(error, 'Không thể kích hoạt loại nghỉ phép.');
   }
 }
 
@@ -203,7 +245,7 @@ export async function deactivateHrLeaveType(typeLeaveID: string) {
 
     return leaveType ? normalizeHrLeaveType(leaveType) : null;
   } catch (error) {
-    throw normalizeHrError(error, 'Khong the vo hieu hoa loai nghi phep.');
+    throw normalizeHrError(error, 'Không thể vô hiệu hóa loại nghỉ phép.');
   }
 }
 
@@ -212,7 +254,7 @@ export async function fetchHrLeaveRequests() {
     const response = await httpClient.get('/leave-application/all');
     return unwrapBackendData(response.data) || [];
   } catch (error) {
-    throw normalizeHrError(error, 'Khong the tai danh sach don nghi phep.');
+    throw normalizeHrError(error, 'Không thể tải danh sách đơn nghỉ phép.');
   }
 }
 
@@ -225,7 +267,7 @@ export async function exportPayrollReport(month: number, year: number) {
 
     downloadBlob(response.data, getDownloadFileName(response.headers, `payroll_report_${month}_${year}.csv`));
   } catch (error) {
-    throw normalizeHrError(error, 'Khong the xuat bao cao luong.');
+    throw normalizeHrError(error, 'Không thể xuất báo cáo lương.');
   }
 }
 
@@ -239,7 +281,7 @@ export async function fetchPayrollPreview(month: number, year: number) {
 
     return Array.isArray(rows) ? rows.map(normalizePayrollPreviewRow) : [];
   } catch (error) {
-    throw normalizeHrError(error, 'Khong the tai payroll preview.');
+    throw normalizeHrError(error, 'Không thể tải dữ liệu xem trước bảng lương.');
   }
 }
 
@@ -255,7 +297,7 @@ export async function exportPayrollReportExcel(month: number, year: number) {
       getDownloadFileName(response.headers, `payroll_report_${month}_${year}.xlsx`),
     );
   } catch (error) {
-    throw normalizeHrError(error, 'Khong the xuat bao cao luong Excel.');
+    throw normalizeHrError(error, 'Không thể xuất báo cáo lương Excel.');
   }
 }
 
@@ -268,7 +310,7 @@ export async function exportDepartmentTimesheet(departmentID: string, month: num
 
     downloadBlob(response.data, getDownloadFileName(response.headers, `timesheet_department_${departmentID}_${month}_${year}.csv`));
   } catch (error) {
-    throw normalizeHrError(error, 'Khong the xuat timesheet phong ban.');
+    throw normalizeHrError(error, 'Không thể xuất timesheet phòng ban.');
   }
 }
 
@@ -294,7 +336,7 @@ export async function exportDepartmentTimesheetExcel(
       ),
     );
   } catch (error) {
-    throw normalizeHrError(error, 'Khong the xuat timesheet phong ban Excel.');
+    throw normalizeHrError(error, 'Không thể xuất timesheet phòng ban Excel.');
   }
 }
 
@@ -408,7 +450,9 @@ function unwrapBackendData<T>(payload: BackendResponse<T> | T): T | undefined {
 
 function normalizeHrError(error: unknown, fallbackMessage: string) {
   if (axios.isAxiosError(error)) {
-    const message = getResponseMessage(error.response?.data) || getNetworkErrorMessage(error) || error.message || fallbackMessage;
+    const message = formatHrErrorMessage(
+      getResponseMessage(error.response?.data) || getNetworkErrorMessage(error) || error.message || fallbackMessage,
+    );
     const normalizedError = new Error(message) as Error & { code?: string };
     normalizedError.code = String(error.response?.status || error.code || 'HR_API_FAILED');
     return normalizedError;
@@ -427,11 +471,11 @@ function getNetworkErrorMessage(error: unknown) {
   }
 
   if (error.code === 'ECONNABORTED') {
-    return 'API backend phan hoi qua lau. Kiem tra server backend va ket noi database.';
+    return 'API backend phản hồi quá lâu. Vui lòng kiểm tra server backend và kết nối database.';
   }
 
   if (error.code === 'ERR_NETWORK' || error.message === 'Network Error') {
-    return 'Khong ket noi duoc API backend. Hay kiem tra backend dang chay tai http://localhost:3000.';
+    return 'Không kết nối được API backend. Hãy kiểm tra backend đang chạy tại http://localhost:3000.';
   }
 
   return null;
@@ -476,6 +520,43 @@ function getResponseMessage(data: unknown): string | null {
   return null;
 }
 
+function formatHrErrorMessage(message: string) {
+  const normalized = normalizeText(message).replace(/[.。]+$/g, '');
+
+  const knownMessages: Record<string, string> = {
+    'email da ton tai': 'Email đã tồn tại.',
+    'email already exists': 'Email đã tồn tại.',
+    'phong ban khong ton tai': 'Phòng ban không tồn tại.',
+    'department not found': 'Phòng ban không tồn tại.',
+    'user not found': 'Không tìm thấy nhân viên.',
+    'employee not found': 'Không tìm thấy nhân viên.',
+  };
+
+  return knownMessages[normalized] || message;
+}
+
+function getImportErrors(data: unknown): HrImportError[] {
+  if (!data || typeof data !== 'object') {
+    return [];
+  }
+
+  const payload = data as Record<string, any>;
+  const candidates = [
+    payload.errors,
+    payload.response?.errors,
+    payload.data?.errors,
+    payload.data?.response?.errors,
+  ];
+  const errors = candidates.find(Array.isArray);
+
+  return Array.isArray(errors)
+    ? errors.map((error) => ({
+        row: Number(error.row || 0),
+        message: formatHrErrorMessage(String(error.message || 'Dòng dữ liệu không hợp lệ')),
+      }))
+    : [];
+}
+
 function normalizeRole(value: unknown) {
   const normalized = String(value || '')
     .trim()
@@ -512,7 +593,7 @@ function roleToTitle(role: string) {
     case 'hr':
       return 'HR';
     default:
-      return 'Nhan vien';
+      return 'Nhân viên';
   }
 }
 

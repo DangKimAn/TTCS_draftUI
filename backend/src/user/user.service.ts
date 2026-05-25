@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import * as XLSX from 'xlsx';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateUserDto } from './dto/create-user.dto';
@@ -27,6 +28,33 @@ import FullUserDto from './dto/full-user.dto';
 import { RequestUser } from 'src/common/types';
 import { SelfUpdateUserDto } from './dto/self-update-user.dto';
 import { CloudinaryService } from 'src/common/cloudinary/cloudinary.service';
+
+interface ImportEmployeeRow {
+  rowNumber: number;
+  username: string;
+  email: string;
+  password: string;
+  departmentName?: string;
+  title?: string;
+  roleName: string;
+  salaryCoefficient: number;
+  leaveBalance: number;
+  isActive: boolean;
+}
+
+interface ImportEmployeeError {
+  row: number;
+  message: string;
+}
+
+interface ImportEmployeesResult {
+  importedCount: number;
+  errors: ImportEmployeeError[];
+}
+
+type ImportSheetRow = unknown[];
+type ImportDepartment = { departmentName: string };
+
 @Injectable()
 export class UserService {
   constructor(
@@ -293,6 +321,228 @@ export class UserService {
         message: 'another error',
       }; // Lỗi server 500
     }
+  }
+
+  async importEmployeesFromExcel(
+    file: Express.Multer.File,
+  ): Promise<ImportEmployeesResult> {
+    if (!file) {
+      return {
+        importedCount: 0,
+        errors: [{ row: 0, message: 'Vui long chon file Excel de import.' }],
+      };
+    }
+
+    if (!isExcelFile(file.originalname)) {
+      return {
+        importedCount: 0,
+        errors: [{ row: 0, message: 'Chi chap nhan file .xlsx hoac .xls.' }],
+      };
+    }
+
+    let sheetRows: ImportSheetRow[] = [];
+
+    try {
+      const workbook = XLSX.read(file.buffer, { type: 'buffer' });
+      const firstSheetName = workbook.SheetNames[0];
+      const worksheet = firstSheetName ? workbook.Sheets[firstSheetName] : null;
+      sheetRows = worksheet
+        ? (XLSX.utils.sheet_to_json(worksheet, {
+            header: 1,
+            defval: '',
+            raw: false,
+          }) as ImportSheetRow[])
+        : [];
+    } catch {
+      return {
+        importedCount: 0,
+        errors: [{ row: 0, message: 'Khong the doc noi dung file Excel.' }],
+      };
+    }
+
+    if (sheetRows.length < 2) {
+      return {
+        importedCount: 0,
+        errors: [{ row: 0, message: 'File Excel chua co du lieu nhan vien.' }],
+      };
+    }
+
+    const headerMap = buildHeaderMap(sheetRows[0]);
+    const requiredHeaders = [
+      'ho ten',
+      'email',
+      'mat khau tam thoi',
+      'phong ban',
+      'vai tro',
+    ];
+    const missingHeaders = requiredHeaders.filter(
+      (header) => !headerMap.has(header),
+    );
+
+    if (missingHeaders.length > 0) {
+      return {
+        importedCount: 0,
+        errors: [
+          {
+            row: 1,
+            message: `Thieu cot bat buoc: ${missingHeaders.join(', ')}.`,
+          },
+        ],
+      };
+    }
+
+    const [existingUsers, roles, departments] = await Promise.all([
+      this.prismaService.user.findMany({
+        select: { email: true, username: true },
+      }),
+      this.prismaService.role.findMany(),
+      this.prismaService.department.findMany(),
+    ]);
+    const existingEmails = new Set(
+      existingUsers.map((user) => user.email.trim().toLowerCase()),
+    );
+    const existingUsernames = new Set(
+      existingUsers.map((user) => user.username.trim().toLowerCase()),
+    );
+    const rolesByName = new Map(
+      roles.map((role) => [normalizeImportText(role.nameRole), role]),
+    );
+    const departmentsByName = new Map(
+      departments.map((department) => [
+        normalizeImportText(department.departmentName),
+        department,
+      ]),
+    );
+    registerDepartmentAliases(departmentsByName, departments);
+    const seenEmails = new Set<string>();
+    const seenUsernames = new Set<string>();
+    const rows: ImportEmployeeRow[] = [];
+    const errors: ImportEmployeeError[] = [];
+
+    sheetRows.slice(1).forEach((row, index) => {
+      const rowNumber = index + 2;
+
+      if (isEmptyExcelRow(row)) {
+        return;
+      }
+
+      const username = getCellValue(row, headerMap, 'ho ten');
+      const email = getCellValue(row, headerMap, 'email').toLowerCase();
+      const password = getCellValue(row, headerMap, 'mat khau tam thoi');
+      const departmentName = getCellValue(row, headerMap, 'phong ban');
+      const title = getCellValue(row, headerMap, 'chuc vu');
+      const rawRoleName = getCellValue(row, headerMap, 'vai tro');
+      const salaryCoefficient = parseImportNumber(
+        getCellValue(row, headerMap, 'he so luong'),
+        0,
+      );
+      const leaveBalance = parseImportNumber(
+        getCellValue(row, headerMap, 'so ngay phep mac dinh'),
+        12,
+      );
+      const isActive = parseImportStatus(getCellValue(row, headerMap, 'trang thai'));
+      const normalizedRoleName = normalizeImportRole(rawRoleName);
+      const matchedDepartment = departmentsByName.get(
+        normalizeImportText(departmentName),
+      );
+      const rowErrors: string[] = [];
+
+      if (!username) {
+        rowErrors.push('Ho ten khong duoc trong');
+      } else if (existingUsernames.has(username.toLowerCase())) {
+        rowErrors.push('Ho ten/username da ton tai');
+      } else if (seenUsernames.has(username.toLowerCase())) {
+        rowErrors.push('Ho ten/username bi trung trong file');
+      }
+
+      if (!email) {
+        rowErrors.push('Email khong duoc trong');
+      } else if (!isValidEmail(email)) {
+        rowErrors.push('Email khong hop le');
+      } else if (existingEmails.has(email)) {
+        rowErrors.push('Email da ton tai');
+      } else if (seenEmails.has(email)) {
+        rowErrors.push('Email bi trung trong file');
+      }
+
+      if (!password) {
+        rowErrors.push('Mat khau tam thoi khong duoc trong');
+      }
+
+      if (!normalizedRoleName || !rolesByName.has(normalizeImportText(normalizedRoleName))) {
+        rowErrors.push('Vai tro khong hop le');
+      }
+
+      if (!departmentName) {
+        rowErrors.push('Phong ban khong duoc trong');
+      } else if (!matchedDepartment) {
+        rowErrors.push('Phong ban khong ton tai');
+      }
+
+      if (salaryCoefficient <= 0) {
+        rowErrors.push('He so luong phai lon hon 0');
+      }
+
+      if (leaveBalance < 0) {
+        rowErrors.push('So ngay phep mac dinh khong duoc am');
+      }
+
+      if (rowErrors.length > 0) {
+        rowErrors.forEach((message) => errors.push({ row: rowNumber, message }));
+        return;
+      }
+
+      seenEmails.add(email);
+      seenUsernames.add(username.toLowerCase());
+      rows.push({
+        rowNumber,
+        username,
+        email,
+        password,
+        departmentName: matchedDepartment?.departmentName,
+        title,
+        roleName: normalizedRoleName,
+        salaryCoefficient,
+        leaveBalance,
+        isActive,
+      });
+    });
+
+    if (rows.length === 0 && errors.length === 0) {
+      errors.push({ row: 0, message: 'File Excel khong co dong du lieu hop le.' });
+    }
+
+    if (errors.length > 0) {
+      return { importedCount: 0, errors };
+    }
+
+    let importedCount = 0;
+    const importErrors: ImportEmployeeError[] = [];
+
+    for (const row of rows) {
+      const result = await this.createUser({
+        username: row.username,
+        email: row.email,
+        password: row.password,
+        roleName: row.roleName,
+        departmentName: row.departmentName,
+        salaryCoefficient: row.salaryCoefficient,
+        remainDaysofLeave: row.leaveBalance,
+        totalDaysofLeave: row.leaveBalance,
+        isActive: row.isActive,
+      });
+
+      if (result.statusCode === CREATED_RESPONE) {
+        importedCount += 1;
+      } else {
+        importErrors.push({
+          row: row.rowNumber,
+          message: result.message || 'Khong the import nhan vien',
+        });
+      }
+    }
+
+    return { importedCount, errors: importErrors };
   }
   async updateUser(
     userID: string,
@@ -926,4 +1176,158 @@ export class UserService {
       },
     };
   }
+}
+
+function buildHeaderMap(row: ImportSheetRow): Map<string, number> {
+  const map = new Map<string, number>();
+
+  row.forEach((cell, index) => {
+    const header = normalizeImportText(getRawCellValue(cell));
+    if (header) {
+      map.set(header, index);
+    }
+  });
+
+  return map;
+}
+
+function getCellValue(
+  row: ImportSheetRow,
+  headerMap: Map<string, number>,
+  header: string,
+): string {
+  const colNumber = headerMap.get(header);
+
+  if (colNumber === undefined) {
+    return '';
+  }
+
+  return getRawCellValue(row[colNumber]).trim();
+}
+
+function getRawCellValue(value: unknown): string {
+  if (value === null || value === undefined) {
+    return '';
+  }
+
+  if (value instanceof Date) {
+    return value.toISOString();
+  }
+
+  if (typeof value === 'object') {
+    if ('text' in value && value.text) {
+      return String(value.text);
+    }
+
+    if ('result' in value && value.result !== undefined) {
+      return String(value.result);
+    }
+
+    if ('richText' in value && Array.isArray(value.richText)) {
+      return value.richText.map((item) => item.text).join('');
+    }
+  }
+
+  return String(value);
+}
+
+function isEmptyExcelRow(row: ImportSheetRow): boolean {
+  return row.every((value) => !getRawCellValue(value));
+}
+
+function isExcelFile(fileName?: string): boolean {
+  return /\.(xlsx|xls)$/i.test(fileName || '');
+}
+
+function isValidEmail(value: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
+
+function normalizeImportText(value?: string): string {
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, ' ');
+}
+
+function normalizeImportKey(value?: string): string {
+  return normalizeImportText(value).replace(/[^a-z0-9]+/g, '');
+}
+
+function registerDepartmentAliases(
+  departmentsByName: Map<string, ImportDepartment>,
+  departments: ImportDepartment[],
+): void {
+  departments.forEach((department) => {
+    const key = normalizeImportKey(department.departmentName);
+    const aliases: string[] = [];
+
+    if (
+      key.includes('kythuat') ||
+      key.includes('kathuat') ||
+      key.includes('thuaat') ||
+      key.includes('thuat') ||
+      key === 'it'
+    ) {
+      aliases.push('phong ky thuat', 'it', 'engineering');
+    }
+
+    if (
+      key.includes('nhansu') ||
+      key.includes('nhansa') ||
+      key.includes('nhaans') ||
+      key === 'hr'
+    ) {
+      aliases.push('phong nhan su', 'hr', 'human resources');
+    }
+
+    if (key.includes('kinhdoanh') || key.includes('sales')) {
+      aliases.push('phong kinh doanh', 'sales', 'business');
+    }
+
+    aliases.forEach((alias) => {
+      departmentsByName.set(normalizeImportText(alias), department);
+    });
+  });
+}
+
+function normalizeImportRole(value: string): string {
+  const normalized = normalizeImportText(value).replace(/[\s_-]+/g, '');
+
+  if (normalized === 'hr' || normalized === 'admin' || normalized === 'hradmin') {
+    return 'admin';
+  }
+
+  if (normalized === 'manager' || normalized === 'quanly') {
+    return 'manager';
+  }
+
+  if (normalized === 'employee' || normalized === 'nhanvien') {
+    return 'employee';
+  }
+
+  return value.trim();
+}
+
+function parseImportNumber(value: string, fallback: number): number {
+  if (!value) {
+    return fallback;
+  }
+
+  const parsed = Number(value.replace(',', '.'));
+  return Number.isFinite(parsed) ? parsed : Number.NaN;
+}
+
+function parseImportStatus(value: string): boolean {
+  const normalized = normalizeImportText(value).replace(/[\s_-]+/g, '');
+
+  if (!normalized) {
+    return true;
+  }
+
+  return !['inactive', 'khonghoatdong', 'vohieuhoa', 'false', '0'].includes(
+    normalized,
+  );
 }

@@ -7,20 +7,26 @@ import {
   FiPower,
   FiRefreshCw,
   FiSearch,
+  FiUpload,
 } from 'react-icons/fi';
 import { formatDate } from '../../utils/dateUtils';
 import {
   activateHrUser,
   createHrUser,
   deactivateHrUser,
+  fetchHrUsers,
+  importHrUsersExcel,
   normalizeHrEmployee,
   updateHrUser,
+  type HrImportError,
 } from '../../services/hrService';
 import {
   emptyEmployeeForm,
   FormErrors,
   FormField,
   formatRange,
+  formatHrRole,
+  formatHrStatus,
   getDepartmentName,
   getEmployeeById,
   getStatusClass,
@@ -58,6 +64,7 @@ function HRUserManagement({
   const [statusFilter, setStatusFilter] = useState('all');
   const [employeeModal, setEmployeeModal] = useState<Record<string, any> | null>(null);
   const [confirmEmployee, setConfirmEmployee] = useState<Record<string, any> | null>(null);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [pendingEmployeeId, setPendingEmployeeId] = useState('');
 
   const filteredEmployees = useMemo(() => {
@@ -111,7 +118,7 @@ function HRUserManagement({
         onEmployeesChange((current: Array<Record<string, any>>) =>
           current.map((employee) => (employee.id === employeeId ? nextEmployee : employee)),
         );
-        onFeedback('success', 'Da cap nhat thong tin nhan vien.');
+        onFeedback('success', 'Đã cập nhật thông tin nhân viên.');
         setEmployeeModal(null);
         return {};
       }
@@ -133,18 +140,18 @@ function HRUserManagement({
       });
 
       onEmployeesChange((current: Array<Record<string, any>>) => [nextEmployee, ...current]);
-      onFeedback('success', `Da tao tai khoan nhan vien ${nextEmployee.fullName}.`);
+      onFeedback('success', `Đã tạo tài khoản nhân viên ${nextEmployee.fullName}.`);
       setEmployeeModal(null);
       return {};
     } catch (error) {
-      onFeedback('danger', error instanceof Error ? error.message : 'Khong the luu nhan vien.');
+      onFeedback('danger', error instanceof Error ? error.message : 'Không thể lưu nhân viên.');
       return {};
     }
   };
 
   const handleToggleEmployee = async (employee: Record<string, any>) => {
     if (employee.id === currentHr.id && employee.status === 'Active') {
-      onFeedback('danger', 'HR khong the tu vo hieu hoa tai khoan dang dang nhap.');
+      onFeedback('danger', 'HR không thể tự vô hiệu hóa tài khoản đang đăng nhập.');
       return;
     }
 
@@ -163,9 +170,9 @@ function HRUserManagement({
               : item,
           ),
         );
-        onFeedback('success', `Da kich hoat lai tai khoan ${employee.fullName}.`);
+        onFeedback('success', `Đã kích hoạt lại tài khoản ${employee.fullName}.`);
       } catch (error) {
-        onFeedback('danger', error instanceof Error ? error.message : 'Khong the kich hoat lai nhan vien.');
+        onFeedback('danger', error instanceof Error ? error.message : 'Không thể kích hoạt lại nhân viên.');
       } finally {
         setPendingEmployeeId('');
       }
@@ -195,13 +202,32 @@ function HRUserManagement({
             : employee,
         ),
       );
-      onFeedback('success', `Da vo hieu hoa tai khoan ${confirmEmployee.fullName}.`);
+      onFeedback('success', `Đã vô hiệu hóa tài khoản ${confirmEmployee.fullName}.`);
       setConfirmEmployee(null);
     } catch (error) {
-      onFeedback('danger', error instanceof Error ? error.message : 'Khong the vo hieu hoa nhan vien.');
+      onFeedback('danger', error instanceof Error ? error.message : 'Không thể vô hiệu hóa nhân viên.');
     } finally {
       setPendingEmployeeId('');
     }
+  };
+
+  const handleImportEmployees = async (file: File) => {
+    const result = await importHrUsersExcel(file);
+    const refreshedEmployees = await fetchHrUsers(departments);
+
+    onEmployeesChange(() => refreshedEmployees);
+
+    if (result.errors.length > 0) {
+      onFeedback(
+        'warning',
+        `Đã import ${result.importedCount} nhân viên. Một số dòng bị lỗi, vui lòng xem danh sách trong modal.`,
+      );
+    } else {
+      setIsImportModalOpen(false);
+      onFeedback('success', `Đã import thành công ${result.importedCount} nhân viên.`);
+    }
+
+    return result;
   };
 
   return (
@@ -209,13 +235,19 @@ function HRUserManagement({
       <div className="employee-section__header">
         <div>
           <span className="dashboard-panel__eyebrow">UC-11 / UC-12</span>
-          <h1>Nhan su</h1>
-          <p>Quan ly ho so, tao tai khoan va vo hieu hoa/kich hoat lai nhan vien toan cong ty.</p>
+          <h1>Nhân sự</h1>
+          <p>Quản lý hồ sơ, tạo tài khoản và vô hiệu hóa/kích hoạt lại nhân viên toàn công ty.</p>
         </div>
-        <button type="button" className="dashboard-button dashboard-button--primary" onClick={() => setEmployeeModal({ mode: 'create' })}>
-          <FiPlus />
-          Them nhan vien
-        </button>
+        <div className="dashboard-panel__actions">
+          <button type="button" className="dashboard-button dashboard-button--ghost" onClick={() => setIsImportModalOpen(true)}>
+            <FiUpload />
+            Import Excel
+          </button>
+          <button type="button" className="dashboard-button dashboard-button--primary" onClick={() => setEmployeeModal({ mode: 'create' })}>
+            <FiPlus />
+            Thêm nhân viên
+          </button>
+        </div>
       </div>
 
       <HRFeedback feedback={feedback} />
@@ -229,11 +261,11 @@ function HRUserManagement({
               type="search"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Tim theo ten hoac email..."
+              placeholder="Tìm theo tên hoặc email..."
             />
           </label>
           <select value={departmentFilter} onChange={(event) => setDepartmentFilter(event.target.value)}>
-            <option value="all">Tat ca phong ban</option>
+            <option value="all">Tất cả phòng ban</option>
             {departments.map((department) => (
               <option key={department.id || department.departmentID} value={department.id || department.departmentID}>
                 {department.name || department.departmentName}
@@ -241,15 +273,15 @@ function HRUserManagement({
             ))}
           </select>
           <select value={roleFilter} onChange={(event) => setRoleFilter(event.target.value)}>
-            <option value="all">Tat ca vai tro</option>
-            <option value="employee">employee</option>
-            <option value="manager">manager</option>
-            <option value="hr">hr</option>
+            <option value="all">Tất cả vai trò</option>
+            <option value="employee">{formatHrRole('employee')}</option>
+            <option value="manager">{formatHrRole('manager')}</option>
+            <option value="hr">{formatHrRole('hr')}</option>
           </select>
           <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
-            <option value="all">Tat ca trang thai</option>
-            <option value="Active">Active</option>
-            <option value="Inactive">Inactive</option>
+            <option value="all">Tất cả trạng thái</option>
+            <option value="Active">{formatHrStatus('Active')}</option>
+            <option value="Inactive">{formatHrStatus('Inactive')}</option>
           </select>
         </div>
 
@@ -257,32 +289,32 @@ function HRUserManagement({
           <table className="hr-table hr-table--employees hr-table-carded">
             <thead>
               <tr>
-                <th>Ma nhan vien</th>
-                <th>Ho ten</th>
+                <th>Mã nhân viên</th>
+                <th>Họ tên</th>
                 <th>Email</th>
-                <th>Phong ban</th>
-                <th>Chuc vu</th>
-                <th>Vai tro</th>
-                <th>So du phep</th>
-                <th>Trang thai</th>
-                <th>Hanh dong</th>
+                <th>Phòng ban</th>
+                <th>Chức vụ</th>
+                <th>Vai trò</th>
+                <th>Số ngày phép còn lại</th>
+                <th>Trạng thái</th>
+                <th>Hành động</th>
               </tr>
             </thead>
             <tbody>
               {filteredEmployees.length > 0 ? (
                 filteredEmployees.map((employee) => (
                   <tr key={employee.id}>
-                    <td data-label="Ma nhan vien" className="cell-nowrap"><strong>{employee.employeeCode}</strong></td>
-                    <td data-label="Ho ten"><strong>{employee.fullName}</strong></td>
+                    <td data-label="Mã nhân viên" className="cell-nowrap"><strong>{employee.employeeCode}</strong></td>
+                    <td data-label="Họ tên"><strong>{employee.fullName}</strong></td>
                     <td data-label="Email">{employee.email}</td>
-                    <td data-label="Phong ban">{getDepartmentName(departments, employee.departmentId)}</td>
-                    <td data-label="Chuc vu">{employee.title}</td>
-                    <td data-label="Vai tro" className="cell-nowrap">{employee.role}</td>
-                    <td data-label="So du phep" className="cell-nowrap">{employee.leaveBalance} ngay</td>
-                    <td data-label="Trang thai" className="cell-nowrap">
-                      <span className={`dashboard-status-badge ${getStatusClass(employee.status)}`}>{employee.status}</span>
+                    <td data-label="Phòng ban">{getDepartmentName(departments, employee.departmentId)}</td>
+                    <td data-label="Chức vụ">{employee.title}</td>
+                    <td data-label="Vai trò" className="cell-nowrap">{formatHrRole(employee.role)}</td>
+                    <td data-label="Số ngày phép còn lại" className="cell-nowrap">{employee.leaveBalance} ngày</td>
+                    <td data-label="Trạng thái" className="cell-nowrap">
+                      <span className={`dashboard-status-badge ${getStatusClass(employee.status)}`}>{formatHrStatus(employee.status)}</span>
                     </td>
-                    <td data-label="Hanh dong" className="hr-actions-cell">
+                    <td data-label="Hành động" className="hr-actions-cell">
                       <div className="hr-row-actions">
                         <button
                           type="button"
@@ -290,7 +322,7 @@ function HRUserManagement({
                           onClick={() => setEmployeeModal({ mode: 'detail', employeeId: employee.id })}
                         >
                           <FiEye />
-                          Chi tiet
+                          Chi tiết
                         </button>
                         <button
                           type="button"
@@ -298,7 +330,7 @@ function HRUserManagement({
                           onClick={() => setEmployeeModal({ mode: 'edit', employeeId: employee.id })}
                         >
                           <FiEdit3 />
-                          Sua
+                          Sửa
                         </button>
                         <button
                           type="button"
@@ -310,7 +342,7 @@ function HRUserManagement({
                           }
                         >
                           {employee.status === 'Active' ? <FiPower /> : <FiRefreshCw />}
-                          {employee.status === 'Active' ? 'Vo hieu hoa' : 'Kich hoat lai'}
+                          {employee.status === 'Active' ? 'Vô hiệu hóa' : 'Kích hoạt lại'}
                         </button>
                       </div>
                     </td>
@@ -318,7 +350,7 @@ function HRUserManagement({
                 ))
               ) : (
                 <tr>
-                  <td colSpan={9} className="hr-table-empty">Khong tim thay nhan vien phu hop.</td>
+                  <td colSpan={9} className="hr-table-empty">Không tìm thấy nhân viên phù hợp.</td>
                 </tr>
               )}
             </tbody>
@@ -334,6 +366,12 @@ function HRUserManagement({
         timesheets={timesheets}
         onClose={() => setEmployeeModal(null)}
         onSave={handleSaveEmployee}
+      />
+
+      <ImportEmployeeModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        onImport={handleImportEmployees}
       />
 
       <ConfirmModal
@@ -400,35 +438,35 @@ function EmployeeModal({
       .slice(0, 4);
 
     return (
-      <ModalShell title={`Chi tiet nhan vien ${employee.employeeCode}`} onClose={onClose}>
+      <ModalShell title={`Chi tiết nhân viên ${employee.employeeCode}`} onClose={onClose}>
         <div className="employee-info-grid hr-detail-grid">
-          <InfoItem label="Ho ten" value={employee.fullName} />
+          <InfoItem label="Họ tên" value={employee.fullName} />
           <InfoItem label="Email" value={employee.email} />
-          <InfoItem label="Phong ban" value={getDepartmentName(departments, employee.departmentId)} />
-          <InfoItem label="Chuc vu" value={employee.title} />
-          <InfoItem label="Vai tro" value={employee.role} />
-          <InfoItem label="Trang thai" value={employee.status} />
-          <InfoItem label="So du phep" value={`${employee.leaveBalance} ngay`} />
-          <InfoItem label="Tong gio thang nay" value={`${employee.monthlyHours}h`} />
+          <InfoItem label="Phòng ban" value={getDepartmentName(departments, employee.departmentId)} />
+          <InfoItem label="Chức vụ" value={employee.title} />
+          <InfoItem label="Vai trò" value={formatHrRole(employee.role)} />
+          <InfoItem label="Trạng thái" value={formatHrStatus(employee.status)} />
+          <InfoItem label="Số ngày phép còn lại" value={`${employee.leaveBalance} ngày`} />
+          <InfoItem label="Tổng giờ tháng này" value={`${employee.monthlyHours}h`} />
         </div>
 
         <div className="hr-modal-section">
-          <h3>Lich su don nghi gan day</h3>
+          <h3>Lịch sử đơn nghỉ gần đây</h3>
           <div className="dashboard-list">
             {recentLeaves.length > 0 ? recentLeaves.map((request) => (
               <div key={request.id} className="dashboard-list__item">
                 <div>
                   <strong>{request.type}</strong>
-                  <span>{formatRange(request.startDate, request.endDate)} | {request.totalDays} ngay</span>
+                  <span>{formatRange(request.startDate, request.endDate)} | {request.totalDays} ngày</span>
                 </div>
-                <span className={`dashboard-status-badge ${getStatusClass(request.status)}`}>{request.status}</span>
+                <span className={`dashboard-status-badge ${getStatusClass(request.status)}`}>{formatHrStatus(request.status)}</span>
               </div>
-            )) : <div className="timesheet-empty-state">Chua co don nghi gan day.</div>}
+            )) : <div className="timesheet-empty-state">Chưa có đơn nghỉ gần đây.</div>}
           </div>
         </div>
 
         <div className="hr-modal-section">
-          <h3>Lich su timesheet gan day</h3>
+          <h3>Lịch sử timesheet gần đây</h3>
           <div className="dashboard-list">
             {recentTimesheets.length > 0 ? recentTimesheets.map((timesheet) => (
               <div key={timesheet.id} className="dashboard-list__item">
@@ -436,9 +474,9 @@ function EmployeeModal({
                   <strong>{timesheet.code}</strong>
                   <span>{formatDate(timesheet.workDate)} | {timesheet.totalHours}h</span>
                 </div>
-                <span className={`dashboard-status-badge ${getStatusClass(timesheet.status)}`}>{timesheet.status}</span>
+                <span className={`dashboard-status-badge ${getStatusClass(timesheet.status)}`}>{formatHrStatus(timesheet.status)}</span>
               </div>
-            )) : <div className="timesheet-empty-state">Chua co timesheet gan day.</div>}
+            )) : <div className="timesheet-empty-state">Chưa có timesheet gần đây.</div>}
           </div>
         </div>
       </ModalShell>
@@ -460,12 +498,12 @@ function EmployeeModal({
   };
 
   return (
-    <ModalShell title={modal.mode === 'edit' ? 'Sua thong tin nhan vien' : 'Them nhan vien'} onClose={onClose}>
+    <ModalShell title={modal.mode === 'edit' ? 'Sửa thông tin nhân viên' : 'Thêm nhân viên'} onClose={onClose}>
       <form className="hr-form-grid" onSubmit={handleSubmit}>
-        <FormField label="Ho ten" name="fullName" value={form.fullName} error={errors.fullName} onChange={handleChange} />
+        <FormField label="Họ tên" name="fullName" value={form.fullName} error={errors.fullName} onChange={handleChange} />
         <FormField label="Email" name="email" type="email" value={form.email} error={errors.email} onChange={handleChange} />
         <FormField
-          label={modal.mode === 'edit' ? 'Mat khau moi (neu doi)' : 'Mat khau tam thoi'}
+          label={modal.mode === 'edit' ? 'Mật khẩu mới (nếu đổi)' : 'Mật khẩu tạm thời'}
           name="password"
           type="password"
           value={form.password}
@@ -473,9 +511,9 @@ function EmployeeModal({
           onChange={handleChange}
         />
         <label>
-          <span>Phong ban</span>
+          <span>Phòng ban</span>
           <select name="departmentId" value={form.departmentId} onChange={handleChange}>
-            <option value="">Chon phong ban</option>
+            <option value="">Chọn phòng ban</option>
             {departments.map((department) => (
               <option key={department.id || department.departmentID} value={department.id || department.departmentID}>
                 {department.name || department.departmentName}
@@ -484,31 +522,144 @@ function EmployeeModal({
           </select>
           {errors.departmentId ? <small>{errors.departmentId}</small> : null}
         </label>
-        <FormField label="Chuc vu" name="title" value={form.title} error={errors.title} onChange={handleChange} />
+        <FormField label="Chức vụ" name="title" value={form.title} error={errors.title} onChange={handleChange} />
         <label>
-          <span>Vai tro</span>
+          <span>Vai trò</span>
           <select name="role" value={form.role} onChange={handleChange}>
-            <option value="">Chon vai tro</option>
-            <option value="employee">employee</option>
-            <option value="manager">manager</option>
-            <option value="hr">hr</option>
+            <option value="">Chọn vai trò</option>
+            <option value="employee">{formatHrRole('employee')}</option>
+            <option value="manager">{formatHrRole('manager')}</option>
+            <option value="hr">{formatHrRole('hr')}</option>
           </select>
           {errors.role ? <small>{errors.role}</small> : null}
         </label>
-        <FormField label="He so luong" name="salaryCoefficient" type="number" step="0.1" value={form.salaryCoefficient} error={errors.salaryCoefficient} onChange={handleChange} />
-        <FormField label="So du phep mac dinh" name="leaveBalance" type="number" value={form.leaveBalance} error={errors.leaveBalance} onChange={handleChange} />
+        <FormField label="Hệ số lương" name="salaryCoefficient" type="number" step="0.1" value={form.salaryCoefficient} error={errors.salaryCoefficient} onChange={handleChange} />
+        <FormField label="Số ngày phép còn lại mặc định" name="leaveBalance" type="number" value={form.leaveBalance} error={errors.leaveBalance} onChange={handleChange} />
         <label>
-          <span>Trang thai</span>
+          <span>Trạng thái</span>
           <select name="status" value={form.status} onChange={handleChange}>
-            <option value="Active">Active</option>
-            <option value="Inactive">Inactive</option>
+            <option value="Active">{formatHrStatus('Active')}</option>
+            <option value="Inactive">{formatHrStatus('Inactive')}</option>
           </select>
         </label>
         <div className="dashboard-panel__actions hr-form-actions">
-          <button type="button" className="dashboard-button dashboard-button--ghost" onClick={onClose}>Huy</button>
+          <button type="button" className="dashboard-button dashboard-button--ghost" onClick={onClose}>Hủy</button>
           <button type="submit" className="dashboard-button dashboard-button--primary" disabled={isSaving}>
             <FiCheck />
-            {isSaving ? 'Dang luu...' : 'Luu'}
+            {isSaving ? 'Đang lưu...' : 'Lưu'}
+          </button>
+        </div>
+      </form>
+    </ModalShell>
+  );
+}
+
+function ImportEmployeeModal({
+  isOpen,
+  onClose,
+  onImport,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  onImport: (file: File) => Promise<{ importedCount: number; errors: HrImportError[] }>;
+}) {
+  const [file, setFile] = useState<File | null>(null);
+  const [errors, setErrors] = useState<HrImportError[]>([]);
+  const [helperMessage, setHelperMessage] = useState('');
+  const [isImporting, setIsImporting] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      setFile(null);
+      setErrors([]);
+      setHelperMessage('');
+      setIsImporting(false);
+    }
+  }, [isOpen]);
+
+  if (!isOpen) {
+    return null;
+  }
+
+  const handleFileChange = (event: any) => {
+    const selectedFile = event.target.files?.[0] || null;
+    setErrors([]);
+    setHelperMessage('');
+
+    if (!selectedFile) {
+      setFile(null);
+      return;
+    }
+
+    if (!/\.(xlsx|xls)$/i.test(selectedFile.name)) {
+      setFile(null);
+      setHelperMessage('Chỉ chấp nhận file .xlsx hoặc .xls.');
+      return;
+    }
+
+    setFile(selectedFile);
+  };
+
+  const handleSubmit = async (event: any) => {
+    event.preventDefault();
+
+    if (!file) {
+      setHelperMessage('Vui lòng chọn file Excel trước khi import.');
+      return;
+    }
+
+    setIsImporting(true);
+    setErrors([]);
+    setHelperMessage('');
+
+    try {
+      const result = await onImport(file);
+      setErrors(result.errors);
+      if (result.errors.length > 0) {
+        setHelperMessage(`Đã import ${result.importedCount} nhân viên, một số dòng bị lỗi.`);
+      }
+    } catch (error) {
+      const importErrors = (error as Error & { importErrors?: HrImportError[] }).importErrors || [];
+      setErrors(importErrors);
+      setHelperMessage(error instanceof Error ? error.message : 'Không thể import nhân viên từ Excel.');
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
+  return (
+    <ModalShell title="Import Excel nhân viên" onClose={onClose}>
+      <form className="hr-form-grid" onSubmit={handleSubmit}>
+        <label className="hr-form-full">
+          <span>File Excel</span>
+          <input type="file" accept=".xlsx,.xls" onChange={handleFileChange} />
+          {helperMessage ? <small>{helperMessage}</small> : null}
+        </label>
+
+        <div className="hr-modal-section hr-form-full">
+          <h3>Các cột hỗ trợ</h3>
+          <p className="hr-modal-note">
+            Họ tên, Email, Mật khẩu tạm thời, Phòng ban, Chức vụ, Vai trò, Hệ số lương, Số ngày phép mặc định, Trạng thái.
+          </p>
+        </div>
+
+        {errors.length > 0 ? (
+          <div className="hr-import-errors hr-form-full">
+            {errors.map((error, index) => (
+              <div key={`${error.row}-${error.message}-${index}`}>
+                Dòng {error.row || '-'}: {error.message}
+              </div>
+            ))}
+          </div>
+        ) : null}
+
+        <div className="dashboard-panel__actions hr-form-actions">
+          <button type="button" className="dashboard-button dashboard-button--ghost" onClick={onClose}>
+            Hủy
+          </button>
+          <button type="submit" className="dashboard-button dashboard-button--primary" disabled={isImporting || !file}>
+            <FiUpload />
+            {isImporting ? 'Đang import...' : 'Import Excel'}
           </button>
         </div>
       </form>
@@ -532,13 +683,13 @@ function ConfirmModal({
   }
 
   return (
-    <ModalShell title="Xac nhan vo hieu hoa" onClose={onClose}>
-      <p className="hr-modal-note">Tai khoan {employee.fullName} se chuyen sang Inactive. Du lieu lich su van duoc giu lai.</p>
+    <ModalShell title="Xác nhận vô hiệu hóa" onClose={onClose}>
+      <p className="hr-modal-note">Tài khoản {employee.fullName} sẽ chuyển sang trạng thái ngừng hoạt động. Dữ liệu lịch sử vẫn được giữ lại.</p>
       <div className="dashboard-panel__actions hr-form-actions">
-        <button type="button" className="dashboard-button dashboard-button--ghost" onClick={onClose}>Huy</button>
+        <button type="button" className="dashboard-button dashboard-button--ghost" onClick={onClose}>Hủy</button>
         <button type="button" className="dashboard-button hr-button--danger" onClick={onConfirm} disabled={isSaving}>
           <FiPower />
-          {isSaving ? 'Dang xu ly...' : 'Vo hieu hoa'}
+          {isSaving ? 'Đang xử lý...' : 'Vô hiệu hóa'}
         </button>
       </div>
     </ModalShell>

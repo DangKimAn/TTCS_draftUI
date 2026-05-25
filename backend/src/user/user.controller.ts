@@ -405,3 +405,38 @@ export class UserController {
     throw new BadRequestException(statusCode, message);
   }
 }
+
+@Controller('employees')
+export class EmployeeImportController {
+  constructor(private readonly userService: UserService) {}
+
+  @ApiOperation({
+    summary: 'Import employees from Excel for admin',
+  })
+  @ApiBearerAuth()
+  @Post('/import')
+  @UseGuards(JwtAuthGuard, UserAccessGaurd)
+  @RequirePermission('admin')
+  @UseInterceptors(FileInterceptor('file'))
+  async importEmployees(
+    @UploadedFile() file: Express.Multer.File,
+  ): Promise<ResponseDto<{ importedCount: number; errors: Array<{ row: number; message: string }> }>> {
+    const result = await this.userService.importEmployeesFromExcel(file);
+
+    if (result.errors.length > 0 && result.importedCount === 0) {
+      throw new BadRequestException({
+        message: 'Import Excel that bai. Vui long kiem tra cac dong loi.',
+        errors: result.errors,
+      });
+    }
+
+    return {
+      statusCode: OK_CODE,
+      message:
+        result.errors.length > 0
+          ? `Da import ${result.importedCount} nhan vien, mot so dong bi loi.`
+          : `Da import thanh cong ${result.importedCount} nhan vien.`,
+      data: result,
+    };
+  }
+}

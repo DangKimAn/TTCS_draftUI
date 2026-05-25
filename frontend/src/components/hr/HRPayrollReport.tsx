@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { FiDownload } from 'react-icons/fi';
 import { exportPayrollReportExcel, fetchPayrollPreview } from '../../services/hrService';
-import { currentYear } from './hrShared';
+import { currentYear, formatHrStatus } from './hrShared';
 
 interface HRPayrollReportProps {
   employees?: Array<Record<string, any>>;
@@ -32,7 +32,7 @@ function HRPayrollReport({
 
     if (!Number.isInteger(month) || month < 1 || month > 12 || !Number.isInteger(year)) {
       setPayrollRows([]);
-      setPreviewError('Thang hoac nam khong hop le.');
+      setPreviewError('Tháng hoặc năm không hợp lệ.');
       return;
     }
 
@@ -51,7 +51,7 @@ function HRPayrollReport({
       } catch (error) {
         if (isMounted) {
           setPayrollRows([]);
-          setPreviewError(error instanceof Error ? error.message : 'Khong the tai payroll preview tu API.');
+          setPreviewError(error instanceof Error ? error.message : 'Không thể tải dữ liệu xem trước bảng lương từ API.');
         }
       } finally {
         if (isMounted) {
@@ -77,16 +77,16 @@ function HRPayrollReport({
     const year = Number(filters.year);
 
     if (!Number.isInteger(month) || month < 1 || month > 12 || !Number.isInteger(year)) {
-      onFeedback('danger', 'Thang hoac nam khong hop le.');
+      onFeedback('danger', 'Tháng hoặc năm không hợp lệ.');
       return;
     }
 
     setIsExporting(true);
     try {
       await exportPayrollReportExcel(month, year);
-      onFeedback('success', `Da goi API xuat bao cao luong thang ${month}/${year} (Excel).`);
+      onFeedback('success', `Đã gọi API xuất báo cáo lương tháng ${month}/${year} (Excel).`);
     } catch (error) {
-      onFeedback('danger', error instanceof Error ? error.message : 'Khong the xuat bao cao luong.');
+      onFeedback('danger', error instanceof Error ? error.message : 'Không thể xuất báo cáo lương.');
     } finally {
       setIsExporting(false);
     }
@@ -97,21 +97,21 @@ function HRPayrollReport({
       <section className="dashboard-panel">
         <div className="hr-report-filter">
           <label>
-            <span>Thang</span>
+            <span>Tháng</span>
             <select name="month" value={filters.month} onChange={(event) => setFilters((current) => ({ ...current, month: event.target.value }))}>
               {Array.from({ length: 12 }, (_, index) => String(index + 1)).map((month) => (
-                <option key={month} value={month}>Thang {month.padStart(2, '0')}</option>
+                <option key={month} value={month}>Tháng {month.padStart(2, '0')}</option>
               ))}
             </select>
           </label>
           <label>
-            <span>Nam</span>
+            <span>Năm</span>
             <input name="year" type="number" value={filters.year} onChange={(event) => setFilters((current) => ({ ...current, year: event.target.value }))} />
           </label>
           <label>
-            <span>Phong ban</span>
+            <span>Phòng ban</span>
             <select name="departmentId" value={filters.departmentId} onChange={(event) => setFilters((current) => ({ ...current, departmentId: event.target.value }))}>
-              <option value="all">Tat ca phong ban</option>
+              <option value="all">Tất cả phòng ban</option>
               {departments.map((department) => (
                 <option key={department.id || department.departmentID} value={department.id || department.departmentID}>
                   {department.name || department.departmentName}
@@ -121,7 +121,7 @@ function HRPayrollReport({
           </label>
           <button type="button" className="dashboard-button dashboard-button--primary" onClick={handleExport} disabled={isExporting}>
             <FiDownload />
-            {isExporting ? 'Dang xuat...' : 'Xuat Excel'}
+            {isExporting ? 'Đang xuất...' : 'Xuất Excel'}
           </button>
         </div>
         {previewError ? <div className="hr-inline-alert">{previewError}</div> : null}
@@ -132,34 +132,34 @@ function HRPayrollReport({
           <table className="hr-table hr-table--payroll hr-table-carded">
             <thead>
               <tr>
-                <th>Ma nhan vien</th>
-                <th>Ho ten</th>
-                <th>Phong ban</th>
-                <th>Tong gio lam</th>
-                <th>Tong gio OT</th>
-                <th>He so luong</th>
-                <th>Tong luong</th>
-                <th>Trang thai du lieu</th>
+                <th>Mã nhân viên</th>
+                <th>Họ tên</th>
+                <th>Phòng ban</th>
+                <th>Tổng giờ làm</th>
+                <th>Tổng giờ OT</th>
+                <th>Hệ số lương</th>
+                <th>Tổng lương</th>
+                <th>Trạng thái dữ liệu</th>
               </tr>
             </thead>
             <tbody>
               {isLoadingPreview ? (
                 <tr>
-                  <td colSpan={8} className="hr-table-empty">Dang tai payroll preview tu API...</td>
+                  <td colSpan={8} className="hr-table-empty">Đang tải dữ liệu xem trước bảng lương từ API...</td>
                 </tr>
               ) : previewRows.length > 0 ? (
                 previewRows.map((row) => (
                   <tr key={row.id}>
-                    <td data-label="Ma nhan vien" className="cell-nowrap"><strong>{row.employeeCode}</strong></td>
-                    <td data-label="Ho ten">{row.fullName}</td>
-                    <td data-label="Phong ban">{row.departmentName}</td>
-                    <td data-label="Tong gio lam" className="cell-nowrap">{row.totalHours}h</td>
-                    <td data-label="Tong gio OT" className="cell-nowrap">{row.totalExtraHours}h</td>
-                    <td data-label="He so luong" className="cell-nowrap">{row.salaryCoefficient ?? '--'}</td>
-                    <td data-label="Tong luong" className="cell-nowrap">{row.totalSalaryByHours}</td>
-                    <td data-label="Trang thai du lieu">
+                    <td data-label="Mã nhân viên" className="cell-nowrap"><strong>{row.employeeCode}</strong></td>
+                    <td data-label="Họ tên">{row.fullName}</td>
+                    <td data-label="Phòng ban">{row.departmentName}</td>
+                    <td data-label="Tổng giờ làm" className="cell-nowrap">{row.totalHours}h</td>
+                    <td data-label="Tổng giờ OT" className="cell-nowrap">{row.totalExtraHours}h</td>
+                    <td data-label="Hệ số lương" className="cell-nowrap">{row.salaryCoefficient ?? '--'}</td>
+                    <td data-label="Tổng lương" className="cell-nowrap">{row.totalSalaryByHours}</td>
+                    <td data-label="Trạng thái dữ liệu">
                       <span className="dashboard-status-badge dashboard-status-badge--success">
-                        {row.dataStatus}
+                        {formatHrStatus(row.dataStatus)}
                       </span>
                     </td>
                   </tr>
@@ -167,7 +167,7 @@ function HRPayrollReport({
               ) : (
                 <tr>
                   <td colSpan={8} className="hr-table-empty">
-                    Chua co payroll da generate cho ky nay. Duyet monthly timesheet va chay generate payroll truoc khi xuat.
+                    Chưa có bảng lương được tạo cho kỳ này. Hãy duyệt timesheet tháng và chạy tạo bảng lương trước khi xuất.
                   </td>
                 </tr>
               )}

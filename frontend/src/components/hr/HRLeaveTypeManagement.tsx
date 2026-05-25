@@ -8,6 +8,7 @@ import {
 } from '../../services/hrService';
 import {
   emptyLeaveTypeForm,
+  formatHrStatus,
   FormErrors,
   FormField,
   getStatusClass,
@@ -55,7 +56,7 @@ function HRLeaveTypeManagement({
         onLeaveTypesChange((current: Array<Record<string, any>>) =>
           current.map((type) => (type.id === leaveTypeId ? nextType : type)),
         );
-        onFeedback('success', 'Da cap nhat loai nghi phep.');
+        onFeedback('success', 'Đã cập nhật loại nghỉ phép.');
         setPolicyModal(null);
         return {};
       }
@@ -76,11 +77,11 @@ function HRLeaveTypeManagement({
       );
 
       onLeaveTypesChange((current: Array<Record<string, any>>) => [nextType, ...current]);
-      onFeedback('success', `Da them loai nghi ${nextType.name}.`);
+      onFeedback('success', `Đã thêm loại nghỉ ${nextType.name}.`);
       setPolicyModal(null);
       return {};
     } catch (error) {
-      onFeedback('danger', error instanceof Error ? error.message : 'Khong the luu loai nghi phep.');
+      onFeedback('danger', error instanceof Error ? error.message : 'Không thể lưu loại nghỉ phép.');
       return {};
     }
   };
@@ -107,10 +108,10 @@ function HRLeaveTypeManagement({
             : type,
         ),
       );
-      onFeedback('success', `Da vo hieu hoa loai nghi ${deleteTarget.name}.`);
+      onFeedback('success', `Đã vô hiệu hóa loại nghỉ ${deleteTarget.name}.`);
       setDeleteTarget(null);
     } catch (error) {
-      onFeedback('danger', error instanceof Error ? error.message : 'Khong the vo hieu hoa loai nghi phep.');
+      onFeedback('danger', error instanceof Error ? error.message : 'Không thể vô hiệu hóa loại nghỉ phép.');
     } finally {
       setPendingId('');
     }
@@ -123,9 +124,9 @@ function HRLeaveTypeManagement({
       onLeaveTypesChange((current: Array<Record<string, any>>) =>
         current.map((type) => (type.id === leaveType.id ? { ...type, ...apiType, status: 'Active', isActive: true } : type)),
       );
-      onFeedback('success', `Da kich hoat loai nghi ${leaveType.name}.`);
+      onFeedback('success', `Đã kích hoạt loại nghỉ ${leaveType.name}.`);
     } catch (error) {
-      onFeedback('danger', error instanceof Error ? error.message : 'Khong the kich hoat loai nghi phep.');
+      onFeedback('danger', error instanceof Error ? error.message : 'Không thể kích hoạt loại nghỉ phép.');
     } finally {
       setPendingId('');
     }
@@ -136,12 +137,12 @@ function HRLeaveTypeManagement({
       <div className="employee-section__header">
         <div>
           <span className="dashboard-panel__eyebrow">UC-10</span>
-          <h1>Chinh sach nghi phep</h1>
-          <p>Quan ly loai nghi phep, trang thai ap dung va quy tac mac dinh.</p>
+          <h1>Chính sách nghỉ phép</h1>
+          <p>Quản lý loại nghỉ phép, trạng thái áp dụng và quy tắc mặc định.</p>
         </div>
         <button type="button" className="dashboard-button dashboard-button--primary" onClick={() => setPolicyModal({ mode: 'create' })}>
           <FiPlus />
-          Them loai nghi
+          Thêm loại nghỉ
         </button>
       </div>
 
@@ -152,39 +153,39 @@ function HRLeaveTypeManagement({
           <table className="hr-table hr-table--policies hr-table-carded">
             <thead>
               <tr>
-                <th>Ma loai nghi</th>
-                <th>Ten loai nghi</th>
-                <th>Co luong</th>
-                <th>So ngay/nam</th>
-                <th>Trang thai</th>
-                <th>Ghi chu</th>
-                <th>Hanh dong</th>
+                <th>Mã loại nghỉ</th>
+                <th>Tên loại nghỉ</th>
+                <th>Có lương</th>
+                <th>Số ngày/năm</th>
+                <th>Trạng thái</th>
+                <th>Ghi chú</th>
+                <th>Hành động</th>
               </tr>
             </thead>
             <tbody>
               {leaveTypes.length > 0 ? (
                 leaveTypes.map((type) => (
                   <tr key={type.id}>
-                    <td data-label="Ma loai nghi" className="cell-nowrap"><strong>{type.code}</strong></td>
-                    <td data-label="Ten loai nghi">{type.name}</td>
-                    <td data-label="Co luong">
+                    <td data-label="Mã loại nghỉ" className="cell-nowrap"><strong>{type.code}</strong></td>
+                    <td data-label="Tên loại nghỉ">{type.name}</td>
+                    <td data-label="Có lương">
                       <span className={`dashboard-status-badge ${type.isPaid ? 'dashboard-status-badge--success' : 'dashboard-status-badge--warning'}`}>
-                        {type.isPaid ? 'Paid' : 'Unpaid'}
+                        {type.isPaid ? 'Có lương' : 'Không lương'}
                       </span>
                     </td>
-                    <td data-label="So ngay/nam" className="cell-nowrap">{type.defaultDaysPerYear} ngay</td>
-                    <td data-label="Trang thai">
-                      <span className={`dashboard-status-badge ${getStatusClass(type.status)}`}>{type.status}</span>
+                    <td data-label="Số ngày/năm" className="cell-nowrap">{type.defaultDaysPerYear} ngày</td>
+                    <td data-label="Trạng thái">
+                      <span className={`dashboard-status-badge ${getStatusClass(type.status)}`}>{formatHrStatus(type.status)}</span>
                     </td>
-                    <td data-label="Ghi chu">
+                    <td data-label="Ghi chú">
                       <div className="hr-cell-stack">
                         <span>{type.note || '--'}</span>
                         {type.hasUsageHistory ? (
-                          <small>Loai nghi da co du lieu su dung, API co the tu choi xoa.</small>
+                          <small>Loại nghỉ đã có dữ liệu sử dụng, API có thể từ chối xóa.</small>
                         ) : null}
                       </div>
                     </td>
-                    <td data-label="Hanh dong" className="hr-actions-cell">
+                    <td data-label="Hành động" className="hr-actions-cell">
                       <div className="hr-row-actions">
                         <button
                           type="button"
@@ -192,7 +193,7 @@ function HRLeaveTypeManagement({
                           onClick={() => setPolicyModal({ mode: 'edit', leaveTypeId: type.id })}
                         >
                           <FiEdit3 />
-                          Sua
+                          Sửa
                         </button>
                         {type.status === 'Inactive' ? (
                           <button
@@ -202,7 +203,7 @@ function HRLeaveTypeManagement({
                             disabled={pendingId === type.id}
                           >
                             <FiPower />
-                            Kich hoat
+                            Kích hoạt
                           </button>
                         ) : (
                           <button
@@ -212,7 +213,7 @@ function HRLeaveTypeManagement({
                             disabled={pendingId === type.id}
                           >
                             <FiTrash2 />
-                            Vo hieu hoa
+                            Vô hiệu hóa
                           </button>
                         )}
                       </div>
@@ -221,7 +222,7 @@ function HRLeaveTypeManagement({
                 ))
               ) : (
                 <tr>
-                  <td colSpan={7} className="hr-table-empty">Chua co loai nghi phep.</td>
+                  <td colSpan={7} className="hr-table-empty">Chưa có loại nghỉ phép.</td>
                 </tr>
               )}
             </tbody>
@@ -300,37 +301,37 @@ function LeaveTypeModal({
   };
 
   return (
-    <ModalShell title={modal.mode === 'edit' ? 'Sua loai nghi phep' : 'Them loai nghi phep'} onClose={onClose}>
+    <ModalShell title={modal.mode === 'edit' ? 'Sửa loại nghỉ phép' : 'Thêm loại nghỉ phép'} onClose={onClose}>
       {leaveType?.hasUsageHistory ? (
-        <div className="hr-inline-alert">Loai nghi da co du lieu su dung. Khi vo hieu hoa, backend se giu lai lich su don nghi.</div>
+        <div className="hr-inline-alert">Loại nghỉ đã có dữ liệu sử dụng. Khi vô hiệu hóa, backend sẽ giữ lại lịch sử đơn nghỉ.</div>
       ) : null}
       <form className="hr-form-grid" onSubmit={handleSubmit}>
-        <FormField label="Ma loai nghi" name="code" value={form.code} error={errors.code} onChange={handleChange} />
-        <FormField label="Ten loai nghi" name="name" value={form.name} error={errors.name} onChange={handleChange} />
+        <FormField label="Mã loại nghỉ" name="code" value={form.code} error={errors.code} onChange={handleChange} />
+        <FormField label="Tên loại nghỉ" name="name" value={form.name} error={errors.name} onChange={handleChange} />
         <label>
-          <span>Co luong khong</span>
+          <span>Có lương không</span>
           <select name="isPaid" value={String(form.isPaid)} onChange={handleChange}>
-            <option value="true">Co luong</option>
-            <option value="false">Khong luong</option>
+            <option value="true">Có lương</option>
+            <option value="false">Không lương</option>
           </select>
         </label>
-        <FormField label="So ngay mac dinh" name="defaultDaysPerYear" type="number" value={form.defaultDaysPerYear} error={errors.defaultDaysPerYear} onChange={handleChange} />
+        <FormField label="Số ngày mặc định" name="defaultDaysPerYear" type="number" value={form.defaultDaysPerYear} error={errors.defaultDaysPerYear} onChange={handleChange} />
         <label>
-          <span>Trang thai</span>
+          <span>Trạng thái</span>
           <select name="status" value={form.status} onChange={handleChange}>
-            <option value="Active">Active</option>
-            <option value="Inactive">Inactive</option>
+            <option value="Active">{formatHrStatus('Active')}</option>
+            <option value="Inactive">{formatHrStatus('Inactive')}</option>
           </select>
         </label>
         <label className="hr-form-full">
-          <span>Ghi chu</span>
+          <span>Ghi chú</span>
           <textarea name="note" rows={4} value={form.note} onChange={handleChange} />
         </label>
         <div className="dashboard-panel__actions hr-form-actions">
-          <button type="button" className="dashboard-button dashboard-button--ghost" onClick={onClose}>Huy</button>
+          <button type="button" className="dashboard-button dashboard-button--ghost" onClick={onClose}>Hủy</button>
           <button type="submit" className="dashboard-button dashboard-button--primary" disabled={isSaving}>
             <FiCheck />
-            {isSaving ? 'Dang luu...' : 'Luu'}
+            {isSaving ? 'Đang lưu...' : 'Lưu'}
           </button>
         </div>
       </form>
@@ -354,13 +355,13 @@ function DeleteLeaveTypeModal({
   }
 
   return (
-    <ModalShell title="Xac nhan vo hieu hoa loai nghi" onClose={onClose}>
-      <p className="hr-modal-note">Loai nghi {leaveType.name} se chuyen sang Inactive va khong xuat hien khi nhan vien tao don moi. Lich su don nghi van duoc giu lai.</p>
+    <ModalShell title="Xác nhận vô hiệu hóa loại nghỉ" onClose={onClose}>
+      <p className="hr-modal-note">Loại nghỉ {leaveType.name} sẽ chuyển sang trạng thái ngừng hoạt động và không xuất hiện khi nhân viên tạo đơn mới. Lịch sử đơn nghỉ vẫn được giữ lại.</p>
       <div className="dashboard-panel__actions hr-form-actions">
-        <button type="button" className="dashboard-button dashboard-button--ghost" onClick={onClose}>Huy</button>
+        <button type="button" className="dashboard-button dashboard-button--ghost" onClick={onClose}>Hủy</button>
         <button type="button" className="dashboard-button hr-button--danger" onClick={onConfirm} disabled={isSaving}>
           <FiTrash2 />
-          {isSaving ? 'Dang xu ly...' : 'Vo hieu hoa'}
+          {isSaving ? 'Đang xử lý...' : 'Vô hiệu hóa'}
         </button>
       </div>
     </ModalShell>

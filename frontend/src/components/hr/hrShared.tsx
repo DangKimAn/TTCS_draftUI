@@ -45,7 +45,7 @@ export function ModalShell({
       <article className="modal-card hr-modal" role="dialog" aria-modal="true" aria-label={title}>
         <div className="hr-modal__header">
           <h2>{title}</h2>
-          <button type="button" className="hr-modal__close" onClick={onClose} aria-label="Dong">
+          <button type="button" className="hr-modal__close" onClick={onClose} aria-label="Đóng">
             <FiX />
           </button>
         </div>
@@ -112,41 +112,41 @@ export function validateEmployeeForm(
   const normalizedEmail = form.email.trim().toLowerCase();
 
   if (!form.fullName.trim()) {
-    errors.fullName = 'Ho ten khong duoc trong.';
+    errors.fullName = 'Họ tên không được trống.';
   }
 
   if (!normalizedEmail) {
-    errors.email = 'Email khong duoc trong.';
+    errors.email = 'Email không được trống.';
   } else if (!emailPattern.test(normalizedEmail)) {
-    errors.email = 'Email khong dung dinh dang.';
+    errors.email = 'Email không đúng định dạng.';
   } else if (
     employees.some((employee) => employee.email?.toLowerCase() === normalizedEmail && employee.id !== currentEmployeeId)
   ) {
-    errors.email = 'Email da ton tai trong danh sach nhan vien.';
+    errors.email = 'Email đã tồn tại trong danh sách nhân viên.';
   }
 
   if (options.requirePassword && !form.password.trim()) {
-    errors.password = 'Mat khau tam thoi khong duoc trong.';
+    errors.password = 'Mật khẩu tạm thời không được trống.';
   }
 
   if (!form.departmentId) {
-    errors.departmentId = 'Phong ban khong duoc trong.';
+    errors.departmentId = 'Phòng ban không được trống.';
   }
 
   if (!form.title.trim()) {
-    errors.title = 'Chuc vu khong duoc trong.';
+    errors.title = 'Chức vụ không được trống.';
   }
 
   if (!form.role) {
-    errors.role = 'Vai tro khong duoc trong.';
+    errors.role = 'Vai trò không được trống.';
   }
 
   if (Number(form.salaryCoefficient) <= 0) {
-    errors.salaryCoefficient = 'He so luong phai lon hon 0.';
+    errors.salaryCoefficient = 'Hệ số lương phải lớn hơn 0.';
   }
 
   if (Number(form.leaveBalance) < 0) {
-    errors.leaveBalance = 'So du phep khong duoc am.';
+    errors.leaveBalance = 'Số ngày phép còn lại không được âm.';
   }
 
   return errors;
@@ -161,19 +161,19 @@ export function validateLeaveTypeForm(
   const normalizedCode = form.code.trim().toUpperCase();
 
   if (!normalizedCode) {
-    errors.code = 'Ma loai nghi khong duoc trong.';
+    errors.code = 'Mã loại nghỉ không được trống.';
   } else if (
     leaveTypes.some((type) => type.code?.toUpperCase() === normalizedCode && type.id !== currentLeaveTypeId)
   ) {
-    errors.code = 'Ma loai nghi khong duoc trung.';
+    errors.code = 'Mã loại nghỉ không được trùng.';
   }
 
   if (!form.name.trim()) {
-    errors.name = 'Ten loai nghi khong duoc trong.';
+    errors.name = 'Tên loại nghỉ không được trống.';
   }
 
   if (Number(form.defaultDaysPerYear) < 0) {
-    errors.defaultDaysPerYear = 'So ngay mac dinh khong duoc am.';
+    errors.defaultDaysPerYear = 'Số ngày mặc định không được âm.';
   }
 
   return errors;
@@ -222,7 +222,7 @@ export function buildPayrollRow(
     unpaidLeaveDays,
     salaryCoefficient: employee.salaryCoefficient,
     isReady,
-    dataStatus: isReady ? 'San sang xuat luong' : 'Con du lieu chua duyet',
+    dataStatus: isReady ? 'Sẵn sàng xuất lương' : 'Còn dữ liệu chưa duyệt',
   };
 }
 
@@ -249,6 +249,41 @@ export function getStatusClass(status?: string) {
       return 'dashboard-status-badge--neutral';
     default:
       return 'dashboard-status-badge--neutral';
+  }
+}
+
+export function formatHrRole(role?: string) {
+  switch (String(role || '').toLowerCase()) {
+    case 'manager':
+      return 'Quản lý';
+    case 'admin':
+    case 'hr':
+      return 'Quản trị nhân sự';
+    case 'employee':
+      return 'Nhân viên';
+    default:
+      return role || '--';
+  }
+}
+
+export function formatHrStatus(status?: string) {
+  switch (status) {
+    case 'Active':
+      return 'Đang hoạt động';
+    case 'Inactive':
+      return 'Ngừng hoạt động';
+    case 'Pending':
+      return 'Chờ duyệt';
+    case 'Submitted':
+      return 'Đã gửi';
+    case 'Approved':
+      return 'Đã duyệt';
+    case 'Rejected':
+      return 'Từ chối';
+    case 'Ready':
+      return 'Sẵn sàng';
+    default:
+      return status || '--';
   }
 }
 
