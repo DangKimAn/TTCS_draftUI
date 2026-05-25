@@ -1,4 +1,4 @@
-﻿import CorrectionRequestModal from '../CorrectionRequestModal';
+import CorrectionRequestModal from '../CorrectionRequestModal';
 import SubmitTimesheetPanel from '../SubmitTimesheetPanel';
 import TimesheetFilterBar from '../TimesheetFilterBar';
 import TimesheetSummaryCard from '../TimesheetSummaryCard';
@@ -95,6 +95,7 @@ function TimesheetSection({
         selectedRow={selectedRow}
         onClose={onCloseCorrection}
         onSubmit={onSubmitCorrection}
+        rows={timesheetData.rows}
       />
     </section>
   );

@@ -24,9 +24,16 @@ export interface HrImportError {
   message: string;
 }
 
+export interface HrImportSuccess {
+  row: number;
+  employeeCode: string;
+  username: string;
+}
+
 export interface HrImportResult {
   importedCount: number;
   errors: HrImportError[];
+  successes: HrImportSuccess[];
 }
 
 interface LeaveTypePayload {
@@ -104,22 +111,39 @@ export async function importHrUsersExcel(file: File): Promise<HrImportResult> {
       formData,
       { headers: { 'Content-Type': 'multipart/form-data' } },
     );
-    const result = unwrapBackendData<HrImportResult>(response.data);
+    const result = unwrapBackendData<any>(response.data);
 
     return {
       importedCount: Number(result?.importedCount || 0),
       errors: Array.isArray(result?.errors) ? result.errors : [],
+      successes: Array.isArray(result?.successes)
+        ? result.successes.map((s: any) => ({
+            row: Number(s.row || 0),
+            employeeCode: s.userID ? `EMP-${String(s.userID).slice(0, 8).toUpperCase()}` : 'EMP',
+            username: String(s.username || ''),
+          }))
+        : [],
     };
   } catch (error) {
     const normalizedError = normalizeHrError(error, 'Không thể import nhân viên từ Excel.') as Error & {
       details?: unknown;
       importErrors?: HrImportError[];
+      importSuccesses?: HrImportSuccess[];
     };
 
     if (axios.isAxiosError(error)) {
       normalizedError.importErrors = getImportErrors(error.response?.data);
+      const data = error.response?.data as any;
+      normalizedError.importSuccesses = Array.isArray(data?.successes)
+        ? data.successes.map((s: any) => ({
+            row: Number(s.row || 0),
+            employeeCode: s.userID ? `EMP-${String(s.userID).slice(0, 8).toUpperCase()}` : 'EMP',
+            username: String(s.username || ''),
+          }))
+        : [];
     } else {
       normalizedError.importErrors = getImportErrors((error as { details?: unknown })?.details);
+      normalizedError.importSuccesses = [];
     }
 
     throw normalizedError;
