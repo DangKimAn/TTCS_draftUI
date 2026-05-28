@@ -13,7 +13,7 @@ export class AppService {
     try {
       await this.prisma.$queryRaw`SELECT 1`;
       return { status: 'success', message: 'Database connected successfully' };
-    } catch (error) {
+    } catch {
       return { status: 'error', message: 'Database connection failed' };
     }
   }
