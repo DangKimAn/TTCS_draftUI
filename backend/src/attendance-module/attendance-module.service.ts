@@ -227,6 +227,14 @@ export class AttendanceModuleService {
       // KHÔNG SỬ DỤNG $transaction ĐỂ TRÁNH NGẼN POOL VÀ CHO PHÉP PROMISE.ALL TỰ DO CHẠY
       return await executeLogic(this.prismaService);
     } catch (error: unknown) {
+      if (
+        error &&
+        typeof error === 'object' &&
+        'getStatus' in error &&
+        typeof (error as any).getStatus === 'function'
+      ) {
+        throw error;
+      }
       console.error('Error in checkIn:', error);
       return {
         statusCode: Interval_Server_Network_Exeception_Code,

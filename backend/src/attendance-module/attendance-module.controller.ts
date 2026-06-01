@@ -80,11 +80,11 @@ export class AttendanceModuleController {
     if (statusCode === CREATED_RESPONE || statusCode === OK_CODE)
       return { statusCode, message };
     if (statusCode == NOTFOUND_CODE)
-      throw new NotFoundException(statusCode, message);
+      throw new NotFoundException(message);
     if (statusCode === CONFLIG_CODE)
-      throw new ConflictException(statusCode, message);
+      throw new ConflictException(message);
 
-    throw new BadRequestException(statusCode, message);
+    throw new BadRequestException(message);
   }
 
   @ApiCreatedResponse()
@@ -122,11 +122,11 @@ export class AttendanceModuleController {
     if (statusCode === CREATED_RESPONE || statusCode === OK_CODE)
       return { statusCode, message };
     if (statusCode == NOTFOUND_CODE)
-      throw new NotFoundException(statusCode, message);
+      throw new NotFoundException(message);
     if (statusCode === CONFLIG_CODE)
-      throw new ConflictException(statusCode, message);
+      throw new ConflictException(message);
 
-    throw new BadRequestException(statusCode, message);
+    throw new BadRequestException(message);
   }
 
   @ApiCreatedResponse()
@@ -151,11 +151,11 @@ export class AttendanceModuleController {
       );
     if (statusCode === OK_CODE) return { statusCode, message, data };
     if (statusCode == NOTFOUND_CODE)
-      throw new NotFoundException(statusCode, message);
+      throw new NotFoundException(message);
     if (statusCode === CONFLIG_CODE)
-      throw new ConflictException(statusCode, message);
+      throw new ConflictException(message);
 
-    throw new BadRequestException(statusCode, message);
+    throw new BadRequestException(message);
   }
 
   @ApiCreatedResponse()
@@ -177,10 +177,10 @@ export class AttendanceModuleController {
       );
     if (statusCode === OK_CODE) return { statusCode, message, data };
     if (statusCode == NOTFOUND_CODE)
-      throw new NotFoundException(statusCode, message);
+      throw new NotFoundException(message);
     if (statusCode === CONFLIG_CODE)
-      throw new ConflictException(statusCode, message);
+      throw new ConflictException(message);
 
-    throw new BadRequestException(statusCode, message);
+    throw new BadRequestException(message);
   }
 }
