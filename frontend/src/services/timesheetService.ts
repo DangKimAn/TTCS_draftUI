@@ -552,6 +552,10 @@ export function getAttendanceWarnings(
     warnings.push('Correction Pending');
   }
 
+  if (record?.checkOutTime && record?.totalHours !== undefined && record.totalHours < 2) {
+    warnings.push('Dưới 2h');
+  }
+
   return warnings;
 }
 
@@ -974,10 +978,12 @@ export async function getTimesheetReport(filters: TimesheetReportFilters): Promi
     );
     const data = unwrapBackendData<TimesheetReportData>(response.data);
 
+    const normalizedRows = Array.isArray(data?.rows) ? data.rows.map(normalizeReportRow) : [];
+    
     return {
       filters: data?.filters || filters,
-      rows: Array.isArray(data?.rows) ? data.rows.map(normalizeReportRow) : [],
-      summary: data?.summary || buildTimesheetReportSummary([]),
+      rows: normalizedRows,
+      summary: buildTimesheetReportSummary(normalizedRows),
     };
   } catch (error) {
     throw normalizeTimesheetError(
@@ -1086,6 +1092,15 @@ function normalizeReportParams(filters: TimesheetReportFilters) {
 }
 
 function normalizeReportRow(row: Timesheet & Record<string, any>): Timesheet {
+  const totalHours = Number(row.totalHours || 0);
+  const warnings = Array.isArray(row.warnings) ? [...row.warnings] : [];
+
+  if (row.checkOut && totalHours < 2) {
+    if (!warnings.some((w: any) => String(w.label || w) === 'Dưới 2h')) {
+      warnings.push({ label: 'Dưới 2h', tone: 'warning' } as any);
+    }
+  }
+
   return {
     ...row,
     id: row.id || row.timesheetEntryID || row.monthlyTimesheetID,
@@ -1096,9 +1111,9 @@ function normalizeReportRow(row: Timesheet & Record<string, any>): Timesheet {
     date: row.date || row.workDate,
     checkIn: row.checkIn || '',
     checkOut: row.checkOut || '',
-    totalHours: Number(row.totalHours || 0),
+    totalHours,
     status: row.status || 'Pending',
-    warnings: Array.isArray(row.warnings) ? row.warnings : [],
+    warnings,
   };
 }
 

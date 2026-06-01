@@ -32,7 +32,7 @@ export class MissedCheckoutTask {
     private readonly emailService: EmailService,
   ) {}
 
-  @Cron('0 0 1 * * *') // Chạy lúc 1:00 AM mỗi ngày
+  @Cron('0 0 0 * * *') // Chạy lúc 12:00 đêm mỗi ngày
   async processMissingCheckouts(): Promise<ResponseDto<DefaultResponse>> {
     const now = new Date();
     const todayStr = this.formatDateKey(now);
