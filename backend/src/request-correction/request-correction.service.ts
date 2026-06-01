@@ -126,7 +126,7 @@ export class RequestCorrectionService {
 
         const nextCheckIn = proposedCheckIn || entry?.checkIn || null;
         const nextCheckOut = proposedCheckOut || entry?.checkOut || null;
-        
+
         if (proposedCheckIn && proposedCheckIn.getHours() < 6) {
           return {
             statusCode: BADREQUEST_CODE,
