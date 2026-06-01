@@ -159,7 +159,7 @@ function EmployeeWorkspaceDashboard() {
         userEmail,
         month,
         year,
-        periodType: periodType === 'week' ? 'week' : 'month',
+        periodType: periodType,
         anchorDate: anchorDateObj,
         createIfMissing: true,
       });
@@ -313,7 +313,7 @@ function EmployeeWorkspaceDashboard() {
 
   const displayRows = useMemo(() => {
     if (!timesheetData) return [];
-    if (periodType === 'month') return timesheetData.rows;
+    if (periodType === 'month' || periodType === 'last_month') return timesheetData.rows;
 
     const anchorDateObj2 = typeof anchorDate === 'string' ? new Date(anchorDate) : anchorDate;
     const { startKey, endKey } = getCurrentWeekRange(anchorDateObj2);

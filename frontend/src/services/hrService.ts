@@ -415,10 +415,8 @@ export function normalizeHrLeaveType(payload: Record<string, any>) {
   };
 }
 
-function buildUserPayload(payload: HrUserPayload, includePassword: boolean) {
+function buildUserPayload(payload: HrUserPayload, isCreate: boolean) {
   const data: Record<string, any> = {
-    email: payload.email.trim().toLowerCase(),
-    username: payload.fullName.trim(),
     roleName: toBackendRoleName(payload.role),
     departmentName: payload.departmentName || undefined,
     salaryCoefficient: Number(payload.salaryCoefficient || 0),
@@ -427,7 +425,12 @@ function buildUserPayload(payload: HrUserPayload, includePassword: boolean) {
     isActive: payload.isActive,
   };
 
-  if (includePassword || payload.password) {
+  if (isCreate) {
+    data.email = payload.email.trim().toLowerCase();
+    data.username = payload.fullName.trim();
+  }
+
+  if (isCreate || payload.password) {
     data.password = payload.password;
   }
 

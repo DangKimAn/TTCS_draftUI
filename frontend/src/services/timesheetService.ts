@@ -405,7 +405,7 @@ function mergeMonthlySummaryWithPeriod(
     ...monthlySummary,
     userEmail,
     periodType,
-    periodLabel: periodType === 'month' ? monthlySummary.periodLabel : periodConfig.label,
+    periodLabel: periodType === 'month' || periodType === 'last_month' ? monthlySummary.periodLabel : periodConfig.label,
     periodKey: getPeriodKey(periodType, periodConfig),
     attendanceIds,
   };

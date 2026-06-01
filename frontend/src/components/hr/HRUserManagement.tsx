@@ -501,8 +501,8 @@ function EmployeeModal({
   return (
     <ModalShell title={modal.mode === 'edit' ? 'Sửa thông tin nhân viên' : 'Thêm nhân viên'} onClose={onClose}>
       <form className="hr-form-grid" onSubmit={handleSubmit}>
-        <FormField label="Username" name="fullName" value={form.fullName} error={errors.fullName} onChange={handleChange} />
-        <FormField label="Email" name="email" type="email" value={form.email} error={errors.email} onChange={handleChange} />
+        <FormField label="Username" name="fullName" value={form.fullName} error={errors.fullName} disabled={modal.mode === 'edit'} onChange={handleChange} />
+        <FormField label="Email" name="email" type="email" value={form.email} error={errors.email} disabled={modal.mode === 'edit'} onChange={handleChange} />
         <FormField
           label={modal.mode === 'edit' ? 'Mật khẩu mới (nếu đổi)' : 'Mật khẩu tạm thời'}
           name="password"
