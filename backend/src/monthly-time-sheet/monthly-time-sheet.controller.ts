@@ -74,13 +74,11 @@ export class MonthlyTimeSheetController {
         data,
       };
 
-    if (statusCode === NOTFOUND_CODE)
-      throw new NotFoundException(statusCode, message);
+    if (statusCode === NOTFOUND_CODE) throw new NotFoundException(message);
 
-    if (statusCode === CONFLIG_CODE)
-      throw new ConflictException(statusCode, message);
+    if (statusCode === CONFLIG_CODE) throw new ConflictException(message);
 
-    throw new BadRequestException(statusCode, message);
+    throw new BadRequestException(message);
   }
 
   @Get('/review-list')
@@ -293,13 +291,11 @@ export class MonthlyTimeSheetController {
         data,
       };
 
-    if (statusCode === NOTFOUND_CODE)
-      throw new NotFoundException(statusCode, message);
+    if (statusCode === NOTFOUND_CODE) throw new NotFoundException(message);
 
-    if (statusCode === CONFLIG_CODE)
-      throw new ConflictException(statusCode, message);
+    if (statusCode === CONFLIG_CODE) throw new ConflictException(message);
 
-    throw new BadRequestException(statusCode, message);
+    throw new BadRequestException(message);
   }
 
   @Patch('/submitMonthlyTimesheet/:monthlyTimesheetID')
@@ -323,13 +319,11 @@ export class MonthlyTimeSheetController {
         data,
       };
 
-    if (statusCode === NOTFOUND_CODE)
-      throw new NotFoundException(statusCode, message);
+    if (statusCode === NOTFOUND_CODE) throw new NotFoundException(message);
 
-    if (statusCode === CONFLIG_CODE)
-      throw new ConflictException(statusCode, message);
+    if (statusCode === CONFLIG_CODE) throw new ConflictException(message);
 
-    throw new BadRequestException(statusCode, message);
+    throw new BadRequestException(message);
   }
 
   @Patch('reviewMonthlyTimesheet/:monthlyTimesheetID')
@@ -359,12 +353,10 @@ export class MonthlyTimeSheetController {
         data,
       };
 
-    if (statusCode === NOTFOUND_CODE)
-      throw new NotFoundException(statusCode, message);
+    if (statusCode === NOTFOUND_CODE) throw new NotFoundException(message);
 
-    if (statusCode === CONFLIG_CODE)
-      throw new ConflictException(statusCode, message);
+    if (statusCode === CONFLIG_CODE) throw new ConflictException(message);
 
-    throw new BadRequestException(statusCode, message);
+    throw new BadRequestException(message);
   }
 }

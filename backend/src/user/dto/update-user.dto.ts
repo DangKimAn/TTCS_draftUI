@@ -12,6 +12,14 @@ import {
 export default class updateUserDto {
   @IsOptional()
   @IsString()
+  username?: string;
+
+  @IsOptional()
+  @IsString()
+  email?: string;
+
+  @IsOptional()
+  @IsString()
   password?: string;
 
   @ApiProperty({

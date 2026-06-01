@@ -64,6 +64,7 @@ export function FormField({
   step = undefined,
   value,
   error,
+  disabled,
   onChange,
 }: {
   label: string;
@@ -72,12 +73,13 @@ export function FormField({
   step?: string;
   value: string;
   error?: string;
+  disabled?: boolean;
   onChange: (event: any) => void;
 }) {
   return (
     <label>
       <span>{label}</span>
-      <input name={name} type={type} step={step} value={value} onChange={onChange} />
+      <input name={name} type={type} step={step} value={value} onChange={onChange} disabled={disabled} />
       {error ? <small>{error}</small> : null}
     </label>
   );
