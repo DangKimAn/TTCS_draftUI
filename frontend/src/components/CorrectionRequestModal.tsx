@@ -4,6 +4,7 @@ import { getCurrentMonthRange, getDateKey } from '../utils/dateUtils';
 
 type CorrectionFormErrors = {
   date?: string;
+  requestedCheckIn?: string;
   requestedCheckOut?: string;
   reason?: string;
 };

@@ -186,6 +186,14 @@ describe('business rules', () => {
       );
     }
 
+    beforeAll(() => {
+      jest.useFakeTimers().setSystemTime(new Date('2026-05-15T10:00:00'));
+    });
+
+    afterAll(() => {
+      jest.useRealTimers();
+    });
+
     it('blocks duplicate check-in while an open entry exists', async () => {
       const tx = {
         timesheetEntry: {
