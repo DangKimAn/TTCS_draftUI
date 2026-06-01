@@ -102,6 +102,13 @@ export class AttendanceModuleService {
         dbCtx: Prisma.TransactionClient,
       ): Promise<ResponseDto<any>> => {
         const now = new Date();
+        if (now.getHours() < 6) {
+          return {
+            statusCode: BADREQUEST_CODE,
+            message: 'You can only check in after 6:00 AM.',
+          };
+        }
+
         const month = now.getMonth() + 1;
         const year = now.getFullYear();
         const currentDateString = `${year}-${String(month).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;

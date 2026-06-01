@@ -71,6 +71,10 @@ function CorrectionRequestModal({ isOpen, selectedRow, onClose, onSubmit, rows =
       nextErrors.reason = 'Vui lòng nhập lý do chỉnh sửa.';
     }
 
+    if (form.requestedCheckIn && form.requestedCheckIn < '06:00') {
+      nextErrors.requestedCheckIn = 'Giờ Check-in phải từ 06:00 sáng trở đi.';
+    }
+
     if (form.requestedCheckIn && form.requestedCheckOut && form.requestedCheckOut <= form.requestedCheckIn) {
       nextErrors.requestedCheckOut = 'Giờ Check-out phải lớn hơn Check-in.';
     }
@@ -144,11 +148,11 @@ function CorrectionRequestModal({ isOpen, selectedRow, onClose, onSubmit, rows =
               <input
                 type="time"
                 value={form.requestedCheckIn}
-                disabled
                 onChange={(event) =>
                   setForm((prev) => ({ ...prev, requestedCheckIn: event.target.value }))
                 }
               />
+              {errors.requestedCheckIn ? <small>{errors.requestedCheckIn}</small> : null}
             </label>
 
             <label>
