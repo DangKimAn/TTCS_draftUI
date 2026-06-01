@@ -693,7 +693,7 @@ export class MonthlyTimeSheetService {
         error &&
         typeof error === 'object' &&
         'getStatus' in error &&
-        typeof (error as any).getStatus === 'function'
+        typeof (error as { getStatus?: () => number }).getStatus === 'function'
       ) {
         throw error;
       }

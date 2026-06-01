@@ -79,10 +79,8 @@ export class AttendanceModuleController {
     );
     if (statusCode === CREATED_RESPONE || statusCode === OK_CODE)
       return { statusCode, message };
-    if (statusCode == NOTFOUND_CODE)
-      throw new NotFoundException(message);
-    if (statusCode === CONFLIG_CODE)
-      throw new ConflictException(message);
+    if (statusCode == NOTFOUND_CODE) throw new NotFoundException(message);
+    if (statusCode === CONFLIG_CODE) throw new ConflictException(message);
 
     throw new BadRequestException(message);
   }
@@ -121,10 +119,8 @@ export class AttendanceModuleController {
     );
     if (statusCode === CREATED_RESPONE || statusCode === OK_CODE)
       return { statusCode, message };
-    if (statusCode == NOTFOUND_CODE)
-      throw new NotFoundException(message);
-    if (statusCode === CONFLIG_CODE)
-      throw new ConflictException(message);
+    if (statusCode == NOTFOUND_CODE) throw new NotFoundException(message);
+    if (statusCode === CONFLIG_CODE) throw new ConflictException(message);
 
     throw new BadRequestException(message);
   }
@@ -150,10 +146,8 @@ export class AttendanceModuleController {
         getAttendence,
       );
     if (statusCode === OK_CODE) return { statusCode, message, data };
-    if (statusCode == NOTFOUND_CODE)
-      throw new NotFoundException(message);
-    if (statusCode === CONFLIG_CODE)
-      throw new ConflictException(message);
+    if (statusCode == NOTFOUND_CODE) throw new NotFoundException(message);
+    if (statusCode === CONFLIG_CODE) throw new ConflictException(message);
 
     throw new BadRequestException(message);
   }
@@ -176,10 +170,8 @@ export class AttendanceModuleController {
         now.toISOString().split('T')[0],
       );
     if (statusCode === OK_CODE) return { statusCode, message, data };
-    if (statusCode == NOTFOUND_CODE)
-      throw new NotFoundException(message);
-    if (statusCode === CONFLIG_CODE)
-      throw new ConflictException(message);
+    if (statusCode == NOTFOUND_CODE) throw new NotFoundException(message);
+    if (statusCode === CONFLIG_CODE) throw new ConflictException(message);
 
     throw new BadRequestException(message);
   }

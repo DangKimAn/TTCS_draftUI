@@ -74,11 +74,9 @@ export class MonthlyTimeSheetController {
         data,
       };
 
-    if (statusCode === NOTFOUND_CODE)
-      throw new NotFoundException(message);
+    if (statusCode === NOTFOUND_CODE) throw new NotFoundException(message);
 
-    if (statusCode === CONFLIG_CODE)
-      throw new ConflictException(message);
+    if (statusCode === CONFLIG_CODE) throw new ConflictException(message);
 
     throw new BadRequestException(message);
   }
@@ -293,11 +291,9 @@ export class MonthlyTimeSheetController {
         data,
       };
 
-    if (statusCode === NOTFOUND_CODE)
-      throw new NotFoundException(message);
+    if (statusCode === NOTFOUND_CODE) throw new NotFoundException(message);
 
-    if (statusCode === CONFLIG_CODE)
-      throw new ConflictException(message);
+    if (statusCode === CONFLIG_CODE) throw new ConflictException(message);
 
     throw new BadRequestException(message);
   }
@@ -323,11 +319,9 @@ export class MonthlyTimeSheetController {
         data,
       };
 
-    if (statusCode === NOTFOUND_CODE)
-      throw new NotFoundException(message);
+    if (statusCode === NOTFOUND_CODE) throw new NotFoundException(message);
 
-    if (statusCode === CONFLIG_CODE)
-      throw new ConflictException(message);
+    if (statusCode === CONFLIG_CODE) throw new ConflictException(message);
 
     throw new BadRequestException(message);
   }
@@ -359,11 +353,9 @@ export class MonthlyTimeSheetController {
         data,
       };
 
-    if (statusCode === NOTFOUND_CODE)
-      throw new NotFoundException(message);
+    if (statusCode === NOTFOUND_CODE) throw new NotFoundException(message);
 
-    if (statusCode === CONFLIG_CODE)
-      throw new ConflictException(message);
+    if (statusCode === CONFLIG_CODE) throw new ConflictException(message);
 
     throw new BadRequestException(message);
   }
