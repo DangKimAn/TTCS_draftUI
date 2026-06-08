@@ -350,6 +350,7 @@ function ConnectedTimesheetPage() {
         }}
         onSubmit={handleCorrectionSubmit}
         rows={timesheetData.rows}
+        period={timesheetData.period}
       />
     </div>
   );

@@ -134,9 +134,20 @@ function ManagerDashboard() {
   const currentManager = useMemo(() => buildCurrentManager(session), [session]);
   const reviewPeriod = useMemo(() => {
     const now = new Date();
+    let month = now.getMonth() + 1;
+    let year = now.getFullYear();
+
+    if (now.getDate() <= 15) {
+      month -= 1;
+      if (month === 0) {
+        month = 12;
+        year -= 1;
+      }
+    }
+
     return {
-      month: now.getMonth() + 1,
-      year: now.getFullYear(),
+      month,
+      year,
     };
   }, []);
 

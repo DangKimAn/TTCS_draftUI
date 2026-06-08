@@ -1013,19 +1013,6 @@ export function canSubmitTimesheet(
     };
   }
 
-  const hasMissingOut = records.some(
-    (record) =>
-      record.status === 'Missing Out' ||
-      !record.checkInTime ||
-      !record.checkOutTime,
-  );
-
-  if (hasMissingOut) {
-    return {
-      allowed: false,
-      reason: 'Ban van con ngay cong thieu du lieu, chua the gui xac nhan.',
-    };
-  }
 
   const pendingCorrection = corrections.some((item) => item.status === 'Pending');
 

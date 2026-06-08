@@ -9,7 +9,7 @@ type CorrectionFormErrors = {
   reason?: string;
 };
 
-function CorrectionRequestModal({ isOpen, selectedRow, onClose, onSubmit, rows = [] }) {
+function CorrectionRequestModal({ isOpen, selectedRow, onClose, onSubmit, rows = [], period = null }) {
   const [form, setForm] = useState({
     date: '',
     requestedCheckIn: '',
@@ -104,6 +104,8 @@ function CorrectionRequestModal({ isOpen, selectedRow, onClose, onSubmit, rows =
     }
   };
 
+  const monthRange = period || getCurrentMonthRange();
+
   return createPortal(
     <div className="modal-backdrop">
       <div className="modal-card correction-modal">
@@ -127,8 +129,8 @@ function CorrectionRequestModal({ isOpen, selectedRow, onClose, onSubmit, rows =
             <input
               type="date"
               value={form.date}
-              min={getCurrentMonthRange().startKey}
-              max={getCurrentMonthRange().endKey > getDateKey() ? getDateKey() : getCurrentMonthRange().endKey}
+              min={monthRange.startKey}
+              max={monthRange.endKey > getDateKey() ? getDateKey() : monthRange.endKey}
               onChange={(event) => {
                 const newDate = event.target.value;
                 const dateRow = rows.find((r) => r.date === newDate);

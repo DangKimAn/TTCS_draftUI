@@ -376,6 +376,7 @@ function TimesheetWorkspacePage() {
         }}
         onSubmit={handleCorrectionSubmit}
         rows={timesheetData.rows}
+        period={timesheetData.period}
       />
     </div>
   );

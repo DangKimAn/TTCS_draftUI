@@ -15,7 +15,7 @@ export function formatDate(dateValue) {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
-    timeZone: import.meta.env.VITE_TZ || 'UTC',
+    timeZone: import.meta.env.VITE_TZ || undefined,
   }).format(date);
 }
 
@@ -34,7 +34,7 @@ export function formatDateShort(dateValue) {
     weekday: 'short',
     day: '2-digit',
     month: '2-digit',
-    timeZone: import.meta.env.VITE_TZ || 'UTC',
+    timeZone: import.meta.env.VITE_TZ || undefined,
   }).format(date);
 }
 
