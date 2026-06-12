@@ -42,5 +42,11 @@ export const ENV = {
     SMTP_USER: process.env.SMTP_USER,
     SMTP_PASS: process.env.SMTP_PASS,
     SMTP_FROM: process.env.SMTP_FROM || '"HRM System" <no-reply@hrm.com>',
+    RESEND_API_KEY: process.env.RESEND_API_KEY,
+    GMAIL: {
+      CLIENT_ID: process.env.GMAIL_CLIENT_ID,
+      CLIENT_SECRET: process.env.GMAIL_CLIENT_SECRET,
+      REFRESH_TOKEN: process.env.GMAIL_REFRESH_TOKEN,
+    },
   },
 };

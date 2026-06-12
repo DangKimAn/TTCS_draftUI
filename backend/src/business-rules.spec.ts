@@ -1231,6 +1231,121 @@ describe('business rules', () => {
         ENV.EMAIL.PROVIDER = originalProvider;
       }
     });
+
+    it('initializes ResendEmailProvider when provider is resend and API key is present', () => {
+      const originalProvider = ENV.EMAIL.PROVIDER;
+      const originalApiKey = ENV.EMAIL.RESEND_API_KEY;
+      try {
+        ENV.EMAIL.PROVIDER = 'resend';
+        ENV.EMAIL.RESEND_API_KEY = 'mock_key';
+        const service = new EmailService();
+        expect((service as any).provider.constructor.name).toBe(
+          'ResendEmailProvider',
+        );
+      } finally {
+        ENV.EMAIL.PROVIDER = originalProvider;
+        ENV.EMAIL.RESEND_API_KEY = originalApiKey;
+      }
+    });
+
+    it('falls back to LogEmailProvider if provider is resend but API key is missing', () => {
+      const originalProvider = ENV.EMAIL.PROVIDER;
+      const originalApiKey = ENV.EMAIL.RESEND_API_KEY;
+      try {
+        ENV.EMAIL.PROVIDER = 'resend';
+        ENV.EMAIL.RESEND_API_KEY = undefined;
+        const service = new EmailService();
+        expect((service as any).provider.constructor.name).toBe(
+          'LogEmailProvider',
+        );
+      } finally {
+        ENV.EMAIL.PROVIDER = originalProvider;
+        ENV.EMAIL.RESEND_API_KEY = originalApiKey;
+      }
+    });
+
+    it('successfully sends email via ResendEmailProvider', async () => {
+      const originalProvider = ENV.EMAIL.PROVIDER;
+      const originalApiKey = ENV.EMAIL.RESEND_API_KEY;
+      const originalFetch = global.fetch;
+
+      try {
+        ENV.EMAIL.PROVIDER = 'resend';
+        ENV.EMAIL.RESEND_API_KEY = 'mock_key';
+
+        const mockFetch = jest.fn().mockResolvedValue({
+          ok: true,
+          json: jest.fn().mockResolvedValue({ id: 'resend-msg-123' }),
+        });
+        global.fetch = mockFetch;
+
+        const service = new EmailService();
+        const result = await service.send({
+          to: 'customer@example.com',
+          subject: 'Welcome',
+          text: 'Hello Customer',
+        });
+
+        expect(mockFetch).toHaveBeenCalledWith(
+          'https://api.resend.com/emails',
+          expect.objectContaining({
+            method: 'POST',
+            headers: expect.objectContaining({
+              'Authorization': 'Bearer mock_key',
+              'Content-Type': 'application/json',
+            }),
+            body: expect.stringContaining('"subject":"Welcome"'),
+          }),
+        );
+        expect(result).toEqual({
+          provider: 'resend',
+          attempted: true,
+          sent: true,
+          message: 'EMAIL_SENT',
+        });
+      } finally {
+        ENV.EMAIL.PROVIDER = originalProvider;
+        ENV.EMAIL.RESEND_API_KEY = originalApiKey;
+        global.fetch = originalFetch;
+      }
+    });
+
+    it('handles Resend API error responses', async () => {
+      const originalProvider = ENV.EMAIL.PROVIDER;
+      const originalApiKey = ENV.EMAIL.RESEND_API_KEY;
+      const originalFetch = global.fetch;
+
+      try {
+        ENV.EMAIL.PROVIDER = 'resend';
+        ENV.EMAIL.RESEND_API_KEY = 'mock_key';
+
+        const mockFetch = jest.fn().mockResolvedValue({
+          ok: false,
+          status: 400,
+          text: jest.fn().mockResolvedValue('API Key Invalid'),
+        });
+        global.fetch = mockFetch;
+
+        const service = new EmailService();
+        const result = await service.send({
+          to: 'customer@example.com',
+          subject: 'Welcome',
+          text: 'Hello Customer',
+        });
+
+        expect(result).toEqual({
+          provider: 'resend',
+          attempted: true,
+          sent: false,
+          message: 'EMAIL_SEND_FAILED',
+          error: 'Resend API returned status 400: API Key Invalid',
+        });
+      } finally {
+        ENV.EMAIL.PROVIDER = originalProvider;
+        ENV.EMAIL.RESEND_API_KEY = originalApiKey;
+        global.fetch = originalFetch;
+      }
+    });
   });
 
   describe('leave types', () => {

@@ -101,8 +101,8 @@ const DEMO_USERS: Record<SeedUserKey, DemoUserConfig> = {
     salaryCoefficient: 2.6,
   },
   employee1: {
-    email: 'nv1@company.com',
-    username: 'Employee 1',
+    email: 'nguyentranngocduyen11a1@gmail.com',
+    username: 'Ngọc Duyên',
     roleName: 'employee',
     departmentKey: 'engineering',
     salaryCoefficient: 1.35,
@@ -145,7 +145,7 @@ export class SeedService implements OnModuleInit {
   constructor(
     private readonly prisma: PrismaService,
     private readonly bcrypt: BycyptHashedService,
-  ) {}
+  ) { }
 
   async onModuleInit() {
     if (process.env.SKIP_AUTO_SEED === 'true') {
@@ -281,9 +281,9 @@ export class SeedService implements OnModuleInit {
 
         const typeLeave = existing
           ? await tx.typeLeave.update({
-              where: { typeLeaveID: existing.typeLeaveID },
-              data,
-            })
+            where: { typeLeaveID: existing.typeLeaveID },
+            data,
+          })
           : await tx.typeLeave.create({ data });
 
         return [key, typeLeave] as const;
@@ -584,10 +584,10 @@ export class SeedService implements OnModuleInit {
       const checkOut = isMissingCheckout
         ? null
         : this.withTime(
-            day,
-            options.isOT ? 19 : 17,
-            options.isOT ? 30 : index % 3 === 0 ? 45 : 30,
-          );
+          day,
+          options.isOT ? 19 : 17,
+          options.isOT ? 30 : index % 3 === 0 ? 45 : 30,
+        );
 
       const existing = existingMap.get(date);
       const data = {

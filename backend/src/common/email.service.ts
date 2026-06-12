@@ -28,7 +28,7 @@ export interface EmailMessage {
 }
 
 export interface EmailDeliveryResult {
-  provider: 'log' | 'smtp';
+  provider: 'log' | 'smtp' | 'resend' | 'gmail_api';
   attempted: boolean;
   sent: boolean;
   message: string;
@@ -111,6 +111,216 @@ class SmtpEmailProvider implements IEmailProvider {
   }
 }
 
+/** Resend provider: gửi email qua Resend HTTP API. */
+class ResendEmailProvider implements IEmailProvider {
+  private readonly logger = new Logger('EmailService[resend-provider]');
+
+  async send(message: EmailMessage): Promise<EmailDeliveryResult> {
+    const recipients = Array.isArray(message.to)
+      ? message.to.join(', ')
+      : message.to;
+
+    const fromAddress =
+      ENV.EMAIL.SMTP_FROM && ENV.EMAIL.SMTP_FROM !== '"HRM System" <no-reply@hrm.com>'
+        ? ENV.EMAIL.SMTP_FROM
+        : 'HRM System <onboarding@resend.dev>';
+
+    try {
+      const response = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${ENV.EMAIL.RESEND_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          from: fromAddress,
+          to: Array.isArray(message.to) ? message.to : [message.to],
+          subject: message.subject,
+          text: message.text,
+          html: message.html,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.text();
+        this.logger.error(`Resend API error response: ${errorData}`);
+        return {
+          provider: 'resend',
+          attempted: true,
+          sent: false,
+          message: 'EMAIL_SEND_FAILED',
+          error: `Resend API returned status ${response.status}: ${errorData}`,
+        };
+      }
+
+      const resJson = await response.json() as any;
+      this.logger.log(`Email sent successfully via Resend to ${recipients}. ID: ${resJson?.id}`);
+
+      return {
+        provider: 'resend',
+        attempted: true,
+        sent: true,
+        message: 'EMAIL_SENT',
+      };
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      this.logger.error(`Failed to send email via Resend to ${recipients}`, error);
+      return {
+        provider: 'resend',
+        attempted: true,
+        sent: false,
+        message: 'EMAIL_SEND_FAILED',
+        error: errorMessage,
+      };
+    }
+  }
+}
+
+/** Gmail API provider: gửi email qua Google Gmail API HTTP (port 443). */
+class GmailApiEmailProvider implements IEmailProvider {
+  private readonly logger = new Logger('EmailService[gmail-api-provider]');
+
+  private async getAccessToken(): Promise<string> {
+    const clientId = ENV.EMAIL.GMAIL?.CLIENT_ID;
+    const clientSecret = ENV.EMAIL.GMAIL?.CLIENT_SECRET;
+    const refreshToken = ENV.EMAIL.GMAIL?.REFRESH_TOKEN;
+
+    if (!clientId || !clientSecret || !refreshToken) {
+      throw new Error('Thiếu GMAIL_CLIENT_ID, GMAIL_CLIENT_SECRET hoặc GMAIL_REFRESH_TOKEN');
+    }
+
+    const response = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        client_id: clientId,
+        client_secret: clientSecret,
+        refresh_token: refreshToken,
+        grant_type: 'refresh_token',
+      }).toString(),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to refresh Gmail access token: ${response.status} - ${errorText}`);
+    }
+
+    const data = (await response.json()) as { access_token: string };
+    return data.access_token;
+  }
+
+  async send(message: EmailMessage): Promise<EmailDeliveryResult> {
+    const recipients = Array.isArray(message.to)
+      ? message.to.join(', ')
+      : message.to;
+
+    const fromAddress = ENV.EMAIL.SMTP_FROM || '"HRM System" <no-reply@hrm.com>';
+
+    try {
+      const accessToken = await this.getAccessToken();
+
+      // Compose RFC 2822 MIME message
+      const boundary = `----=_Part_${Math.random().toString(36).substring(2)}`;
+      const headers = [
+        `From: ${fromAddress}`,
+        `To: ${recipients}`,
+        `Subject: =?utf-8?B?${Buffer.from(message.subject).toString('base64')}?=`,
+        'MIME-Version: 1.0',
+        `Content-Type: multipart/alternative; boundary="${boundary}"`,
+        '',
+      ];
+
+      const bodyParts: string[] = [];
+
+      if (message.text) {
+        bodyParts.push(
+          `--${boundary}`,
+          'Content-Type: text/plain; charset=utf-8',
+          'Content-Transfer-Encoding: base64',
+          '',
+          Buffer.from(message.text).toString('base64'),
+        );
+      }
+
+      if (message.html) {
+        bodyParts.push(
+          `--${boundary}`,
+          'Content-Type: text/html; charset=utf-8',
+          'Content-Transfer-Encoding: base64',
+          '',
+          Buffer.from(message.html).toString('base64'),
+        );
+      } else if (!message.text && !message.html) {
+        bodyParts.push(
+          `--${boundary}`,
+          'Content-Type: text/plain; charset=utf-8',
+          'Content-Transfer-Encoding: base64',
+          '',
+          '',
+        );
+      }
+
+      bodyParts.push(`--${boundary}--`);
+
+      const rawMime = [...headers, ...bodyParts].join('\r\n');
+      
+      // base64url encode MIME string for Gmail API
+      const base64UrlSafe = Buffer.from(rawMime)
+        .toString('base64url');
+
+      const sendResponse = await fetch(
+        'https://gmail.googleapis.com/gmail/v1/users/me/messages/send',
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            raw: base64UrlSafe,
+          }),
+        },
+      );
+
+      if (!sendResponse.ok) {
+        const errorData = await sendResponse.text();
+        this.logger.error(`Gmail API error response: ${errorData}`);
+        return {
+          provider: 'gmail_api',
+          attempted: true,
+          sent: false,
+          message: 'EMAIL_SEND_FAILED',
+          error: `Gmail API returned status ${sendResponse.status}: ${errorData}`,
+        };
+      }
+
+      const resJson = (await sendResponse.json()) as any;
+      this.logger.log(`Email sent successfully via Gmail API to ${recipients}. ID: ${resJson?.id}`);
+
+      return {
+        provider: 'gmail_api',
+        attempted: true,
+        sent: true,
+        message: 'EMAIL_SENT',
+      };
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      this.logger.error(`Failed to send email via Gmail API to ${recipients}`, error);
+      return {
+        provider: 'gmail_api',
+        attempted: true,
+        sent: false,
+        message: 'EMAIL_SEND_FAILED',
+        error: errorMessage,
+      };
+    }
+  }
+}
+
 @Injectable()
 export class EmailService {
   private readonly provider: IEmailProvider;
@@ -130,6 +340,28 @@ export class EmailService {
         this.provider = new LogEmailProvider();
       } else {
         this.provider = new SmtpEmailProvider();
+      }
+    } else if (emailProvider === 'resend') {
+      if (!ENV.EMAIL.RESEND_API_KEY) {
+        new Logger('EmailService').warn(
+          'RESEND_API_KEY thiếu. Fallback về log-provider.',
+        );
+        this.provider = new LogEmailProvider();
+      } else {
+        this.provider = new ResendEmailProvider();
+      }
+    } else if (emailProvider === 'gmail_api') {
+      if (
+        !ENV.EMAIL.GMAIL?.CLIENT_ID ||
+        !ENV.EMAIL.GMAIL?.CLIENT_SECRET ||
+        !ENV.EMAIL.GMAIL?.REFRESH_TOKEN
+      ) {
+        new Logger('EmailService').warn(
+          'GMAIL_CLIENT_ID, GMAIL_CLIENT_SECRET hoặc GMAIL_REFRESH_TOKEN thiếu. Fallback về log-provider.',
+        );
+        this.provider = new LogEmailProvider();
+      } else {
+        this.provider = new GmailApiEmailProvider();
       }
     } else {
       if (emailProvider !== 'log') {
