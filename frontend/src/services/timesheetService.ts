@@ -103,7 +103,7 @@ export interface MonthlyTimesheetData extends TimesheetSummary {
 }
 
 export interface ManagerReviewTimesheetResult {
-  employees: Array<Record<string, any>>;
+  employees: Array<any>;
   timesheets: Timesheet[];
 }
 
@@ -446,7 +446,7 @@ function buildWarningsFromRecords(records: Attendance[]): TimesheetWarning[] {
   return [...uniqueWarnings.values()];
 }
 
-function normalizeDepartmentUser(user: BackendDepartmentUser, fallbackDepartmentID: string): Record<string, any> {
+function normalizeDepartmentUser(user: BackendDepartmentUser, fallbackDepartmentID: string): any {
   const id = user.userID || user.id || '';
   const fullName = user.fullName || user.name || user.username || user.email || id;
   const department = user.department || null;
@@ -480,7 +480,7 @@ function normalizeDepartmentUser(user: BackendDepartmentUser, fallbackDepartment
 
 function buildManagerTimesheet(
   monthlyTimesheet: MonthlyTimesheetData,
-  employee: Record<string, any>,
+  employee: any,
   records: Attendance[],
 ): Timesheet {
   const sortedRecords = [...records].sort((left, right) => left.date.localeCompare(right.date));
@@ -910,7 +910,7 @@ export async function getManagerMonthlyTimesheetsForReview(
     });
     const payload = unwrapBackendData<BackendMonthlyTimesheet[]>(response.data);
     const reviewMonthlyTimesheets = Array.isArray(payload) ? payload : [];
-    const employeeById = new Map<string, Record<string, any>>();
+    const employeeById = new Map<string, any>();
     const timesheets = reviewMonthlyTimesheets.map((monthlyTimesheet) => {
       const employeePayload: BackendDepartmentUser = monthlyTimesheet.employee || {};
       const employee = normalizeDepartmentUser(
@@ -1078,13 +1078,13 @@ function normalizeReportParams(filters: TimesheetReportFilters) {
   return params;
 }
 
-function normalizeReportRow(row: Timesheet & Record<string, any>): Timesheet {
+function normalizeReportRow(row: Timesheet & any): Timesheet {
   const totalHours = Number(row.totalHours || 0);
   const warnings = Array.isArray(row.warnings) ? [...row.warnings] : [];
 
   if (row.checkOut && totalHours < 2) {
-    if (!warnings.some((w: any) => String(w.label || w) === 'Dưới 2h')) {
-      warnings.push({ label: 'Dưới 2h', tone: 'warning' } as any);
+    if (!warnings.some((w: unknown) => String((w as any).label || w) === 'Dưới 2h')) {
+      warnings.push({ label: 'Dưới 2h', tone: 'warning' } as unknown as TimesheetWarning);
     }
   }
 
@@ -1175,7 +1175,7 @@ function buildTimesheetReportSummary(rows: Timesheet[]): TimesheetReportSummary 
     submitted: byStatus.Submitted || 0,
     approved: byStatus.Approved || 0,
     rejected: byStatus.Rejected || 0,
-    missingOut: rows.filter((row) => row.warnings?.some((warning: any) => String(warning.label || warning).includes('Missing Out'))).length,
+    missingOut: rows.filter((row) => row.warnings?.some((warning: unknown) => String((warning as any).label || warning).includes('Missing Out'))).length,
     warningRecords,
     byStatus,
   };

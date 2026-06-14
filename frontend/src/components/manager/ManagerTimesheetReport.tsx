@@ -35,7 +35,7 @@ const DEFAULT_REPORT_FILTERS = {
   status: 'all',
 };
 
-const ReportRowItem = React.memo(({ index, data, style }: any) => {
+const ReportRowItem = React.memo(({ index, data, style }: { index: number, data: any, style: React.CSSProperties }) => {
   const { previewRows, getDepartmentName } = data;
   const row = previewRows[index];
 
@@ -52,7 +52,7 @@ const ReportRowItem = React.memo(({ index, data, style }: any) => {
         <StatusBadge status={row.status} />
       </div>
       <div className="flex-1 px-4 py-4 min-w-[150px]">
-        <WarningList warnings={row.warnings as any} />
+        <WarningList warnings={row.warnings as string[]} />
       </div>
     </div>
   );
