@@ -121,7 +121,12 @@ describe('business rules', () => {
     });
 
     it('treats placeholder SSO credentials as not configured', () => {
-      const service = new AuthService({} as any, {} as any, {} as any, {} as any);
+      const service = new AuthService(
+        {} as any,
+        {} as any,
+        {} as any,
+        {} as any,
+      );
       const originalGoogle = { ...ENV.GOOGLE };
       const originalMicrosoft = { ...ENV.MICROSOFT };
 
@@ -759,7 +764,11 @@ describe('business rules', () => {
     });
 
     it('rejects invalid or past leave dates', async () => {
-      const service = new LeaveApplicationService({} as any, {} as any, {} as any);
+      const service = new LeaveApplicationService(
+        {} as any,
+        {} as any,
+        {} as any,
+      );
 
       await expect(
         service.createLeaveApplication(user.userID, {
@@ -1302,7 +1311,7 @@ describe('business rules', () => {
           expect.objectContaining({
             method: 'POST',
             headers: expect.objectContaining({
-              'Authorization': 'Bearer mock_key',
+              Authorization: 'Bearer mock_key',
               'Content-Type': 'application/json',
             }),
             body: expect.stringContaining('"subject":"Welcome"'),

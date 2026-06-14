@@ -121,7 +121,8 @@ class ResendEmailProvider implements IEmailProvider {
       : message.to;
 
     const fromAddress =
-      ENV.EMAIL.SMTP_FROM && ENV.EMAIL.SMTP_FROM !== '"HRM System" <no-reply@hrm.com>'
+      ENV.EMAIL.SMTP_FROM &&
+      ENV.EMAIL.SMTP_FROM !== '"HRM System" <no-reply@hrm.com>'
         ? ENV.EMAIL.SMTP_FROM
         : 'HRM System <onboarding@resend.dev>';
 
@@ -129,7 +130,7 @@ class ResendEmailProvider implements IEmailProvider {
       const response = await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${ENV.EMAIL.RESEND_API_KEY}`,
+          Authorization: `Bearer ${ENV.EMAIL.RESEND_API_KEY}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -154,7 +155,9 @@ class ResendEmailProvider implements IEmailProvider {
       }
 
       const resJson = (await response.json()) as { id?: string };
-      this.logger.log(`Email sent successfully via Resend to ${recipients}. ID: ${resJson?.id}`);
+      this.logger.log(
+        `Email sent successfully via Resend to ${recipients}. ID: ${resJson?.id}`,
+      );
 
       return {
         provider: 'resend',
@@ -165,7 +168,10 @@ class ResendEmailProvider implements IEmailProvider {
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
-      this.logger.error(`Failed to send email via Resend to ${recipients}`, error);
+      this.logger.error(
+        `Failed to send email via Resend to ${recipients}`,
+        error,
+      );
       return {
         provider: 'resend',
         attempted: true,
@@ -187,7 +193,9 @@ class GmailApiEmailProvider implements IEmailProvider {
     const refreshToken = ENV.EMAIL.GMAIL?.REFRESH_TOKEN;
 
     if (!clientId || !clientSecret || !refreshToken) {
-      throw new Error('Thiếu GMAIL_CLIENT_ID, GMAIL_CLIENT_SECRET hoặc GMAIL_REFRESH_TOKEN');
+      throw new Error(
+        'Thiếu GMAIL_CLIENT_ID, GMAIL_CLIENT_SECRET hoặc GMAIL_REFRESH_TOKEN',
+      );
     }
 
     const response = await fetch('https://oauth2.googleapis.com/token', {
@@ -205,7 +213,9 @@ class GmailApiEmailProvider implements IEmailProvider {
 
     if (!response.ok) {
       const errorText = await response.text();
-      throw new Error(`Failed to refresh Gmail access token: ${response.status} - ${errorText}`);
+      throw new Error(
+        `Failed to refresh Gmail access token: ${response.status} - ${errorText}`,
+      );
     }
 
     const data = (await response.json()) as { access_token: string };
@@ -217,7 +227,8 @@ class GmailApiEmailProvider implements IEmailProvider {
       ? message.to.join(', ')
       : message.to;
 
-    const fromAddress = ENV.EMAIL.SMTP_FROM || '"HRM System" <no-reply@hrm.com>';
+    const fromAddress =
+      ENV.EMAIL.SMTP_FROM || '"HRM System" <no-reply@hrm.com>';
 
     try {
       const accessToken = await this.getAccessToken();
@@ -266,17 +277,16 @@ class GmailApiEmailProvider implements IEmailProvider {
       bodyParts.push(`--${boundary}--`);
 
       const rawMime = [...headers, ...bodyParts].join('\r\n');
-      
+
       // base64url encode MIME string for Gmail API
-      const base64UrlSafe = Buffer.from(rawMime)
-        .toString('base64url');
+      const base64UrlSafe = Buffer.from(rawMime).toString('base64url');
 
       const sendResponse = await fetch(
         'https://gmail.googleapis.com/gmail/v1/users/me/messages/send',
         {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${accessToken}`,
+            Authorization: `Bearer ${accessToken}`,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
@@ -298,7 +308,9 @@ class GmailApiEmailProvider implements IEmailProvider {
       }
 
       const resJson = (await sendResponse.json()) as { id?: string };
-      this.logger.log(`Email sent successfully via Gmail API to ${recipients}. ID: ${resJson?.id}`);
+      this.logger.log(
+        `Email sent successfully via Gmail API to ${recipients}. ID: ${resJson?.id}`,
+      );
 
       return {
         provider: 'gmail_api',
@@ -309,7 +321,10 @@ class GmailApiEmailProvider implements IEmailProvider {
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
-      this.logger.error(`Failed to send email via Gmail API to ${recipients}`, error);
+      this.logger.error(
+        `Failed to send email via Gmail API to ${recipients}`,
+        error,
+      );
       return {
         provider: 'gmail_api',
         attempted: true,
@@ -331,7 +346,9 @@ class GasWebhookEmailProvider implements IEmailProvider {
       : message.to;
 
     try {
-      const htmlContent = message.html || (message.text ? message.text.replace(/\n/g, '<br>') : '');
+      const htmlContent =
+        message.html ||
+        (message.text ? message.text.replace(/\n/g, '<br>') : '');
 
       const response = await fetch(ENV.EMAIL.GAS_WEBHOOK_URL as string, {
         method: 'POST',
@@ -359,8 +376,11 @@ class GasWebhookEmailProvider implements IEmailProvider {
       }
 
       // Read JSON response from GAS script
-      const resData = await response.json().catch(() => null);
-      
+      const resData = (await response.json().catch(() => null)) as {
+        success?: boolean;
+        message?: string;
+      } | null;
+
       if (resData && resData.success === false) {
         this.logger.error(`GAS Webhook logical error: ${resData.message}`);
         return {
@@ -372,7 +392,9 @@ class GasWebhookEmailProvider implements IEmailProvider {
         };
       }
 
-      this.logger.log(`Email sent successfully via GAS Webhook to ${recipients}. GAS Response: ${JSON.stringify(resData)}`);
+      this.logger.log(
+        `Email sent successfully via GAS Webhook to ${recipients}. GAS Response: ${JSON.stringify(resData)}`,
+      );
 
       return {
         provider: 'gas_webhook',
@@ -383,7 +405,10 @@ class GasWebhookEmailProvider implements IEmailProvider {
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
-      this.logger.error(`Failed to send email via GAS Webhook to ${recipients}`, error);
+      this.logger.error(
+        `Failed to send email via GAS Webhook to ${recipients}`,
+        error,
+      );
       return {
         provider: 'gas_webhook',
         attempted: true,
