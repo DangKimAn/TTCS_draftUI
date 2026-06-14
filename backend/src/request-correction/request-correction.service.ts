@@ -358,15 +358,12 @@ export class RequestCorrectionService {
     }
 
     const hasEntries = timesheet.entries.length > 0;
-    const hasMissingTime = timesheet.entries.some(
-      (entry) => !entry.checkIn || !entry.checkOut,
-    );
     const hasPendingCorrection = timesheet.corrections.length > 0;
     const isLocked =
       timesheet.status === MonthlyTimesheetStatus.APPROVED ||
       timesheet.status === MonthlyTimesheetStatus.SUBMITTED;
     const canSubmit =
-      hasEntries && !hasMissingTime && !hasPendingCorrection && !isLocked;
+      hasEntries && !hasPendingCorrection && !isLocked;
 
     await db.monthlyTimesheet.update({
       where: { monthlyTimesheetID },

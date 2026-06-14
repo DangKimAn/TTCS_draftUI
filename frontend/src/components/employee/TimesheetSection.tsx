@@ -111,6 +111,7 @@ function TimesheetSection({
         onClose={onCloseCorrection}
         onSubmit={onSubmitCorrection}
         rows={timesheetData.rows}
+        period={timesheetData.period}
       />
     </section>
   );
