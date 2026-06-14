@@ -362,8 +362,7 @@ export class RequestCorrectionService {
     const isLocked =
       timesheet.status === MonthlyTimesheetStatus.APPROVED ||
       timesheet.status === MonthlyTimesheetStatus.SUBMITTED;
-    const canSubmit =
-      hasEntries && !hasPendingCorrection && !isLocked;
+    const canSubmit = hasEntries && !hasPendingCorrection && !isLocked;
 
     await db.monthlyTimesheet.update({
       where: { monthlyTimesheetID },

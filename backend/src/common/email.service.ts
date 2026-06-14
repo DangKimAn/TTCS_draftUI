@@ -28,7 +28,7 @@ export interface EmailMessage {
 }
 
 export interface EmailDeliveryResult {
-  provider: 'log' | 'smtp' | 'resend' | 'gmail_api';
+  provider: 'log' | 'smtp' | 'resend' | 'gmail_api' | 'gas_webhook';
   attempted: boolean;
   sent: boolean;
   message: string;
@@ -121,7 +121,8 @@ class ResendEmailProvider implements IEmailProvider {
       : message.to;
 
     const fromAddress =
-      ENV.EMAIL.SMTP_FROM && ENV.EMAIL.SMTP_FROM !== '"HRM System" <no-reply@hrm.com>'
+      ENV.EMAIL.SMTP_FROM &&
+      ENV.EMAIL.SMTP_FROM !== '"HRM System" <no-reply@hrm.com>'
         ? ENV.EMAIL.SMTP_FROM
         : 'HRM System <onboarding@resend.dev>';
 
@@ -129,7 +130,7 @@ class ResendEmailProvider implements IEmailProvider {
       const response = await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${ENV.EMAIL.RESEND_API_KEY}`,
+          Authorization: `Bearer ${ENV.EMAIL.RESEND_API_KEY}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -153,8 +154,10 @@ class ResendEmailProvider implements IEmailProvider {
         };
       }
 
-      const resJson = await response.json() as any;
-      this.logger.log(`Email sent successfully via Resend to ${recipients}. ID: ${resJson?.id}`);
+      const resJson = (await response.json()) as { id?: string };
+      this.logger.log(
+        `Email sent successfully via Resend to ${recipients}. ID: ${resJson?.id}`,
+      );
 
       return {
         provider: 'resend',
@@ -165,7 +168,10 @@ class ResendEmailProvider implements IEmailProvider {
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
-      this.logger.error(`Failed to send email via Resend to ${recipients}`, error);
+      this.logger.error(
+        `Failed to send email via Resend to ${recipients}`,
+        error,
+      );
       return {
         provider: 'resend',
         attempted: true,
@@ -187,7 +193,9 @@ class GmailApiEmailProvider implements IEmailProvider {
     const refreshToken = ENV.EMAIL.GMAIL?.REFRESH_TOKEN;
 
     if (!clientId || !clientSecret || !refreshToken) {
-      throw new Error('Thiếu GMAIL_CLIENT_ID, GMAIL_CLIENT_SECRET hoặc GMAIL_REFRESH_TOKEN');
+      throw new Error(
+        'Thiếu GMAIL_CLIENT_ID, GMAIL_CLIENT_SECRET hoặc GMAIL_REFRESH_TOKEN',
+      );
     }
 
     const response = await fetch('https://oauth2.googleapis.com/token', {
@@ -205,7 +213,9 @@ class GmailApiEmailProvider implements IEmailProvider {
 
     if (!response.ok) {
       const errorText = await response.text();
-      throw new Error(`Failed to refresh Gmail access token: ${response.status} - ${errorText}`);
+      throw new Error(
+        `Failed to refresh Gmail access token: ${response.status} - ${errorText}`,
+      );
     }
 
     const data = (await response.json()) as { access_token: string };
@@ -217,7 +227,8 @@ class GmailApiEmailProvider implements IEmailProvider {
       ? message.to.join(', ')
       : message.to;
 
-    const fromAddress = ENV.EMAIL.SMTP_FROM || '"HRM System" <no-reply@hrm.com>';
+    const fromAddress =
+      ENV.EMAIL.SMTP_FROM || '"HRM System" <no-reply@hrm.com>';
 
     try {
       const accessToken = await this.getAccessToken();
@@ -266,17 +277,16 @@ class GmailApiEmailProvider implements IEmailProvider {
       bodyParts.push(`--${boundary}--`);
 
       const rawMime = [...headers, ...bodyParts].join('\r\n');
-      
+
       // base64url encode MIME string for Gmail API
-      const base64UrlSafe = Buffer.from(rawMime)
-        .toString('base64url');
+      const base64UrlSafe = Buffer.from(rawMime).toString('base64url');
 
       const sendResponse = await fetch(
         'https://gmail.googleapis.com/gmail/v1/users/me/messages/send',
         {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${accessToken}`,
+            Authorization: `Bearer ${accessToken}`,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
@@ -297,8 +307,10 @@ class GmailApiEmailProvider implements IEmailProvider {
         };
       }
 
-      const resJson = (await sendResponse.json()) as any;
-      this.logger.log(`Email sent successfully via Gmail API to ${recipients}. ID: ${resJson?.id}`);
+      const resJson = (await sendResponse.json()) as { id?: string };
+      this.logger.log(
+        `Email sent successfully via Gmail API to ${recipients}. ID: ${resJson?.id}`,
+      );
 
       return {
         provider: 'gmail_api',
@@ -309,9 +321,96 @@ class GmailApiEmailProvider implements IEmailProvider {
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
-      this.logger.error(`Failed to send email via Gmail API to ${recipients}`, error);
+      this.logger.error(
+        `Failed to send email via Gmail API to ${recipients}`,
+        error,
+      );
       return {
         provider: 'gmail_api',
+        attempted: true,
+        sent: false,
+        message: 'EMAIL_SEND_FAILED',
+        error: errorMessage,
+      };
+    }
+  }
+}
+
+/** Google Apps Script Webhook provider: gửi email qua URL webhook (thường dùng cho Google Apps Script). */
+class GasWebhookEmailProvider implements IEmailProvider {
+  private readonly logger = new Logger('EmailService[gas-webhook-provider]');
+
+  async send(message: EmailMessage): Promise<EmailDeliveryResult> {
+    const recipients = Array.isArray(message.to)
+      ? message.to.join(', ')
+      : message.to;
+
+    try {
+      const htmlContent =
+        message.html ||
+        (message.text ? message.text.replace(/\n/g, '<br>') : '');
+
+      const response = await fetch(ENV.EMAIL.GAS_WEBHOOK_URL as string, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          to: recipients,
+          subject: message.subject,
+          text: message.text || '',
+          html: htmlContent,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.text();
+        this.logger.error(`GAS Webhook HTTP error: ${errorData}`);
+        return {
+          provider: 'gas_webhook',
+          attempted: true,
+          sent: false,
+          message: 'EMAIL_SEND_FAILED',
+          error: `HTTP ${response.status}: ${errorData}`,
+        };
+      }
+
+      // Read JSON response from GAS script
+      const resData = (await response.json().catch(() => null)) as {
+        success?: boolean;
+        message?: string;
+      } | null;
+
+      if (resData && resData.success === false) {
+        this.logger.error(`GAS Webhook logical error: ${resData.message}`);
+        return {
+          provider: 'gas_webhook',
+          attempted: true,
+          sent: false,
+          message: 'EMAIL_SEND_FAILED',
+          error: `GAS Error: ${resData.message}`,
+        };
+      }
+
+      this.logger.log(
+        `Email sent successfully via GAS Webhook to ${recipients}. GAS Response: ${JSON.stringify(resData)}`,
+      );
+
+      return {
+        provider: 'gas_webhook',
+        attempted: true,
+        sent: true,
+        message: 'EMAIL_SENT',
+      };
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      this.logger.error(
+        `Failed to send email via GAS Webhook to ${recipients}`,
+        error,
+      );
+      return {
+        provider: 'gas_webhook',
         attempted: true,
         sent: false,
         message: 'EMAIL_SEND_FAILED',
@@ -362,6 +461,15 @@ export class EmailService {
         this.provider = new LogEmailProvider();
       } else {
         this.provider = new GmailApiEmailProvider();
+      }
+    } else if (emailProvider === 'gas_webhook') {
+      if (!ENV.EMAIL.GAS_WEBHOOK_URL) {
+        new Logger('EmailService').warn(
+          'GAS_EMAIL_WEBHOOK_URL thiếu. Fallback về log-provider.',
+        );
+        this.provider = new LogEmailProvider();
+      } else {
+        this.provider = new GasWebhookEmailProvider();
       }
     } else {
       if (emailProvider !== 'log') {

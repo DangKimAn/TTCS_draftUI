@@ -4,7 +4,7 @@ import { LeaveRow } from './TableRows';
 
 interface LeaveApprovalTableProps {
   rows: any[];
-  getEmployeeById: (id: string) => any;
+  getEmployeeById: (id: string) => any | undefined;
   getDepartmentName: (id: string) => string;
   onApprove: (id: string) => void;
   onReject: (id: string) => void;
@@ -15,10 +15,10 @@ interface LeaveApprovalTableProps {
   processingId?: string | null;
 }
 
-const LeaveRowItem = React.memo(({ index, data, style }: any) => {
+const LeaveRowItem = React.memo(({ index, data, style }: { index: number, data: any, style: React.CSSProperties }) => {
   const { rows, getEmployeeById, getDepartmentName, onApprove, onReject, onViewDetail, onRequestCheck, highlightId, processingId } = data;
-  const request = rows[index];
-  const employee = getEmployeeById(request.employeeId);
+  const request = rows[index] as any;
+  const employee = getEmployeeById(request.employeeId) as any;
   const balance = employee?.leaveBalance ?? 0;
   const insufficientBalance = !request.isUnpaid && balance < request.totalDays;
 

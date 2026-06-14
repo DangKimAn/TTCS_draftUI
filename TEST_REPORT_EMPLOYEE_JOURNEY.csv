@@ -1,0 +1,19 @@
+﻿STT,Mã UC,Route,Hành động (Input),Kết quả mong đợi (Output Expect),Kết quả thực tế (Output Actual),Tính đúng đắn (1/0),Phương án giải quyết,Have Notification (1/0),Notification To,Notification Expect,Notification Actual,Data To,Data Expect,Data Actual,Is Realtime (1/0)
+1,UC-01,/login,"Đăng nhập đúng Email, sai Password",Từ chối đăng nhập,Đã từ chối,1,Không cần,,,,,,,,
+2,UC-01,/login,Đăng nhập Email ma,Chặn đăng nhập,Đã chặn,1,Không cần,,,,,,,,
+3,UC-01,/login,Đăng nhập thông tin chuẩn (NV),Vào Dashboard thành công,Vào Dashboard thành công,1,Không cần,,,,,,,,
+4,UC-01,/login,Đăng nhập thông tin chuẩn (Sếp),Vào Dashboard Quản lý,Vào Dashboard Quản lý,1,Không cần,,,,,,,,
+5,UC-02,/dashboard/.../timesheet,Bấm Check-in,Ghi nhận Check-in,Ghi nhận thành công,1,Không cần,,,,,,,,
+6,UC-02,/dashboard/.../timesheet,Bấm Check-in lần 2,Báo lỗi Already checked in,Hệ thống chặn thành công,1,Không cần,,,,,,,,
+7,UC-04,/dashboard/.../leave,Ngày kết thúc < Ngày bắt đầu,Báo lỗi,Chặn Submit,1,Không cần,,,,,,,,
+8,UC-04,/dashboard/.../leave,Xin nghỉ ngày quá khứ,Báo lỗi,API bắt lỗi chuẩn,1,Không cần,,,,,,,,
+9,UC-04,/dashboard/.../leave,Gửi đơn xin nghỉ phép hợp lệ,Tạo đơn thành công,Đơn đã được tạo,1,Không cần,,,,,,,,
+10,UC-CROSS,/dashboard/manager,Check thông báo xin nghỉ phép,Thấy thông báo,Lỗi mất thông báo,0,Kiểm tra Socket,0,manager.kt@company.com,leave application,Không thấy thông báo,Manager Dashboard,Có đơn chờ duyệt mới,Không có data,0
+11,UC-05,/dashboard/.../timesheet,Bỏ trống lý do,Báo đỏ,Form chặn Submit,1,Không cần,,,,,,,,
+12,UC-05,/dashboard/.../timesheet,Sửa ngày không đi làm,Backend chặn lỗi,"Bị chặn, modal mở",1,Không cần,,,,,,,,
+13,UC-05,/dashboard/.../timesheet,Gửi yêu cầu hợp lệ,Tạo thành công,Thành công,1,Không cần,,,,,,,,
+14,UC-CROSS,/dashboard/manager,Check thông báo sửa công,Thấy thông báo,Lỗi mất thông báo,0,Kiểm tra Socket,0,manager.kt@company.com,timesheet correction,Không thấy thông báo,Manager Dashboard,Có đơn chờ duyệt mới,Không có data,0
+15,UC-ALL,/dashboard,Test No Dept,Hoàn thành,"Lỗi Script: Page.fill: Timeout 30000ms exceeded.
+Call log:
+  - waiting for locator(""input[type=\""email\""]"")
+",0,Không cần,,,,,,,,

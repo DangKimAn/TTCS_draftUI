@@ -23,7 +23,7 @@ interface ManagerTimesheetApprovalProps {
   onReload: () => void;
 }
 
-const CorrectionRowItem = React.memo(({ index, data, style }: any) => {
+const CorrectionRowItem = React.memo(({ index, data, style }: { index: number, data: any, style: React.CSSProperties }) => {
   const { correctionRows, onApproveCorrection, onRejectCorrection, processingId } = data;
   return (
     <CorrectionRow
@@ -55,7 +55,7 @@ const ManagerTimesheetApproval: React.FC<ManagerTimesheetApprovalProps> = ({
   processingId,
   onReload,
 }) => {
-  const isTimesheetReviewable = (t: any) => ['Submitted', 'Pending'].includes(t.status);
+  const isTimesheetReviewable = (t: any) => ['Submitted', 'Pending'].includes(t.status as string);
   
   const rows = useMemo(() => {
     const sortPendingFirst = (a: any, b: any) => {
