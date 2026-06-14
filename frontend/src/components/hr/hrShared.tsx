@@ -74,7 +74,7 @@ export function FormField({
   value: string;
   error?: string;
   disabled?: boolean;
-  onChange: (event: any) => void;
+  onChange: (event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => void;
 }) {
   return (
     <label>

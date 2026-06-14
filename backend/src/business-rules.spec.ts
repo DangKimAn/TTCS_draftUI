@@ -54,6 +54,8 @@ describe('business rules', () => {
           }),
         } as any,
         { compare: jest.fn() } as any,
+        {} as any,
+        {} as any,
       );
 
       const result = await service.login({
@@ -73,6 +75,8 @@ describe('business rules', () => {
             .mockResolvedValue({ statusCode: OK_CODE, data: user }),
         } as any,
         { compare: jest.fn().mockResolvedValue(false) } as any,
+        {} as any,
+        {} as any,
       );
 
       const result = await service.login({
@@ -102,6 +106,8 @@ describe('business rules', () => {
           updateUser,
         } as any,
         { compare: jest.fn() } as any,
+        {} as any,
+        {} as any,
       );
 
       const result = await service.refreshToken(user.userID, refreshToken);
@@ -115,7 +121,7 @@ describe('business rules', () => {
     });
 
     it('treats placeholder SSO credentials as not configured', () => {
-      const service = new AuthService({} as any, {} as any);
+      const service = new AuthService({} as any, {} as any, {} as any, {} as any);
       const originalGoogle = { ...ENV.GOOGLE };
       const originalMicrosoft = { ...ENV.MICROSOFT };
 
@@ -678,6 +684,7 @@ describe('business rules', () => {
       const service = new LeaveApplicationService(
         prisma as any,
         { createNotification: jest.fn() } as any,
+        { send: jest.fn() } as any,
       );
 
       const result = await service.createLeaveApplication(user.userID, {
@@ -752,7 +759,7 @@ describe('business rules', () => {
     });
 
     it('rejects invalid or past leave dates', async () => {
-      const service = new LeaveApplicationService({} as any, {} as any);
+      const service = new LeaveApplicationService({} as any, {} as any, {} as any);
 
       await expect(
         service.createLeaveApplication(user.userID, {
@@ -805,6 +812,7 @@ describe('business rules', () => {
             .fn()
             .mockResolvedValue({ statusCode: CREATED_RESPONE }),
         } as any,
+        { sendLeaveNotification: jest.fn() } as any,
       );
 
       const result = await service.reviewLeaveApplication(
@@ -842,6 +850,7 @@ describe('business rules', () => {
       const service = new LeaveApplicationService(
         { $transaction: jest.fn((callback) => callback(tx)) } as any,
         { createNotification: jest.fn() } as any,
+        { sendLeaveNotification: jest.fn() } as any,
       );
 
       await service.reviewLeaveApplication('leave-2', 'manager-1', {
@@ -879,6 +888,7 @@ describe('business rules', () => {
       const service = new LeaveApplicationService(
         { $transaction: jest.fn((callback) => callback(tx)) } as any,
         { createNotification: jest.fn() } as any,
+        { sendLeaveNotification: jest.fn() } as any,
       );
 
       await service.reviewLeaveApplication('leave-3', 'manager-1', {
@@ -1167,6 +1177,7 @@ describe('business rules', () => {
         .mockResolvedValueOnce({ ...user, userID: 'user-2', isActive: true });
       const service = new UserService(
         { user: { update } } as any,
+        {} as any,
         {} as any,
         {} as any,
         {} as any,

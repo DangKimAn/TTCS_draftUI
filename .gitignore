@@ -16,3 +16,6 @@ pnpm-debug.log*
 coverage/
 .vite/
 practice1/
+.venv/
+*.py
+google_credentials.json

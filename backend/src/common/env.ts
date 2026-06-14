@@ -43,6 +43,7 @@ export const ENV = {
     SMTP_PASS: process.env.SMTP_PASS,
     SMTP_FROM: process.env.SMTP_FROM || '"HRM System" <no-reply@hrm.com>',
     RESEND_API_KEY: process.env.RESEND_API_KEY,
+    GAS_WEBHOOK_URL: process.env.GAS_EMAIL_WEBHOOK_URL,
     GMAIL: {
       CLIENT_ID: process.env.GMAIL_CLIENT_ID,
       CLIENT_SECRET: process.env.GMAIL_CLIENT_SECRET,

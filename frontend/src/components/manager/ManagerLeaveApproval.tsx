@@ -36,7 +36,7 @@ const ManagerLeaveApproval: React.FC<ManagerLeaveApprovalProps> = ({
     const sortLeavePendingFirst = (a: any, b: any) => {
       if (a.status === 'Pending' && b.status !== 'Pending') return -1;
       if (a.status !== 'Pending' && b.status === 'Pending') return 1;
-      return b.startDate.localeCompare(a.startDate);
+      return String(b.startDate).localeCompare(String(a.startDate));
     };
 
     return [...leaveRequests]

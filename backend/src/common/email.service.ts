@@ -28,7 +28,7 @@ export interface EmailMessage {
 }
 
 export interface EmailDeliveryResult {
-  provider: 'log' | 'smtp' | 'resend' | 'gmail_api';
+  provider: 'log' | 'smtp' | 'resend' | 'gmail_api' | 'gas_webhook';
   attempted: boolean;
   sent: boolean;
   message: string;
@@ -153,7 +153,7 @@ class ResendEmailProvider implements IEmailProvider {
         };
       }
 
-      const resJson = await response.json() as any;
+      const resJson = (await response.json()) as { id?: string };
       this.logger.log(`Email sent successfully via Resend to ${recipients}. ID: ${resJson?.id}`);
 
       return {
@@ -297,7 +297,7 @@ class GmailApiEmailProvider implements IEmailProvider {
         };
       }
 
-      const resJson = (await sendResponse.json()) as any;
+      const resJson = (await sendResponse.json()) as { id?: string };
       this.logger.log(`Email sent successfully via Gmail API to ${recipients}. ID: ${resJson?.id}`);
 
       return {
@@ -312,6 +312,80 @@ class GmailApiEmailProvider implements IEmailProvider {
       this.logger.error(`Failed to send email via Gmail API to ${recipients}`, error);
       return {
         provider: 'gmail_api',
+        attempted: true,
+        sent: false,
+        message: 'EMAIL_SEND_FAILED',
+        error: errorMessage,
+      };
+    }
+  }
+}
+
+/** Google Apps Script Webhook provider: gửi email qua URL webhook (thường dùng cho Google Apps Script). */
+class GasWebhookEmailProvider implements IEmailProvider {
+  private readonly logger = new Logger('EmailService[gas-webhook-provider]');
+
+  async send(message: EmailMessage): Promise<EmailDeliveryResult> {
+    const recipients = Array.isArray(message.to)
+      ? message.to.join(', ')
+      : message.to;
+
+    try {
+      const htmlContent = message.html || (message.text ? message.text.replace(/\n/g, '<br>') : '');
+
+      const response = await fetch(ENV.EMAIL.GAS_WEBHOOK_URL as string, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          to: recipients,
+          subject: message.subject,
+          text: message.text || '',
+          html: htmlContent,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.text();
+        this.logger.error(`GAS Webhook HTTP error: ${errorData}`);
+        return {
+          provider: 'gas_webhook',
+          attempted: true,
+          sent: false,
+          message: 'EMAIL_SEND_FAILED',
+          error: `HTTP ${response.status}: ${errorData}`,
+        };
+      }
+
+      // Read JSON response from GAS script
+      const resData = await response.json().catch(() => null);
+      
+      if (resData && resData.success === false) {
+        this.logger.error(`GAS Webhook logical error: ${resData.message}`);
+        return {
+          provider: 'gas_webhook',
+          attempted: true,
+          sent: false,
+          message: 'EMAIL_SEND_FAILED',
+          error: `GAS Error: ${resData.message}`,
+        };
+      }
+
+      this.logger.log(`Email sent successfully via GAS Webhook to ${recipients}. GAS Response: ${JSON.stringify(resData)}`);
+
+      return {
+        provider: 'gas_webhook',
+        attempted: true,
+        sent: true,
+        message: 'EMAIL_SENT',
+      };
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      this.logger.error(`Failed to send email via GAS Webhook to ${recipients}`, error);
+      return {
+        provider: 'gas_webhook',
         attempted: true,
         sent: false,
         message: 'EMAIL_SEND_FAILED',
@@ -362,6 +436,15 @@ export class EmailService {
         this.provider = new LogEmailProvider();
       } else {
         this.provider = new GmailApiEmailProvider();
+      }
+    } else if (emailProvider === 'gas_webhook') {
+      if (!ENV.EMAIL.GAS_WEBHOOK_URL) {
+        new Logger('EmailService').warn(
+          'GAS_EMAIL_WEBHOOK_URL thiếu. Fallback về log-provider.',
+        );
+        this.provider = new LogEmailProvider();
+      } else {
+        this.provider = new GasWebhookEmailProvider();
       }
     } else {
       if (emailProvider !== 'log') {

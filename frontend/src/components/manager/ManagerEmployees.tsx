@@ -11,7 +11,7 @@ interface ManagerEmployeesProps {
   departments: any[];
 }
 
-const EmployeeRowItem = React.memo(({ index, data, style }: any) => {
+const EmployeeRowItem = React.memo(({ index, data, style }: { index: number, data: any, style: React.CSSProperties }) => {
   const { visibleEmployees, selectedEmployeeId, setSelectedEmployeeId, getDepartmentName } = data;
   const employee = visibleEmployees[index];
   const isSelected = selectedEmployeeId === employee.id;
