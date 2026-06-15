@@ -10,7 +10,6 @@ export const emptyEmployeeForm = {
   email: '',
   password: '',
   departmentId: '',
-  title: '',
   role: 'employee',
   salaryCoefficient: '2.0',
   leaveBalance: '12',
@@ -135,10 +134,6 @@ export function validateEmployeeForm(
 
   if (!form.departmentId) {
     errors.departmentId = 'Phòng ban không được trống.';
-  }
-
-  if (!form.title.trim()) {
-    errors.title = 'Chức vụ không được trống.';
   }
 
   if (!form.role) {

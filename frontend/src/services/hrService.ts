@@ -381,7 +381,6 @@ export function normalizeHrEmployee(payload: Record<string, any>, departments: A
     fullName,
     email: payload.email || '',
     departmentId,
-    title: payload.title || roleToTitle(role),
     role,
     status: payload.status || (payload.isActive === false ? 'Inactive' : 'Active'),
     isActive: payload.isActive !== false,
@@ -611,17 +610,6 @@ function toBackendRoleName(role: string) {
   }
 
   return role;
-}
-
-function roleToTitle(role: string) {
-  switch (role) {
-    case 'manager':
-      return 'Manager';
-    case 'hr':
-      return 'HR';
-    default:
-      return 'Nhân viên';
-  }
 }
 
 function findDepartmentIdByName(departments: Array<Record<string, any>>, departmentName?: string) {

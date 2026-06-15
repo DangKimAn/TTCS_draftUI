@@ -294,7 +294,6 @@ function HRUserManagement({
                 <th>Username</th>
                 <th>Email</th>
                 <th>Phòng ban</th>
-                <th>Chức vụ</th>
                 <th>Vai trò</th>
                 <th>Số ngày phép còn lại</th>
                 <th>Trạng thái</th>
@@ -309,7 +308,6 @@ function HRUserManagement({
                     <td data-label="Username"><strong>{employee.fullName}</strong></td>
                     <td data-label="Email">{employee.email}</td>
                     <td data-label="Phòng ban">{getDepartmentName(departments, employee.departmentId)}</td>
-                    <td data-label="Chức vụ">{employee.title}</td>
                     <td data-label="Vai trò" className="cell-nowrap">{formatHrRole(employee.role)}</td>
                     <td data-label="Số ngày phép còn lại" className="cell-nowrap">{employee.leaveBalance} ngày</td>
                     <td data-label="Trạng thái" className="cell-nowrap">
@@ -351,7 +349,7 @@ function HRUserManagement({
                 ))
               ) : (
                 <tr>
-                  <td colSpan={9} className="hr-table-empty">Không tìm thấy nhân viên phù hợp.</td>
+                  <td colSpan={8} className="hr-table-empty">Không tìm thấy nhân viên phù hợp.</td>
                 </tr>
               )}
             </tbody>
@@ -414,7 +412,6 @@ function EmployeeModal({
         email: employee.email,
         password: '',
         departmentId: employee.departmentId,
-        title: employee.title,
         role: employee.role,
         salaryCoefficient: String(employee.salaryCoefficient),
         leaveBalance: String(employee.leaveBalance),
@@ -444,7 +441,6 @@ function EmployeeModal({
           <InfoItem label="Username" value={employee.fullName} />
           <InfoItem label="Email" value={employee.email} />
           <InfoItem label="Phòng ban" value={getDepartmentName(departments, employee.departmentId)} />
-          <InfoItem label="Chức vụ" value={employee.title} />
           <InfoItem label="Vai trò" value={formatHrRole(employee.role)} />
           <InfoItem label="Trạng thái" value={formatHrStatus(employee.status)} />
           <InfoItem label="Số ngày phép còn lại" value={`${employee.leaveBalance} ngày`} />
@@ -523,7 +519,6 @@ function EmployeeModal({
           </select>
           {errors.departmentId ? <small>{errors.departmentId}</small> : null}
         </label>
-        <FormField label="Chức vụ" name="title" value={form.title} error={errors.title} onChange={handleChange} />
         <label>
           <span>Vai trò</span>
           <select name="role" value={form.role} onChange={handleChange}>
@@ -665,7 +660,7 @@ function ImportEmployeeModal({
               className="dashboard-button dashboard-button--ghost"
               style={{ padding: '4px 8px', fontSize: '13px' }}
               onClick={() => {
-                const headers = ['Username', 'Email', 'Mật khẩu tạm thời', 'Phòng ban', 'Chức vụ', 'Vai trò', 'Hệ số lương', 'Số ngày phép mặc định', 'Trạng thái'];
+                const headers = ['Username', 'Email', 'Mật khẩu tạm thời', 'Phòng ban', 'Vai trò', 'Hệ số lương', 'Số ngày phép mặc định', 'Trạng thái'];
                 navigator.clipboard.writeText(headers.join('\t'));
                 const btn = document.getElementById('copy-header-btn');
                 if (btn) {
@@ -685,7 +680,7 @@ function ImportEmployeeModal({
             <table style={{ width: '100%', borderCollapse: 'collapse', whiteSpace: 'nowrap', fontSize: '14px' }}>
               <tbody>
                 <tr>
-                  {['Username', 'Email', 'Mật khẩu tạm thời', 'Phòng ban', 'Chức vụ', 'Vai trò', 'Hệ số lương', 'Số ngày phép mặc định', 'Trạng thái'].map((col, idx) => (
+                  {['Username', 'Email', 'Mật khẩu tạm thời', 'Phòng ban', 'Vai trò', 'Hệ số lương', 'Số ngày phép mặc định', 'Trạng thái'].map((col, idx) => (
                     <td key={idx} style={{ padding: '10px 16px', borderRight: '1px solid var(--border-color, #e5e7eb)', background: 'var(--bg-color-secondary, #f9fafb)', fontWeight: 500 }}>
                       {col}
                     </td>
@@ -786,7 +781,6 @@ function buildEmployeeFromForm({
     email: form.email.trim().toLowerCase(),
     departmentId: form.departmentId,
     departmentName,
-    title: form.title.trim(),
     role: form.role,
     salaryCoefficient: Number(form.salaryCoefficient),
     leaveBalance: Number(form.leaveBalance),

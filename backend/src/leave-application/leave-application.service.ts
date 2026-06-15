@@ -347,16 +347,18 @@ export class LeaveApplicationService {
         );
 
         // --- GỬI EMAIL CHO NHÂN VIÊN ---
-        try {
-          await this.emailService?.sendLeaveNotification({
-            recipientEmail: application.sender.email,
-            employeeName: application.sender.username,
-            status:
-              newStatus === LeaveStatus.APPROVED ? 'approved' : 'rejected',
-            reason: reasonReject || undefined,
-          });
-        } catch (e) {
-          console.error('Email error in reviewLeaveApplication:', e);
+        if (this.emailService) {
+          this.emailService
+            .sendLeaveNotification({
+              recipientEmail: application.sender.email,
+              employeeName: application.sender.username,
+              status:
+                newStatus === LeaveStatus.APPROVED ? 'approved' : 'rejected',
+              reason: reasonReject || undefined,
+            })
+            .catch((e) =>
+              console.error('Email error in reviewLeaveApplication:', e),
+            );
         }
 
         return {

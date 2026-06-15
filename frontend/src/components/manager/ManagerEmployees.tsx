@@ -24,7 +24,6 @@ const EmployeeRowItem = React.memo(({ index, data, style }: { index: number, dat
       <div className="flex-1 px-4 py-4 font-bold text-sm text-slate-800 truncate" style={{ flexBasis: '180px' }}>{employee.fullName}</div>
       <div className="flex-1 px-4 py-4 text-sm text-slate-600 font-medium truncate" style={{ flexBasis: '220px' }}>{employee.email}</div>
       <div className="flex-1 px-4 py-4 text-sm text-slate-600 font-medium truncate" style={{ flexBasis: '160px' }}>{getDepartmentName(employee.departmentId)}</div>
-      <div className="flex-1 px-4 py-4 text-sm text-slate-600 font-medium truncate" style={{ flexBasis: '140px' }}>{employee.title}</div>
       <div className="flex-1 px-4 py-4" style={{ flexBasis: '120px' }}>
         <StatusBadge status={employee.status} />
       </div>
@@ -135,7 +134,6 @@ const ManagerEmployees: React.FC<ManagerEmployeesProps> = ({
               <div className="flex-1 px-4 py-3 text-left text-[11px] font-black text-slate-400 uppercase tracking-wider" style={{ flexBasis: '180px' }}>Họ tên</div>
               <div className="flex-1 px-4 py-3 text-left text-[11px] font-black text-slate-400 uppercase tracking-wider" style={{ flexBasis: '220px' }}>Email</div>
               <div className="flex-1 px-4 py-3 text-left text-[11px] font-black text-slate-400 uppercase tracking-wider" style={{ flexBasis: '160px' }}>Phòng ban</div>
-              <div className="flex-1 px-4 py-3 text-left text-[11px] font-black text-slate-400 uppercase tracking-wider" style={{ flexBasis: '140px' }}>Chức vụ</div>
               <div className="flex-1 px-4 py-3 text-left text-[11px] font-black text-slate-400 uppercase tracking-wider" style={{ flexBasis: '120px' }}>Trạng thái</div>
               <div className="flex-1 px-4 py-3 text-left text-[11px] font-black text-slate-400 uppercase tracking-wider" style={{ flexBasis: '120px' }}>Số dư phép</div>
               <div className="flex-1 px-4 py-3 text-left text-[11px] font-black text-slate-400 uppercase tracking-wider" style={{ flexBasis: '120px' }}>Giờ tháng này</div>
