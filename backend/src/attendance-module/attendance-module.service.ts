@@ -190,11 +190,11 @@ export class AttendanceModuleService {
           select: { checkOut: true },
         });
 
-        if (lastEntry && lastEntry.checkOut === null) {
+        if (lastEntry) {
           return {
             statusCode: BADREQUEST_CODE,
             message:
-              'You have already checked in. Please check out first before checking in again.',
+              'You have already checked in today. Multiple check-ins per day are not allowed.',
           };
         }
 
