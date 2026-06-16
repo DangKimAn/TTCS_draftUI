@@ -247,7 +247,7 @@ function ManagerDashboard() {
     return () => {
       socket.off('new_notification', handleNewNotification);
     };
-     
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [socket, session?.role, currentManager.departmentId]);
 
   const teamEmployees = useMemo(
