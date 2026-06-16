@@ -350,7 +350,7 @@ export class LeaveApplicationService {
         if (this.emailService) {
           const reviewer = await dbCtx.user.findUnique({
             where: { userID: reviewerID },
-            select: { username: true }
+            select: { username: true },
           });
           const reviewerName = reviewer?.username || 'Quản lý';
 

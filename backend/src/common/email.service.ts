@@ -493,18 +493,23 @@ export class EmailService {
     reviewerName: string;
     reviewedAt: Date;
   }): Promise<EmailDeliveryResult> {
-    const statusText = opts.status === 'approved' ? 'đã được duyệt' : 'đã bị từ chối';
-    
+    const statusText =
+      opts.status === 'approved' ? 'đã được duyệt' : 'đã bị từ chối';
+
     // Helper to format date and time in Vietnam timezone
-    const formatDate = (date: Date) => date.toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
-    const formatDateTime = (date: Date) => date.toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
+    const formatDate = (date: Date) =>
+      date.toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
+    const formatDateTime = (date: Date) =>
+      date.toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
 
     // Calculate work resume date (next working day after endDate)
     const workResumeDate = new Date(opts.endDate);
     workResumeDate.setDate(workResumeDate.getDate() + 1);
-    if (workResumeDate.getDay() === 6) { // Saturday -> Monday
+    if (workResumeDate.getDay() === 6) {
+      // Saturday -> Monday
       workResumeDate.setDate(workResumeDate.getDate() + 2);
-    } else if (workResumeDate.getDay() === 0) { // Sunday -> Monday
+    } else if (workResumeDate.getDay() === 0) {
+      // Sunday -> Monday
       workResumeDate.setDate(workResumeDate.getDate() + 1);
     }
 
@@ -580,10 +585,12 @@ export class EmailService {
     reviewerName: string;
     reviewedAt: Date;
   }): Promise<EmailDeliveryResult> {
-    const statusText = opts.status === 'approved' ? 'đã được duyệt' : 'đã bị từ chối';
-    
+    const statusText =
+      opts.status === 'approved' ? 'đã được duyệt' : 'đã bị từ chối';
+
     // Helper to format date and time in Vietnam timezone
-    const formatDateTime = (date: Date) => date.toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
+    const formatDateTime = (date: Date) =>
+      date.toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
 
     const textBody = `Xin chào ${opts.employeeName},\n\nYêu cầu chỉnh sửa công của bạn ${statusText}.\n${opts.status === 'rejected' && opts.reason ? `Lý do từ chối: ${opts.reason}\n\n` : '\n'}Thông tin chi tiết:\n- Loại đơn: Yêu cầu chỉnh sửa công\n- Mã yêu cầu: ${opts.correctionID}\n- Ngày cần sửa: ${opts.date}\n- Giờ Check-in / Check-out cũ: ${opts.oldCheckIn} - ${opts.oldCheckOut}\n- Giờ Check-in / Check-out sửa đổi: ${opts.proposedCheckIn} - ${opts.proposedCheckOut}\n- Thời gian tạo: ${formatDateTime(opts.createdAt)}\n- Người duyệt: ${opts.reviewerName}\n- Thời gian duyệt: ${formatDateTime(opts.reviewedAt)}\n\nTrân trọng,\nHệ thống HRM`;
 

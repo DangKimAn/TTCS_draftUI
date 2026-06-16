@@ -351,13 +351,18 @@ export class RequestCorrectionService {
         try {
           const formatTime = (date?: Date | null) => {
             if (!date) return '---';
-            return date.toLocaleTimeString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', hour: '2-digit', minute: '2-digit' });
+            return date.toLocaleTimeString('vi-VN', {
+              timeZone: 'Asia/Ho_Chi_Minh',
+              hour: '2-digit',
+              minute: '2-digit',
+            });
           };
 
           await this.emailService.sendCorrectionNotification({
             recipientEmail: request.employee.email,
             employeeName: request.employee.username,
-            status: dto.status === TimesheetStatus.APPROVED ? 'approved' : 'rejected',
+            status:
+              dto.status === TimesheetStatus.APPROVED ? 'approved' : 'rejected',
             reason: reasonReject || undefined,
             correctionID: updatedRequest.requestCorrectionID,
             date: updatedRequest.timesheetEntry?.date || 'Không xác định',
