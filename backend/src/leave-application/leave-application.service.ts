@@ -293,6 +293,12 @@ export class LeaveApplicationService {
           return { statusCode: NOTFOUND_CODE, message: 'Applicant not found' };
         }
 
+        const reviewer = await dbCtx.user.findUnique({
+          where: { userID: reviewerID },
+          select: { username: true },
+        });
+        const reviewerName = reviewer?.username || 'Quản lý';
+
         // Handle leave balance updates
         if (isPaidLeave) {
           if (
