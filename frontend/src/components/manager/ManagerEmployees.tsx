@@ -69,13 +69,22 @@ const ManagerEmployees: React.FC<ManagerEmployeesProps> = ({
     null
   , [employees, selectedEmployeeId, visibleEmployees]);
 
-  const recentTimesheets = useMemo(() => selectedEmployee
-    ? timesheets
-        .filter((timesheet) => timesheet.employeeId === selectedEmployee.id)
-        .sort((a, b) => b.workDate.localeCompare(a.workDate))
-        .slice(0, 4)
-    : []
-  , [selectedEmployee, timesheets]);
+  const recentTimesheets = useMemo(() => {
+    if (!selectedEmployee) return [];
+    
+    const employeeTimesheet = timesheets.find((ts) => ts.employeeId === selectedEmployee.id);
+    if (!employeeTimesheet || !employeeTimesheet.records) return [];
+
+    return [...employeeTimesheet.records]
+      .sort((a, b) => new Date(b.date || b.workDate).getTime() - new Date(a.date || a.workDate).getTime())
+      .reverse()
+      .slice(0, 4)
+      .map((record) => ({
+        ...record,
+        id: record.id || record.timesheetEntryID,
+        workDate: record.date || record.workDate,
+      }));
+  }, [selectedEmployee, timesheets]);
 
   const recentLeaves = useMemo(() => selectedEmployee
     ? leaveRequests

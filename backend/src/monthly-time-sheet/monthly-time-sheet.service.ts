@@ -268,7 +268,6 @@ export class MonthlyTimeSheetService {
       where: {
         month,
         year,
-        status: MonthlyTimesheetStatus.SUBMITTED,
         employee: {
           department: {
             managerID: currentManagerId,
