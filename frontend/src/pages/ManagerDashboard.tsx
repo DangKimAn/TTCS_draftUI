@@ -67,7 +67,7 @@ function ManagerDashboard() {
 
     getEmployeeProfile(session.email).then((fetchedProfile) => {
       setProfile(fetchedProfile);
-      
+
       const currentSession = getAuthSession();
       if (currentSession && fetchedProfile?.avatar && currentSession.avatar !== fetchedProfile.avatar) {
         const nextSession = { ...currentSession, avatar: String(fetchedProfile.avatar) };
@@ -92,14 +92,14 @@ function ManagerDashboard() {
     const nextProfile = await uploadAvatar(file);
     if (!nextProfile) throw new Error('Không thể cập nhật ảnh đại diện.');
     setProfile(nextProfile);
-    
+
     const currentSession = getAuthSession();
     if (currentSession) {
       const nextSession = { ...currentSession, avatar: String(nextProfile.avatar) };
       updateAuthSession(nextSession);
       window.dispatchEvent(new Event('avatar_updated'));
     }
-    
+
     return nextProfile;
   };
 
@@ -242,7 +242,7 @@ function ManagerDashboard() {
         void loadReviewTimesheets();
         void loadReviewCorrections();
       }
-      
+
       if (Notification.permission === 'granted') {
         new Notification('Timesheet Manager', { body: notification.content });
       } else if (Notification.permission !== 'denied') {
@@ -259,7 +259,7 @@ function ManagerDashboard() {
     return () => {
       socket.off('new_notification', handleNewNotification);
     };
-     
+
   }, [socket, session?.role, currentManager.departmentId]);
 
   const teamEmployees = useMemo(
@@ -327,12 +327,12 @@ function ManagerDashboard() {
         current.map((item) =>
           item.id === timesheetId
             ? {
-                ...item,
-                status: 'Approved',
-                locked: true,
-                approvedAt: new Date().toISOString(),
-                rejectionReason: '',
-              }
+              ...item,
+              status: 'Approved',
+              locked: true,
+              approvedAt: new Date().toISOString(),
+              rejectionReason: '',
+            }
             : item,
         ),
       );
@@ -385,11 +385,11 @@ function ManagerDashboard() {
         current.map((item) =>
           item.id === requestId
             ? {
-                ...item,
-                status: 'Approved',
-                approvedAt: new Date().toISOString(),
-                rejectionReason: '',
-              }
+              ...item,
+              status: 'Approved',
+              approvedAt: new Date().toISOString(),
+              rejectionReason: '',
+            }
             : item,
         ),
       );
@@ -397,9 +397,9 @@ function ManagerDashboard() {
         current.map((item) =>
           item.id === request.employeeId && !request.isUnpaid
             ? {
-                ...item,
-                leaveBalance: roundNumber(item.leaveBalance - request.totalDays),
-              }
+              ...item,
+              leaveBalance: roundNumber(item.leaveBalance - request.totalDays),
+            }
             : item,
         ),
       );
@@ -447,12 +447,12 @@ function ManagerDashboard() {
           current.map((item) =>
             item.id === rejectDialog.id
               ? {
-                  ...item,
-                  status: 'Rejected',
-                  locked: false,
-                  rejectionReason: rejectDialog.reason.trim(),
-                  rejectedAt: new Date().toISOString(),
-                }
+                ...item,
+                status: 'Rejected',
+                locked: false,
+                rejectionReason: rejectDialog.reason.trim(),
+                rejectedAt: new Date().toISOString(),
+              }
               : item,
           ),
         );
@@ -500,11 +500,11 @@ function ManagerDashboard() {
         current.map((item) =>
           item.id === rejectDialog.id
             ? {
-                ...item,
-                status: 'Rejected',
-                rejectionReason: rejectDialog.reason.trim(),
-                rejectedAt: new Date().toISOString(),
-              }
+              ...item,
+              status: 'Rejected',
+              rejectionReason: rejectDialog.reason.trim(),
+              rejectedAt: new Date().toISOString(),
+            }
             : item,
         ),
       );
