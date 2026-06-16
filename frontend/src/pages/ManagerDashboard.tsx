@@ -41,6 +41,7 @@ import ManagerTimesheetReport from '../components/manager/ManagerTimesheetReport
 import ManagerDetailModal from '../components/manager/ManagerDetailModal';
 import RejectDialog from '../components/manager/RejectDialog';
 import ProfileSection from '../components/employee/ProfileSection';
+import '../styles/timesheet.css';
 import { getEmployeeProfile, updateEmployeeProfile, uploadAvatar } from '../services/profileService';
 
 function ManagerDashboard() {
