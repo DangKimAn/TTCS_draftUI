@@ -48,6 +48,14 @@ export class LeaveApplicationService {
         };
       }
 
+      const currentYear = new Date().getFullYear();
+      if (start.getFullYear() > currentYear || end.getFullYear() > currentYear) {
+        return {
+          statusCode: BADREQUEST_CODE,
+          message: 'Cannot create leave application for the next year',
+        };
+      }
+
       const duration = this.calculateBusinessDays(start, end);
 
       if (duration <= 0) {
@@ -355,6 +363,12 @@ export class LeaveApplicationService {
               status:
                 newStatus === LeaveStatus.APPROVED ? 'approved' : 'rejected',
               reason: reasonReject || undefined,
+              leaveApplicationID: application.leaveApplicationID,
+              createdAt: application.createdAt,
+              startDate: application.startDate,
+              endDate: application.endDate,
+              reviewerName: reviewerName,
+              reviewedAt: updatedApp.reviewedAt || new Date(),
             })
             .catch((e) =>
               console.error('Email error in reviewLeaveApplication:', e),

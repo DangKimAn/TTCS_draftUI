@@ -486,15 +486,63 @@ export class EmailService {
     employeeName: string;
     status: 'approved' | 'rejected';
     reason?: string;
+    leaveApplicationID: string;
+    createdAt: Date;
+    startDate: Date;
+    endDate: Date;
+    reviewerName: string;
+    reviewedAt: Date;
   }): Promise<EmailDeliveryResult> {
     const statusText =
       opts.status === 'approved' ? 'đã được duyệt' : 'đã bị từ chối';
-    const reasonText = opts.reason ? ` Lý do: ${opts.reason}` : '';
+
+    // Helper to format date and time in Vietnam timezone
+    const formatDate = (date: Date) =>
+      date.toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
+    const formatDateTime = (date: Date) =>
+      date.toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
+
+    // Calculate work resume date (next working day after endDate)
+    const workResumeDate = new Date(opts.endDate);
+    workResumeDate.setDate(workResumeDate.getDate() + 1);
+    if (workResumeDate.getDay() === 6) {
+      // Saturday -> Monday
+      workResumeDate.setDate(workResumeDate.getDate() + 2);
+    } else if (workResumeDate.getDay() === 0) {
+      // Sunday -> Monday
+      workResumeDate.setDate(workResumeDate.getDate() + 1);
+    }
+
+    const textBody = `Xin chào ${opts.employeeName},\n\nĐơn xin nghỉ phép của bạn ${statusText}.\n${opts.status === 'rejected' && opts.reason ? `Lý do từ chối: ${opts.reason}\n\n` : '\n'}Thông tin chi tiết:\n- Loại đơn: Đơn xin nghỉ phép\n- Mã đơn: ${opts.leaveApplicationID}\n- Thời gian tạo: ${formatDateTime(opts.createdAt)}\n- Ngày nghỉ: Từ ngày ${formatDate(opts.startDate)} đến ngày ${formatDate(opts.endDate)}\n- Ngày bắt đầu làm việc: ${formatDate(workResumeDate)}\n- Người duyệt: ${opts.reviewerName}\n- Thời gian duyệt: ${formatDateTime(opts.reviewedAt)}\n\nTrân trọng,\nHệ thống HRM`;
+
+    const htmlBody = `
+      <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+        <h2>Xin chào ${opts.employeeName},</h2>
+        <p>Đơn xin nghỉ phép của bạn <strong>${statusText}</strong>.</p>
+        ${opts.status === 'rejected' && opts.reason ? `<p><strong>Lý do từ chối:</strong> <span style="color: red;">${opts.reason}</span></p>` : ''}
+        
+        <div style="background-color: #f9f9f9; padding: 15px; border-radius: 5px; margin: 20px 0;">
+          <h3 style="margin-top: 0;">Thông tin chi tiết:</h3>
+          <ul style="list-style-type: none; padding-left: 0;">
+            <li style="margin-bottom: 8px;"><strong>Loại đơn:</strong> Đơn xin nghỉ phép</li>
+            <li style="margin-bottom: 8px;"><strong>Mã đơn:</strong> ${opts.leaveApplicationID}</li>
+            <li style="margin-bottom: 8px;"><strong>Thời gian tạo:</strong> ${formatDateTime(opts.createdAt)}</li>
+            <li style="margin-bottom: 8px;"><strong>Ngày nghỉ:</strong> Từ ngày ${formatDate(opts.startDate)} đến ngày ${formatDate(opts.endDate)}</li>
+            <li style="margin-bottom: 8px;"><strong>Ngày bắt đầu làm việc:</strong> ${formatDate(workResumeDate)}</li>
+            <li style="margin-bottom: 8px;"><strong>Người duyệt:</strong> ${opts.reviewerName}</li>
+            <li style="margin-bottom: 8px;"><strong>Thời gian duyệt:</strong> ${formatDateTime(opts.reviewedAt)}</li>
+          </ul>
+        </div>
+        
+        <p>Trân trọng,<br><strong>Hệ thống HRM</strong></p>
+      </div>
+    `;
 
     return this.provider.send({
       to: opts.recipientEmail,
       subject: `[HRM] Đơn nghỉ phép của bạn ${statusText}`,
-      text: `Xin chào ${opts.employeeName},\n\nĐơn nghỉ phép của bạn ${statusText}.${reasonText}\n\nTrân trọng,\nHệ thống HRM`,
+      text: textBody,
+      html: htmlBody,
     });
   }
 
@@ -519,6 +567,62 @@ export class EmailService {
       to: opts.recipientEmail,
       subject: `[HRM] Bảng công tháng ${period} ${statusText}`,
       text: `Xin chào ${opts.employeeName},\n\nBảng công tháng ${period} của bạn ${statusText}.${reasonText}\n\nTrân trọng,\nHệ thống HRM`,
+    });
+  }
+
+  async sendCorrectionNotification(opts: {
+    recipientEmail: string;
+    employeeName: string;
+    status: 'approved' | 'rejected';
+    reason?: string;
+    correctionID: string;
+    date: string;
+    oldCheckIn: string;
+    oldCheckOut: string;
+    proposedCheckIn: string;
+    proposedCheckOut: string;
+    createdAt: Date;
+    reviewerName: string;
+    reviewedAt: Date;
+  }): Promise<EmailDeliveryResult> {
+    const statusText =
+      opts.status === 'approved' ? 'đã được duyệt' : 'đã bị từ chối';
+
+    // Helper to format date and time in Vietnam timezone
+    const formatDateTime = (date: Date) =>
+      date.toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
+
+    const textBody = `Xin chào ${opts.employeeName},\n\nYêu cầu chỉnh sửa công của bạn ${statusText}.\n${opts.status === 'rejected' && opts.reason ? `Lý do từ chối: ${opts.reason}\n\n` : '\n'}Thông tin chi tiết:\n- Loại đơn: Yêu cầu chỉnh sửa công\n- Mã yêu cầu: ${opts.correctionID}\n- Ngày cần sửa: ${opts.date}\n- Giờ Check-in / Check-out cũ: ${opts.oldCheckIn} - ${opts.oldCheckOut}\n- Giờ Check-in / Check-out sửa đổi: ${opts.proposedCheckIn} - ${opts.proposedCheckOut}\n- Thời gian tạo: ${formatDateTime(opts.createdAt)}\n- Người duyệt: ${opts.reviewerName}\n- Thời gian duyệt: ${formatDateTime(opts.reviewedAt)}\n\nTrân trọng,\nHệ thống HRM`;
+
+    const htmlBody = `
+      <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+        <h2>Xin chào ${opts.employeeName},</h2>
+        <p>Yêu cầu chỉnh sửa công của bạn <strong>${statusText}</strong>.</p>
+        ${opts.status === 'rejected' && opts.reason ? `<p><strong>Lý do từ chối:</strong> <span style="color: red;">${opts.reason}</span></p>` : ''}
+        
+        <div style="background-color: #f9f9f9; padding: 15px; border-radius: 5px; margin: 20px 0;">
+          <h3 style="margin-top: 0;">Thông tin chi tiết:</h3>
+          <ul style="list-style-type: none; padding-left: 0;">
+            <li style="margin-bottom: 8px;"><strong>Loại đơn:</strong> Yêu cầu chỉnh sửa công</li>
+            <li style="margin-bottom: 8px;"><strong>Mã yêu cầu:</strong> ${opts.correctionID}</li>
+            <li style="margin-bottom: 8px;"><strong>Ngày cần sửa:</strong> ${opts.date}</li>
+            <li style="margin-bottom: 8px;"><strong>Giờ Check-in / Check-out cũ:</strong> ${opts.oldCheckIn} - ${opts.oldCheckOut}</li>
+            <li style="margin-bottom: 8px;"><strong>Giờ Check-in / Check-out sửa đổi:</strong> ${opts.proposedCheckIn} - ${opts.proposedCheckOut}</li>
+            <li style="margin-bottom: 8px;"><strong>Thời gian tạo:</strong> ${formatDateTime(opts.createdAt)}</li>
+            <li style="margin-bottom: 8px;"><strong>Người duyệt:</strong> ${opts.reviewerName}</li>
+            <li style="margin-bottom: 8px;"><strong>Thời gian duyệt:</strong> ${formatDateTime(opts.reviewedAt)}</li>
+          </ul>
+        </div>
+        
+        <p>Trân trọng,<br><strong>Hệ thống HRM</strong></p>
+      </div>
+    `;
+
+    return this.provider.send({
+      to: opts.recipientEmail,
+      subject: `[HRM] Yêu cầu chỉnh sửa công của bạn ${statusText}`,
+      text: textBody,
+      html: htmlBody,
     });
   }
 

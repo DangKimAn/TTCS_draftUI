@@ -566,6 +566,9 @@ describe('business rules', () => {
       const service = new RequestCorrectionService(
         { $transaction: jest.fn((callback) => callback(tx)) } as any,
         { createNotification: jest.fn() } as any,
+        {
+          sendCorrectionNotification: jest.fn().mockResolvedValue(undefined),
+        } as any,
       );
 
       const result = await service.createRequest(user.userID, {
@@ -635,6 +638,9 @@ describe('business rules', () => {
             .fn()
             .mockResolvedValue({ statusCode: CREATED_RESPONE }),
         } as any,
+        {
+          sendCorrectionNotification: jest.fn().mockResolvedValue(undefined),
+        } as any,
       );
 
       const result = await service.reviewRequest('correction-1', 'manager-1', {
@@ -689,7 +695,9 @@ describe('business rules', () => {
       const service = new LeaveApplicationService(
         prisma as any,
         { createNotification: jest.fn() } as any,
-        { send: jest.fn() } as any,
+        {
+          sendLeaveNotification: jest.fn().mockResolvedValue(undefined),
+        } as any,
       );
 
       const result = await service.createLeaveApplication(user.userID, {
@@ -739,7 +747,9 @@ describe('business rules', () => {
       const service = new LeaveApplicationService(
         prisma as any,
         { createNotification: jest.fn() } as any,
-        { send: jest.fn() } as any,
+        {
+          sendLeaveNotification: jest.fn().mockResolvedValue(undefined),
+        } as any,
       );
 
       const result = await service.createLeaveApplication(user.userID, {
@@ -767,7 +777,9 @@ describe('business rules', () => {
       const service = new LeaveApplicationService(
         {} as any,
         {} as any,
-        {} as any,
+        {
+          sendLeaveNotification: jest.fn().mockResolvedValue(undefined),
+        } as any,
       );
 
       await expect(
@@ -821,7 +833,9 @@ describe('business rules', () => {
             .fn()
             .mockResolvedValue({ statusCode: CREATED_RESPONE }),
         } as any,
-        { sendLeaveNotification: jest.fn() } as any,
+        {
+          sendLeaveNotification: jest.fn().mockResolvedValue(undefined),
+        } as any,
       );
 
       const result = await service.reviewLeaveApplication(
@@ -859,7 +873,9 @@ describe('business rules', () => {
       const service = new LeaveApplicationService(
         { $transaction: jest.fn((callback) => callback(tx)) } as any,
         { createNotification: jest.fn() } as any,
-        { sendLeaveNotification: jest.fn() } as any,
+        {
+          sendLeaveNotification: jest.fn().mockResolvedValue(undefined),
+        } as any,
       );
 
       await service.reviewLeaveApplication('leave-2', 'manager-1', {
@@ -897,7 +913,9 @@ describe('business rules', () => {
       const service = new LeaveApplicationService(
         { $transaction: jest.fn((callback) => callback(tx)) } as any,
         { createNotification: jest.fn() } as any,
-        { sendLeaveNotification: jest.fn() } as any,
+        {
+          sendLeaveNotification: jest.fn().mockResolvedValue(undefined),
+        } as any,
       );
 
       await service.reviewLeaveApplication('leave-3', 'manager-1', {

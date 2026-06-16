@@ -13,6 +13,7 @@ import {
 } from '@prisma/client';
 import { DefaultResponse } from 'src/common/response.dto';
 import { NotificationService } from 'src/notification/notification.service';
+import { EmailService } from 'src/common/email.service';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateRequestCorrectionDto } from './dto/create-request-correction.dto';
 import { ReviewRequestCorrectionDto } from './dto/review-request-correction.dto';
@@ -22,6 +23,7 @@ export class RequestCorrectionService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly notificationService: NotificationService,
+    private readonly emailService: EmailService,
   ) {}
 
   async createRequest(
@@ -188,6 +190,23 @@ export class RequestCorrectionService {
           };
         }
 
+        // --- GỬI EMAIL CHO QUẢN LÝ ---
+        try {
+          const manager = await tx.user.findUnique({
+            where: { userID: managerID },
+            select: { email: true },
+          });
+          if (manager?.email) {
+            await this.emailService.send({
+              to: manager.email,
+              subject: '[HRM] Yêu cầu chỉnh sửa công mới',
+              text: `Xin chào Quản lý,\n\nNhân viên ${timesheet.employee.username} vừa gửi yêu cầu chỉnh sửa công.\nLý do: ${reason}\n\nVui lòng truy cập hệ thống để phê duyệt.\n\nTrân trọng,\nHệ thống HRM`,
+            });
+          }
+        } catch (e) {
+          console.error('Email error in createRequest (Correction):', e);
+        }
+
         return {
           statusCode: CREATED_RESPONE,
           message: 'Correction request created successfully',
@@ -326,6 +345,37 @@ export class RequestCorrectionService {
             statusCode: notification.statusCode,
             message: notification.message,
           };
+        }
+
+        // --- GỬI EMAIL CHO NHÂN VIÊN ---
+        try {
+          const formatTime = (date?: Date | null) => {
+            if (!date) return '---';
+            return date.toLocaleTimeString('vi-VN', {
+              timeZone: 'Asia/Ho_Chi_Minh',
+              hour: '2-digit',
+              minute: '2-digit',
+            });
+          };
+
+          await this.emailService.sendCorrectionNotification({
+            recipientEmail: request.employee.email,
+            employeeName: request.employee.username,
+            status:
+              dto.status === TimesheetStatus.APPROVED ? 'approved' : 'rejected',
+            reason: reasonReject || undefined,
+            correctionID: updatedRequest.requestCorrectionID,
+            date: updatedRequest.timesheetEntry?.date || 'Không xác định',
+            oldCheckIn: formatTime(updatedRequest.timesheetEntry?.checkIn),
+            oldCheckOut: formatTime(updatedRequest.timesheetEntry?.checkOut),
+            proposedCheckIn: formatTime(updatedRequest.proposedCheckIn),
+            proposedCheckOut: formatTime(updatedRequest.proposedCheckOut),
+            createdAt: updatedRequest.createdAt,
+            reviewerName: updatedRequest.reviewer?.username || 'Quản lý',
+            reviewedAt: updatedRequest.reviewedAt || new Date(),
+          });
+        } catch (e) {
+          console.error('Email error in reviewRequest (Correction):', e);
         }
 
         return {
