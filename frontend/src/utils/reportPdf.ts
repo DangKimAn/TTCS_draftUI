@@ -14,17 +14,33 @@ export function exportTimesheetReportPdf({
   rows,
   summary,
 }: ExportTimesheetReportPdfInput): void {
-  const printWindow = window.open('', '_blank', 'noopener,noreferrer,width=1100,height=800');
+  const iframe = document.createElement('iframe');
+  iframe.style.position = 'fixed';
+  iframe.style.right = '0';
+  iframe.style.bottom = '0';
+  iframe.style.width = '0';
+  iframe.style.height = '0';
+  iframe.style.border = '0';
+  document.body.appendChild(iframe);
 
-  if (!printWindow) {
-    throw new Error('Cannot open PDF print window. Please allow pop-ups for this site.');
+  const contentWindow = iframe.contentWindow;
+  if (!contentWindow) {
+    document.body.removeChild(iframe);
+    throw new Error('Cannot create print iframe.');
   }
 
-  printWindow.document.write(buildTimesheetReportHtml({ title, filters, rows, summary }));
-  printWindow.document.close();
-  printWindow.focus();
-  printWindow.setTimeout(() => {
-    printWindow.print();
+  contentWindow.document.open();
+  contentWindow.document.write(buildTimesheetReportHtml({ title, filters, rows, summary }));
+  contentWindow.document.close();
+
+  contentWindow.focus();
+  contentWindow.setTimeout(() => {
+    contentWindow.print();
+    setTimeout(() => {
+      if (document.body.contains(iframe)) {
+        document.body.removeChild(iframe);
+      }
+    }, 2000);
   }, 250);
 }
 

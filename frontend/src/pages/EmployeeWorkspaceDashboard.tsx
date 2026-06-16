@@ -30,6 +30,7 @@ import {
   getWorkdayProgressPercent,
 } from '../utils/timeUtils';
 import { getDateKey, getCurrentWeekRange, getPeriodConfig } from '../utils/dateUtils';
+import { exportTimesheetReportPdf } from '../utils/reportPdf';
 import { getAuthSession, getDashboardPathByRole, updateAuthSession } from '../utils/storage';
 import './EmployeeDashboard.css';
 import '../styles/attendance.css';
@@ -159,7 +160,7 @@ function EmployeeWorkspaceDashboard() {
         userEmail,
         month,
         year,
-        periodType: periodType === 'week' ? 'week' : 'month',
+        periodType: periodType,
         anchorDate: anchorDateObj,
         createIfMissing: true,
       });
@@ -313,7 +314,7 @@ function EmployeeWorkspaceDashboard() {
 
   const displayRows = useMemo(() => {
     if (!timesheetData) return [];
-    if (periodType === 'month') return timesheetData.rows;
+    if (periodType === 'month' || periodType === 'last_month') return timesheetData.rows;
 
     const anchorDateObj2 = typeof anchorDate === 'string' ? new Date(anchorDate) : anchorDate;
     const { startKey, endKey } = getCurrentWeekRange(anchorDateObj2);
@@ -634,6 +635,129 @@ function EmployeeWorkspaceDashboard() {
         setSelectedRow(null);
       },
       onSubmitCorrection: handleSubmitCorrection,
+      onExportExcel: () => {
+        if (!timesheetData) return;
+        try {
+          const anchorDateObj = typeof anchorDate === 'string' ? new Date(anchorDate) : anchorDate;
+          const month = anchorDateObj.getMonth() + 1;
+          const year = anchorDateObj.getFullYear();
+          let titleText = periodType === 'week' ? `Bảng công Tuần / ${year}` : `Bảng công Tháng ${month} / ${year}`;
+          const empName = profile?.fullName || session?.email || '--';
+          const deptName = profile?.department || 'Tất cả';
+          const empId = profile?.employeeId || session?.userID || 'EMP';
+          const fileName = `timesheet-${empId}-${periodType}-${month}-${year}.xls`;
+
+          let htmlContent = `
+          <html xmlns:x="urn:schemas-microsoft-com:office:excel">
+            <head>
+              <meta charset="utf-8">
+              <style>
+                .title { font-size: 18pt; font-weight: bold; text-align: center; height: 30pt; vertical-align: middle; }
+                .meta-label { font-weight: bold; text-align: left; }
+                .meta-value { text-align: left; }
+                th { background-color: #e2e8f0; font-weight: bold; border: 1px solid #cbd5e1; }
+                td { border: 1px solid #cbd5e1; vertical-align: middle; }
+              </style>
+            </head>
+            <body>
+              <table>
+                <tr><td colspan="6" class="title">${titleText}</td></tr>
+                <tr><td colspan="2" class="meta-label">Nhân viên:</td><td colspan="4" class="meta-value">${empName}</td></tr>
+                <tr><td colspan="2" class="meta-label">Phòng ban:</td><td colspan="4" class="meta-value">${deptName}</td></tr>
+                <tr><td colspan="2" class="meta-label">Thời gian:</td><td colspan="4" class="meta-value">${timesheetData.period.startKey} - ${timesheetData.period.endKey}</td></tr>
+                <tr><td colspan="6"></td></tr>
+                <tr>
+                  <th>Ngày</th>
+                  <th>Giờ vào</th>
+                  <th>Giờ ra</th>
+                  <th>Tổng giờ</th>
+                  <th>Trạng thái</th>
+                  <th>Cảnh báo</th>
+                </tr>`;
+
+          displayRows.forEach(row => {
+            const warnings = (row.warnings || []).map(w => w.label || w).join(' | ');
+            htmlContent += `
+                <tr>
+                  <td>${row.date}</td>
+                  <td>${row.checkInTime || '--'}</td>
+                  <td>${row.checkOutTime || '--'}</td>
+                  <td>${row.totalHours || 0}</td>
+                  <td>${row.status || '--'}</td>
+                  <td>${warnings}</td>
+                </tr>`;
+          });
+
+          htmlContent += `
+              </table>
+            </body>
+          </html>`;
+
+          const blob = new Blob([htmlContent], { type: 'application/vnd.ms-excel' });
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement("a");
+          link.href = url;
+          link.download = fileName;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          URL.revokeObjectURL(url);
+        } catch (error) {
+          console.error(error);
+          alert('Không thể xuất Excel. Vui lòng thử lại.');
+        }
+      },
+      onExportPdf: () => {
+        if (!timesheetData) return;
+        try {
+          // Determine dynamic title based on periodType
+          let title = `Bảng công - ${timesheetData.period.label}`;
+          const anchorDateObj = typeof anchorDate === 'string' ? new Date(anchorDate) : anchorDate;
+          const year = anchorDateObj.getFullYear();
+          if (periodType === 'week') {
+            title = `Bảng công Tuần / ${year}`;
+          } else if (periodType === 'month' || periodType === 'last_month') {
+            title = `Bảng công Tháng ${anchorDateObj.getMonth() + 1} / ${year}`;
+          }
+
+          const mappedRows = displayRows.map(row => ({
+            ...row,
+            checkIn: row.checkInTime,
+            checkOut: row.checkOutTime,
+            workDate: row.date,
+            employeeName: profile?.fullName || session?.email || '--',
+            departmentName: profile?.department || 'Tất cả'
+          }));
+
+          exportTimesheetReportPdf({
+            title,
+            filters: {
+              employeeId: profile?.fullName || session?.email || '--',
+              departmentId: profile?.department || 'Tất cả',
+              fromDate: timesheetData.period.startKey,
+              toDate: timesheetData.period.endKey,
+            },
+            rows: mappedRows,
+            summary: {
+              totalRecords: displayRows.length,
+              totalEmployees: 1,
+              totalHours: displayRows.reduce((acc, row) => acc + (row.totalHours || 0), 0),
+              warningRecords: displayRows.filter(row => row.warnings && row.warnings.length > 0).length,
+              pending: 0,
+              submitted: timesheetData.summary.status === 'Submitted' ? 1 : 0,
+              approved: timesheetData.summary.status === 'Approved' ? 1 : 0,
+              rejected: timesheetData.summary.status === 'Rejected' ? 1 : 0,
+              missingOut: displayRows.filter(row => !row.checkOutTime).length,
+              byStatus: {
+                [timesheetData.summary.status]: 1
+              }
+            }
+          });
+        } catch (error) {
+          console.error(error);
+          alert('Không thể xuất PDF. Vui lòng thử lại.');
+        }
+      },
     },
     'leave-request': {
       summary: leaveSummary,

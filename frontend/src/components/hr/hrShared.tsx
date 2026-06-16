@@ -10,7 +10,6 @@ export const emptyEmployeeForm = {
   email: '',
   password: '',
   departmentId: '',
-  title: '',
   role: 'employee',
   salaryCoefficient: '2.0',
   leaveBalance: '12',
@@ -64,6 +63,7 @@ export function FormField({
   step = undefined,
   value,
   error,
+  disabled,
   onChange,
 }: {
   label: string;
@@ -72,12 +72,13 @@ export function FormField({
   step?: string;
   value: string;
   error?: string;
-  onChange: (event: any) => void;
+  disabled?: boolean;
+  onChange: (event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => void;
 }) {
   return (
     <label>
       <span>{label}</span>
-      <input name={name} type={type} step={step} value={value} onChange={onChange} />
+      <input name={name} type={type} step={step} value={value} onChange={onChange} disabled={disabled} />
       {error ? <small>{error}</small> : null}
     </label>
   );
@@ -133,10 +134,6 @@ export function validateEmployeeForm(
 
   if (!form.departmentId) {
     errors.departmentId = 'Phòng ban không được trống.';
-  }
-
-  if (!form.title.trim()) {
-    errors.title = 'Chức vụ không được trống.';
   }
 
   if (!form.role) {

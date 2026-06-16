@@ -4,7 +4,7 @@ import { TimesheetRow } from './TableRows';
 
 interface TimesheetApprovalTableProps {
   rows: any[];
-  getEmployeeById: (id: string) => any;
+  getEmployeeById: (id: string) => any | undefined;
   getDepartmentName: (id: string) => string;
   onApprove: (id: string) => void;
   onReject: (id: string) => void;
@@ -18,7 +18,7 @@ interface TimesheetApprovalTableProps {
 const TIMESHEET_GRID_COLUMNS =
   'minmax(72px,0.7fr) minmax(130px,1.35fr) minmax(112px,1fr) minmax(116px,0.95fr) minmax(54px,0.45fr) minmax(54px,0.45fr) minmax(68px,0.55fr) minmax(92px,0.75fr) minmax(108px,1fr) minmax(104px,0.75fr)';
 
-const TimesheetRowItem = React.memo(({ index, data, style }: any) => {
+const TimesheetRowItem = React.memo(({ index, data, style }: { index: number, data: any, style: React.CSSProperties }) => {
   const {
     rows,
     getEmployeeById,

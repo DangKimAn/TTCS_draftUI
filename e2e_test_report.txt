@@ -1,0 +1,29 @@
+
+==================================================
+ BÁO CÁO KẾT QUẢ KIỂM THỬ E2E HỆ THỐNG TIMESHEET 
+==================================================
+
+TEST CASE 1:
+📍 Route (URL)     : /login
+📝 Input           : {'email': 'wrong@company.com', 'password': 'wrong_password'}
+🎯 Expected Output : Hiển thị thông báo lỗi (VD: The user have email is not found) và không chuyển trang
+✅ Actual Output   : Đã hiển thị thông báo lỗi: 'The user have email is not found'
+--------------------------------------------------
+TEST CASE 2:
+📍 Route (URL)     : /login
+📝 Input           : {'email': 'nv1@company.com', 'password': 'password123'}
+🎯 Expected Output : Đăng nhập thành công và tự động chuyển hướng sang /dashboard/employee
+✅ Actual Output   : Thành công! Chuyển hướng tới: https://ttcs-draft-ui.vercel.app/dashboard/employee
+--------------------------------------------------
+TEST CASE 3:
+📍 Route (URL)     : /dashboard/employee
+📝 Input           : Click nút 'Check in' (Nút màu xanh)
+🎯 Expected Output : Ghi nhận giờ làm, nút chuyển thành 'Check out' (Màu đỏ)
+✅ Actual Output   : Đã click Check-in thành công. Trạng thái đổi thành Đang làm việc.
+--------------------------------------------------
+TEST CASE 4:
+📍 Route (URL)     : /dashboard/employee/leave
+📝 Input           : Submit đơn xin nghỉ với dữ liệu rỗng hoặc ngày kết thúc < ngày bắt đầu
+🎯 Expected Output : Form báo lỗi validation đỏ ở các trường bắt buộc, không gọi API.
+✅ Actual Output   : Không tìm thấy nút gửi đơn
+--------------------------------------------------

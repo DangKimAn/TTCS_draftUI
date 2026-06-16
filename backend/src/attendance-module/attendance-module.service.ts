@@ -100,7 +100,7 @@ export class AttendanceModuleService {
     try {
       const executeLogic = async (
         dbCtx: Prisma.TransactionClient,
-      ): Promise<ResponseDto<any>> => {
+      ): Promise<ResponseDto<unknown>> => {
         const now = new Date();
         if (now.getHours() < 6) {
           return {
@@ -227,6 +227,14 @@ export class AttendanceModuleService {
       // KHÔNG SỬ DỤNG $transaction ĐỂ TRÁNH NGẼN POOL VÀ CHO PHÉP PROMISE.ALL TỰ DO CHẠY
       return await executeLogic(this.prismaService);
     } catch (error: unknown) {
+      if (
+        error &&
+        typeof error === 'object' &&
+        'getStatus' in error &&
+        typeof (error as { getStatus?: () => number }).getStatus === 'function'
+      ) {
+        throw error;
+      }
       console.error('Error in checkIn:', error);
       return {
         statusCode: Interval_Server_Network_Exeception_Code,
@@ -252,7 +260,7 @@ export class AttendanceModuleService {
 
       const executeLogic = async (
         dbCtx: Prisma.TransactionClient,
-      ): Promise<ResponseDto<any>> => {
+      ): Promise<ResponseDto<unknown>> => {
         const now = new Date();
         const month = now.getMonth() + 1;
         const year = now.getFullYear();
@@ -365,7 +373,7 @@ export class AttendanceModuleService {
         };
       };
 
-      let result: ResponseDto<any>;
+      let result: ResponseDto<unknown>;
       if (tx) {
         result = await executeLogic(tx);
       } else {

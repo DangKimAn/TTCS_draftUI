@@ -1,0 +1,35 @@
+
+============================================================
+ BÁO CÁO KẾT QUẢ KIỂM THỬ E2E (12 USE CASES) 
+============================================================
+
+[UC-01] Đăng nhập sai
+📍 Route  : /login
+📝 Input  : email: wrong@company.com, pass: 123
+🎯 Expect : Báo lỗi không tìm thấy user
+✅ Actual : Pass: Hiện thông báo lỗi The user have email is not found.
+------------------------------------------------------------
+[UC-01] Đăng nhập đúng (Nhân viên)
+📍 Route  : /login
+📝 Input  : email: nv1@company.com, pass: password123
+🎯 Expect : Vào /dashboard/employee
+✅ Actual : Pass: Đã vào dashboard employee.
+------------------------------------------------------------
+[UC-02] Check-in
+📍 Route  : /dashboard/employee
+📝 Input  : Click Check-in
+🎯 Expect : Đổi màu nút / Ghi nhận log
+✅ Actual : Pass: Click Check-in thành công.
+------------------------------------------------------------
+[UC-06,07] Manager duyệt đơn/công
+📍 Route  : /dashboard/manager
+📝 Input  : Đăng nhập Manager -> Bấm Approve
+🎯 Expect : Đơn/công được duyệt
+✅ Actual : Pass: Đã thao tác duyệt đơn/công.
+------------------------------------------------------------
+[UC-08->12] HR Dashboard functions
+📍 Route  : /dashboard/hr
+📝 Input  : Đăng nhập HR -> Xuất báo cáo / Quản lý Users
+🎯 Expect : Màn hình HR hiển thị đủ công cụ
+✅ Actual : Pass: Truy cập HR Dashboard, thấy công cụ Export/Users.
+------------------------------------------------------------

@@ -3,9 +3,8 @@ export function formatDate(dateValue) {
     return '--';
   }
 
-  const date = typeof dateValue === 'string' && dateValue.includes('T')
-    ? new Date(dateValue)
-    : new Date(`${dateValue}T00:00:00`);
+  const isDateOnly = typeof dateValue === 'string' && !dateValue.includes('T');
+  const date = new Date(dateValue);
 
   if (Number.isNaN(date.getTime())) {
     return '--';
@@ -15,6 +14,7 @@ export function formatDate(dateValue) {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
+    ...(isDateOnly && { timeZone: 'UTC' }),
   }).format(date);
 }
 
@@ -23,7 +23,8 @@ export function formatDateShort(dateValue) {
     return '--';
   }
 
-  const date = new Date(`${dateValue}T00:00:00`);
+  const isDateOnly = typeof dateValue === 'string' && !dateValue.includes('T');
+  const date = new Date(dateValue);
 
   if (Number.isNaN(date.getTime())) {
     return '--';
@@ -33,6 +34,7 @@ export function formatDateShort(dateValue) {
     weekday: 'short',
     day: '2-digit',
     month: '2-digit',
+    ...(isDateOnly && { timeZone: 'UTC' }),
   }).format(date);
 }
 

@@ -53,7 +53,8 @@ export function formatDateLabel(value) {
     return '--';
   }
 
-  const date = new Date(`${value}T00:00:00`);
+  const isDateOnly = typeof value === 'string' && !value.includes('T');
+  const date = new Date(value);
 
   if (Number.isNaN(date.getTime())) {
     return value;
@@ -63,6 +64,7 @@ export function formatDateLabel(value) {
     weekday: 'short',
     day: '2-digit',
     month: '2-digit',
+    ...(isDateOnly && { timeZone: 'UTC' }),
   }).format(date);
 }
 

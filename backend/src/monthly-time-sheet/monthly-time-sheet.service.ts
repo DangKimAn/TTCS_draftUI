@@ -110,18 +110,11 @@ export class MonthlyTimeSheetService {
     if (!timesheet) return false;
 
     const hasEntries = timesheet.entries.length > 0;
-    const hasMissingTime = timesheet.entries.some(
-      (entry) =>
-        !entry.checkIn ||
-        !entry.checkOut ||
-        entry.status === TimesheetStatus.MISSING_OUT,
-    );
     const hasPendingCorrection = timesheet.corrections.length > 0;
     const isLocked =
       timesheet.status === MonthlyTimesheetStatus.APPROVED ||
       timesheet.status === MonthlyTimesheetStatus.SUBMITTED;
-    const canSubmit =
-      hasEntries && !hasMissingTime && !hasPendingCorrection && !isLocked;
+    const canSubmit = hasEntries && !hasPendingCorrection && !isLocked;
 
     await db.monthlyTimesheet.update({
       where: { monthlyTimesheetID },
@@ -150,7 +143,7 @@ export class MonthlyTimeSheetService {
     if (timesheet === null)
       return {
         statusCode: NOTFOUND_CODE,
-        message: 'This timesheet isnt exist',
+        message: 'Không có bảng công',
       };
     const canSubmit = await this.refreshCanSubmit(
       timesheet.monthlyTimesheetID,
@@ -688,11 +681,19 @@ export class MonthlyTimeSheetService {
         async (tx) => executeLogic(tx),
         { timeout: 30000 },
       );
-    } catch (error) {
-      console.error('Error in checkIn:', error);
+    } catch (error: unknown) {
+      if (
+        error &&
+        typeof error === 'object' &&
+        'getStatus' in error &&
+        typeof (error as { getStatus?: () => number }).getStatus === 'function'
+      ) {
+        throw error;
+      }
+      console.error('Error in createMonthlyTimeSheet:', error);
       return {
         statusCode: Interval_Server_Network_Exeception_Code,
-        message: 'Internal server error occurred during check-in',
+        message: 'Internal server error occurred',
       };
     }
   }

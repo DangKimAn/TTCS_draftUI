@@ -34,9 +34,10 @@ const ManagerLeaveApproval: React.FC<ManagerLeaveApprovalProps> = ({
 }) => {
   const rows = useMemo(() => {
     const sortLeavePendingFirst = (a: any, b: any) => {
-      if (a.status === 'Pending' && b.status !== 'Pending') return -1;
-      if (a.status !== 'Pending' && b.status === 'Pending') return 1;
-      return b.startDate.localeCompare(a.startDate);
+      // Sort by createdAt descending (newest first)
+      const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return dateB - dateA;
     };
 
     return [...leaveRequests]

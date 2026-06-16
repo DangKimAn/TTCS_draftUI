@@ -347,16 +347,30 @@ export class LeaveApplicationService {
         );
 
         // --- GỬI EMAIL CHO NHÂN VIÊN ---
-        try {
-          await this.emailService?.sendLeaveNotification({
-            recipientEmail: application.sender.email,
-            employeeName: application.sender.username,
-            status:
-              newStatus === LeaveStatus.APPROVED ? 'approved' : 'rejected',
-            reason: reasonReject || undefined,
+        if (this.emailService) {
+          const reviewer = await dbCtx.user.findUnique({
+            where: { userID: reviewerID },
+            select: { username: true }
           });
-        } catch (e) {
-          console.error('Email error in reviewLeaveApplication:', e);
+          const reviewerName = reviewer?.username || 'Quản lý';
+
+          this.emailService
+            .sendLeaveNotification({
+              recipientEmail: application.sender.email,
+              employeeName: application.sender.username,
+              status:
+                newStatus === LeaveStatus.APPROVED ? 'approved' : 'rejected',
+              reason: reasonReject || undefined,
+              leaveApplicationID: application.leaveApplicationID,
+              createdAt: application.createdAt,
+              startDate: application.startDate,
+              endDate: application.endDate,
+              reviewerName: reviewerName,
+              reviewedAt: updatedApp.reviewedAt || new Date(),
+            })
+            .catch((e) =>
+              console.error('Email error in reviewLeaveApplication:', e),
+            );
         }
 
         return {
