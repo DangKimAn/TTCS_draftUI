@@ -93,11 +93,30 @@ function HRTimesheetExport({
       return;
     }
 
+    const currentFilters = reportData?.filters || filters;
+    const employeeName = currentFilters.employeeId === 'all' 
+      ? 'Tat ca nhan vien' 
+      : employees.find(e => e.id === currentFilters.employeeId)?.fullName || currentFilters.employeeId;
+    
+    const departmentName = currentFilters.departmentId === 'all'
+      ? 'Tat ca phong ban'
+      : departments.find(d => (d.id || d.departmentID) === currentFilters.departmentId)?.name || departments.find(d => (d.id || d.departmentID) === currentFilters.departmentId)?.departmentName || currentFilters.departmentId;
+
     try {
+      const exportRows = previewRows.map(row => {
+        const employee = getEmployeeById(employees, row.employeeId);
+        return {
+          ...row,
+          employeeName: row.employeeName || employee?.fullName || row.employeeId,
+          departmentName: row.departmentName || getDepartmentName(departments, row.departmentId || employee?.departmentId) || row.departmentId
+        };
+      });
+
       exportTimesheetReportPdf({
         title: 'Báo cáo timesheet HR',
-        filters: reportData?.filters || filters,
-        rows: previewRows,
+        filters: currentFilters,
+        filterNames: { employeeName, departmentName },
+        rows: exportRows,
         summary,
       });
       onFeedback('success', `Đã mở bản PDF cho ${previewRows.length} dòng timesheet.`);
