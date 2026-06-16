@@ -348,12 +348,6 @@ export class LeaveApplicationService {
 
         // --- GỬI EMAIL CHO NHÂN VIÊN ---
         if (this.emailService) {
-          const reviewer = await dbCtx.user.findUnique({
-            where: { userID: reviewerID },
-            select: { username: true },
-          });
-          const reviewerName = reviewer?.username || 'Quản lý';
-
           this.emailService
             .sendLeaveNotification({
               recipientEmail: application.sender.email,
