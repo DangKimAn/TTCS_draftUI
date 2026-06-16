@@ -10,6 +10,8 @@ export const StatusBadge: React.FC<{ status: string; className?: string }> = ({ 
       case 'Rejected':
       case 'Inactive':
         return 'bg-rose-100 text-rose-700 border-rose-200';
+      case 'Cancelled':
+        return 'bg-slate-100 text-slate-700 border-slate-200';
       case 'Pending':
       case 'Submitted':
         return 'bg-amber-100 text-amber-700 border-amber-200';
@@ -18,9 +20,26 @@ export const StatusBadge: React.FC<{ status: string; className?: string }> = ({ 
     }
   };
 
+  const getStatusLabel = (s: string) => {
+    switch (s) {
+      case 'Approved':
+        return 'Đã duyệt';
+      case 'Rejected':
+        return 'Từ chối';
+      case 'Cancelled':
+        return 'Đã hủy';
+      case 'Pending':
+        return 'Chờ duyệt';
+      case 'Submitted':
+        return 'Đã gửi';
+      default:
+        return s;
+    }
+  };
+
   return (
     <span className={`inline-flex items-center justify-center min-h-[26px] px-2.5 rounded-full text-[0.72rem] font-semibold border ${getStatusClass(status)} ${className}`}>
-      {status}
+      {getStatusLabel(status)}
     </span>
   );
 };

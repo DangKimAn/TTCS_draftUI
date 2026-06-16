@@ -244,6 +244,8 @@ export function getStatusClass(status?: string) {
       return 'dashboard-status-badge--warning';
     case 'Rejected':
       return 'dashboard-status-badge--danger';
+    case 'Cancelled':
+      return 'dashboard-status-badge--neutral';
     case 'Inactive':
       return 'dashboard-status-badge--neutral';
     default:
@@ -279,6 +281,8 @@ export function formatHrStatus(status?: string) {
       return 'Đã duyệt';
     case 'Rejected':
       return 'Từ chối';
+    case 'Cancelled':
+      return 'Đã hủy';
     case 'Ready':
       return 'Sẵn sàng';
     default:

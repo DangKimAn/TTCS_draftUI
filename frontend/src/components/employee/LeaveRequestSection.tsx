@@ -273,6 +273,8 @@ function getLeaveStatusClass(status) {
       return 'dashboard-status-badge--success';
     case 'Rejected':
       return 'dashboard-status-badge--danger';
+    case 'Cancelled':
+      return 'dashboard-status-badge--neutral';
     default:
       return 'dashboard-status-badge--warning';
   }
@@ -284,6 +286,8 @@ function getLeaveStatusLabel(status) {
       return 'Đã duyệt';
     case 'Rejected':
       return 'Từ chối';
+    case 'Cancelled':
+      return 'Đã hủy';
     default:
       return 'Chờ duyệt';
   }

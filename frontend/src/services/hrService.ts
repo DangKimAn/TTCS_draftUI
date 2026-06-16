@@ -371,7 +371,7 @@ export function normalizeHrEmployee(payload: Record<string, any>, departments: A
     payload.departmentId ||
     findDepartmentIdByName(departments, payload.departmentName || payload.department?.departmentName) ||
     '';
-  const role = normalizeRole(payload.role?.nameRole || payload.nameRole || payload.roleName || payload.role);
+  const role = normalizeRole(payload.roleName || payload.role?.nameRole || payload.nameRole || payload.role);
   const fullName = payload.fullName || payload.name || payload.username || payload.email || id;
 
   return {

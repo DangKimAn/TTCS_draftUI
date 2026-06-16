@@ -72,15 +72,28 @@ export class UserService {
   ) {}
 
   async getAllUser(): Promise<ResponseDto<UserDto[]>> {
-    const users: UserDto[] = await this.prismaService.user.findMany({
+    const users = await this.prismaService.user.findMany({
       include: {
         role: true,
+        department: true,
       },
     });
+
+    const sanitizedUsers = users.map((user) => {
+      const sanitizedUser = {
+        ...user,
+        roleName: user.role?.nameRole,
+        departmentName: user.department?.departmentName,
+      };
+
+      delete (sanitizedUser as { hashedPassword?: unknown }).hashedPassword;
+      return sanitizedUser;
+    });
+
     return {
       statusCode: OK_CODE,
       message: 'get all users successfull',
-      data: users,
+      data: sanitizedUsers,
     };
   }
 
@@ -1140,14 +1153,14 @@ export class UserService {
         message: department.message,
       };
 
-    const users: UserDto[] = await this.prismaService.user.findMany({
+    const users: UserDto[] = (await this.prismaService.user.findMany({
       where: {
         departmentID,
       },
       include: {
         role: true,
       },
-    });
+    })) as unknown as UserDto[];
 
     return {
       statusCode: OK_CODE,

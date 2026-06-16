@@ -2,7 +2,7 @@ import axios from 'axios';
 import type { AppError, LeaveRequest, RequestStatus } from '../types';
 import httpClient from '../utils/httpClient';
 
-type BackendLeaveStatus = 'pending' | 'approved' | 'rejected' | string;
+type BackendLeaveStatus = 'pending' | 'approved' | 'rejected' | 'cancelled' | string;
 type ReviewStatus = 'Approved' | 'Rejected' | 'approved' | 'rejected' | 'Denied' | 'denied';
 
 interface BackendResponse<T> {
@@ -359,7 +359,7 @@ function normalizeLeaveRequest(payload: BackendLeaveApplication): LeaveRequest {
     isUnpaid: typeLeave.hasSalary !== undefined ? Number(typeLeave.hasSalary) <= 0 : false,
     createdAt: payload.createdAt || '',
     approvedAt: status === 'Approved' ? reviewedAt : undefined,
-    rejectedAt: status === 'Rejected' ? reviewedAt : undefined,
+    rejectedAt: status === 'Rejected' || status === 'Cancelled' ? reviewedAt : undefined,
     rejectionReason: payload.reasonReject || payload.rejectionReason || undefined,
   } as LeaveRequest & Record<string, any>;
 
@@ -422,6 +422,9 @@ function normalizeRequestStatus(status?: BackendLeaveStatus): RequestStatus {
     case 'rejected':
     case 'denied':
       return 'Rejected';
+    case 'cancelled':
+    case 'canceled':
+      return 'Cancelled';
     case 'pending':
       return 'Pending';
     default:

@@ -26,6 +26,7 @@ const STATUS_FILTERS = [
   { value: 'Pending', label: 'Chờ duyệt' },
   { value: 'Approved', label: 'Đã duyệt' },
   { value: 'Rejected', label: 'Từ chối' },
+  { value: 'Cancelled', label: 'Đã hủy' },
 ];
 
 const emptyBalance: LeaveBalance = {
@@ -395,6 +396,8 @@ function getLeaveStatusClass(status) {
       return 'dashboard-status-badge--success';
     case 'Rejected':
       return 'dashboard-status-badge--danger';
+    case 'Cancelled':
+      return 'dashboard-status-badge--neutral';
     default:
       return 'dashboard-status-badge--warning';
   }
@@ -406,6 +409,8 @@ function getLeaveStatusLabel(status) {
       return 'Đã duyệt';
     case 'Rejected':
       return 'Từ chối';
+    case 'Cancelled':
+      return 'Đã hủy';
     default:
       return 'Chờ duyệt';
   }
