@@ -3062,3 +3062,101 @@
     justify-content: flex-start;
   }
 }
+
+/* Final mobile shell override: mobile uses a drawer, never the desktop collapsed sidebar layout. */
+@media (max-width: 768px) {
+  .dashboard.app-shell {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-height: 100vh;
+    height: auto !important;
+    overflow-x: hidden !important;
+  }
+
+  .dashboard.app-shell .sidebar,
+  .dashboard.app-shell.dashboard--sidebar-collapsed .sidebar {
+    position: fixed !important;
+    top: 0 !important;
+    right: auto !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    z-index: 90;
+    width: min(86vw, 330px) !important;
+    max-width: calc(100vw - 28px) !important;
+    height: 100dvh !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    align-items: stretch !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    border-right: 1px solid rgba(220, 231, 242, 0.92) !important;
+    border-bottom: 0 !important;
+    transform: translateX(calc(-100% - 24px)) !important;
+    transition: transform 0.26s ease;
+  }
+
+  .dashboard.app-shell.dashboard--mobile-sidebar-open .sidebar,
+  .dashboard.app-shell.dashboard--mobile-sidebar-open.dashboard--sidebar-collapsed .sidebar {
+    transform: translateX(0) !important;
+  }
+
+  .dashboard.app-shell .sidebar__collapse-button {
+    display: none !important;
+  }
+
+  .dashboard.app-shell.dashboard--sidebar-collapsed .sidebar__header {
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+  }
+
+  .dashboard.app-shell.dashboard--sidebar-collapsed .sidebar__brand {
+    justify-content: flex-start !important;
+  }
+
+  .dashboard.app-shell.dashboard--sidebar-collapsed .sidebar__brand-copy,
+  .dashboard.app-shell.dashboard--sidebar-collapsed .sidebar__item-copy,
+  .dashboard.app-shell.dashboard--sidebar-collapsed .sidebar__footer,
+  .dashboard.app-shell.dashboard--sidebar-collapsed .sidebar__section-label {
+    display: block !important;
+    width: auto !important;
+    max-width: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+    pointer-events: auto !important;
+  }
+
+  .dashboard.app-shell.dashboard--sidebar-collapsed .sidebar__nav {
+    width: 100% !important;
+    justify-items: stretch !important;
+    overflow-y: auto !important;
+  }
+
+  .dashboard.app-shell.dashboard--sidebar-collapsed .sidebar__item,
+  .dashboard.app-shell.dashboard--sidebar-collapsed .sidebar__item--button,
+  .dashboard.app-shell.dashboard--sidebar-collapsed .sidebar__item--collapsed {
+    width: 100% !important;
+    min-width: 0 !important;
+    height: auto !important;
+    min-height: 56px !important;
+    padding: 10px 14px !important;
+    justify-content: flex-start !important;
+  }
+
+  .dashboard.app-shell .main,
+  .dashboard.app-shell .main-area {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    margin-left: 0 !important;
+  }
+
+  .dashboard.app-shell .content,
+  .dashboard.app-shell .page-container {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    overflow-x: hidden !important;
+  }
+}
