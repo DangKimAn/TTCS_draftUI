@@ -2,7 +2,7 @@ export type Role = 'employee' | 'manager' | 'hr' | 'admin' | 'unknown';
 
 export type AttendanceStatus = 'Not Started' | 'Working' | 'Completed' | 'Missing Out';
 
-export type RequestStatus = 'Draft' | 'Pending' | 'Submitted' | 'Approved' | 'Rejected';
+export type RequestStatus = 'Draft' | 'Pending' | 'Submitted' | 'Approved' | 'Rejected' | 'Cancelled';
 
 export interface User {
   id: string;

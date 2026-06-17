@@ -6,6 +6,10 @@ interface ExportTimesheetReportPdfInput {
   filters: TimesheetReportFilters;
   rows: Timesheet[];
   summary: TimesheetReportSummary;
+  filterNames?: {
+    employeeName?: string;
+    departmentName?: string;
+  };
 }
 
 export function exportTimesheetReportPdf({
@@ -13,18 +17,35 @@ export function exportTimesheetReportPdf({
   filters,
   rows,
   summary,
+  filterNames,
 }: ExportTimesheetReportPdfInput): void {
-  const printWindow = window.open('', '_blank', 'noopener,noreferrer,width=1100,height=800');
+  const iframe = document.createElement('iframe');
+  iframe.style.position = 'fixed';
+  iframe.style.right = '0';
+  iframe.style.bottom = '0';
+  iframe.style.width = '0';
+  iframe.style.height = '0';
+  iframe.style.border = '0';
+  document.body.appendChild(iframe);
 
-  if (!printWindow) {
-    throw new Error('Cannot open PDF print window. Please allow pop-ups for this site.');
+  const contentWindow = iframe.contentWindow;
+  if (!contentWindow) {
+    document.body.removeChild(iframe);
+    throw new Error('Cannot create print iframe.');
   }
 
-  printWindow.document.write(buildTimesheetReportHtml({ title, filters, rows, summary }));
-  printWindow.document.close();
-  printWindow.focus();
-  printWindow.setTimeout(() => {
-    printWindow.print();
+  contentWindow.document.open();
+  contentWindow.document.write(buildTimesheetReportHtml({ title, filters, rows, summary }));
+  contentWindow.document.close();
+
+  contentWindow.focus();
+  contentWindow.setTimeout(() => {
+    contentWindow.print();
+    setTimeout(() => {
+      if (document.body.contains(iframe)) {
+        document.body.removeChild(iframe);
+      }
+    }, 2000);
   }, 250);
 }
 
@@ -33,6 +54,7 @@ function buildTimesheetReportHtml({
   filters,
   rows,
   summary,
+  filterNames,
 }: ExportTimesheetReportPdfInput): string {
   const generatedAt = new Date().toLocaleString('vi-VN');
 
@@ -60,36 +82,36 @@ function buildTimesheetReportHtml({
 </head>
 <body>
   <h1>${escapeHtml(title)}</h1>
-  <p>Generated at ${escapeHtml(generatedAt)}</p>
+  <p>Da tao luc ${escapeHtml(generatedAt)}</p>
   <section class="meta">
-    <div class="box"><span>From date</span><strong>${escapeHtml(filters.fromDate || '--')}</strong></div>
-    <div class="box"><span>To date</span><strong>${escapeHtml(filters.toDate || '--')}</strong></div>
-    <div class="box"><span>Employee</span><strong>${escapeHtml(filters.employeeId || 'All')}</strong></div>
-    <div class="box"><span>Department</span><strong>${escapeHtml(filters.departmentId || 'All')}</strong></div>
-    <div class="box"><span>Status</span><strong>${escapeHtml(filters.status || 'All')}</strong></div>
+    <div class="box"><span>Tu ngay</span><strong>${escapeHtml(filters.fromDate || '--')}</strong></div>
+    <div class="box"><span>Den ngay</span><strong>${escapeHtml(filters.toDate || '--')}</strong></div>
+    <div class="box"><span>Nhan vien</span><strong>${escapeHtml(filterNames?.employeeName || (filters.employeeId === 'all' ? 'Tat ca nhan vien' : filters.employeeId) || 'Tat ca nhan vien')}</strong></div>
+    <div class="box"><span>Phong ban</span><strong>${escapeHtml(filterNames?.departmentName || (filters.departmentId === 'all' ? 'Tat ca phong ban' : filters.departmentId) || 'Tat ca phong ban')}</strong></div>
+    <div class="box"><span>Trang thai</span><strong>${escapeHtml(filters.status === 'all' ? 'Tat ca trang thai' : (filters.status || 'Tat ca trang thai'))}</strong></div>
   </section>
   <section class="summary">
-    <div class="box"><span>Rows</span><strong>${summary.totalRecords}</strong></div>
-    <div class="box"><span>Employees</span><strong>${summary.totalEmployees}</strong></div>
-    <div class="box"><span>Total hours</span><strong>${formatHours(summary.totalHours)}</strong></div>
-    <div class="box"><span>Warnings</span><strong>${summary.warningRecords}</strong></div>
+    <div class="box"><span>Tong dong</span><strong>${summary.totalRecords}</strong></div>
+    <div class="box"><span>Nhan vien</span><strong>${summary.totalEmployees}</strong></div>
+    <div class="box"><span>Tong gio</span><strong>${formatHours(summary.totalHours)}</strong></div>
+    <div class="box"><span>Canh bao</span><strong>${summary.warningRecords}</strong></div>
   </section>
   <table>
     <thead>
       <tr>
-        <th>Code</th>
-        <th>Employee</th>
-        <th>Department</th>
-        <th>Date</th>
+        <th>Ma</th>
+        <th>Nhan vien</th>
+        <th>Phong ban</th>
+        <th>Ngay</th>
         <th>In</th>
         <th>Out</th>
-        <th class="right">Hours</th>
-        <th>Status</th>
-        <th>Warnings</th>
+        <th class="right">Tong gio</th>
+        <th>Trang thai</th>
+        <th>Canh bao</th>
       </tr>
     </thead>
     <tbody>
-      ${rows.length ? rows.map(renderRow).join('') : '<tr><td colspan="9" class="muted">No timesheet rows match the current filters.</td></tr>'}
+      ${rows.length ? rows.map(renderRow).join('') : '<tr><td colspan="9" class="muted">Khong co du lieu timesheet phu hop.</td></tr>'}
     </tbody>
   </table>
 </body>

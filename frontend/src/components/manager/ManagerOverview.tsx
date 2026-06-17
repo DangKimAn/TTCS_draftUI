@@ -21,7 +21,7 @@ const ManagerOverview: React.FC<ManagerOverviewProps> = ({
   departments,
   onOpenSection,
 }) => {
-  const isTimesheetReviewable = (t: any) => ['Submitted', 'Pending'].includes(t.status);
+  const isTimesheetReviewable = (t: any) => ['Submitted', 'Pending'].includes(t.status as string);
   const pendingTimesheets = timesheets.filter(isTimesheetReviewable);
   const pendingLeaves = leaveRequests.filter((r) => r.status === 'Pending');
   const warningTimesheets = timesheets.filter((t) => t.warnings?.length > 0);

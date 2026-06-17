@@ -189,10 +189,7 @@ function ProfileSection({ profile, onSaveProfile, onUploadAvatar, personalStats 
                 <span>Phòng ban</span>
                 <strong className="truncate" style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={profile.department}>{profile.department}</strong>
               </article>
-              <article className="employee-info-card" style={{ minWidth: 0 }}>
-                <span>Chức vụ</span>
-                <strong className="truncate" style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={profile.position}>{profile.position}</strong>
-              </article>
+
               <article className="employee-info-card" style={{ minWidth: 0 }}>
                 <span>Quản lý trực tiếp</span>
                 <strong className="truncate" style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={profile.manager}>{profile.manager}</strong>

@@ -19,10 +19,10 @@ import {
 } from './hrShared';
 
 interface HRLeaveTypeManagementProps {
-  leaveTypes: Array<Record<string, any>>;
+  leaveTypes: Array<any>;
   feedback: { type: string; message: string } | null;
   onFeedback: (type: string, message: string) => void;
-  onLeaveTypesChange: (updater: any) => void;
+  onLeaveTypesChange: (updater: unknown) => void;
 }
 
 function HRLeaveTypeManagement({
@@ -31,8 +31,8 @@ function HRLeaveTypeManagement({
   onFeedback,
   onLeaveTypesChange,
 }: HRLeaveTypeManagementProps) {
-  const [policyModal, setPolicyModal] = useState<Record<string, any> | null>(null);
-  const [deleteTarget, setDeleteTarget] = useState<Record<string, any> | null>(null);
+  const [policyModal, setPolicyModal] = useState<any | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<any | null>(null);
   const [pendingId, setPendingId] = useState('');
 
   const handleSaveLeaveType = async (form: LeaveTypeForm, mode: string, leaveTypeId?: string) => {
@@ -53,7 +53,7 @@ function HRLeaveTypeManagement({
         });
         const nextType = buildLeaveTypeFromForm(currentType, apiType, form);
 
-        onLeaveTypesChange((current: Array<Record<string, any>>) =>
+        onLeaveTypesChange((current: Array<any>) =>
           current.map((type) => (type.id === leaveTypeId ? nextType : type)),
         );
         onFeedback('success', 'Đã cập nhật loại nghỉ phép.');
@@ -76,7 +76,7 @@ function HRLeaveTypeManagement({
         form,
       );
 
-      onLeaveTypesChange((current: Array<Record<string, any>>) => [nextType, ...current]);
+      onLeaveTypesChange((current: Array<any>) => [nextType, ...current]);
       onFeedback('success', `Đã thêm loại nghỉ ${nextType.name}.`);
       setPolicyModal(null);
       return {};
@@ -94,7 +94,7 @@ function HRLeaveTypeManagement({
     setPendingId(deleteTarget.id);
     try {
       const apiType = await deleteHrLeaveType(deleteTarget.id);
-      onLeaveTypesChange((current: Array<Record<string, any>>) =>
+      onLeaveTypesChange((current: Array<any>) =>
         current.map((type) =>
           type.id === deleteTarget.id
             ? buildLeaveTypeFromForm(type, apiType || { ...type, isActive: false, status: 'Inactive' }, {
@@ -117,11 +117,11 @@ function HRLeaveTypeManagement({
     }
   };
 
-  const handleActivateLeaveType = async (leaveType: Record<string, any>) => {
+  const handleActivateLeaveType = async (leaveType: any) => {
     setPendingId(leaveType.id);
     try {
       const apiType = await activateHrLeaveType(leaveType.id);
-      onLeaveTypesChange((current: Array<Record<string, any>>) =>
+      onLeaveTypesChange((current: Array<any>) =>
         current.map((type) => (type.id === leaveType.id ? { ...type, ...apiType, status: 'Active', isActive: true } : type)),
       );
       onFeedback('success', `Đã kích hoạt loại nghỉ ${leaveType.name}.`);
@@ -254,8 +254,8 @@ function LeaveTypeModal({
   onClose,
   onSave,
 }: {
-  modal: Record<string, any> | null;
-  leaveTypes: Array<Record<string, any>>;
+  modal: any | null;
+  leaveTypes: Array<any>;
   onClose: () => void;
   onSave: (form: LeaveTypeForm, mode: string, leaveTypeId?: string) => Promise<FormErrors>;
 }) {
@@ -284,7 +284,7 @@ function LeaveTypeModal({
     return null;
   }
 
-  const handleChange = (event: any) => {
+  const handleChange = (event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = event.target;
     setForm((current) => ({
       ...current,
@@ -293,7 +293,7 @@ function LeaveTypeModal({
     setErrors((current) => ({ ...current, [name]: '' }));
   };
 
-  const handleSubmit = async (event: any) => {
+  const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     setIsSaving(true);
     const validationErrors = await onSave(form, modal.mode, modal.leaveTypeId);
@@ -346,7 +346,7 @@ function DeleteLeaveTypeModal({
   onClose,
   onConfirm,
 }: {
-  leaveType: Record<string, any> | null;
+  leaveType: any | null;
   isSaving: boolean;
   onClose: () => void;
   onConfirm: () => void;
@@ -369,7 +369,7 @@ function DeleteLeaveTypeModal({
   );
 }
 
-function buildLeaveTypeFromForm(base: Record<string, any>, apiType: Record<string, any> | null | undefined, form: LeaveTypeForm) {
+function buildLeaveTypeFromForm(base: any, apiType: any | null | undefined, form: LeaveTypeForm) {
   return {
     ...base,
     ...apiType,

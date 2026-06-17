@@ -88,7 +88,7 @@ function getResponseMessage(data: any): string | null {
   return null;
 }
 
-function normalizeAuthError(error: unknown, fallbackMessage: string): AppError {
+function normalizeAuthError(error: any, fallbackMessage: string): AppError {
   if (axios.isAxiosError(error)) {
     const message = getResponseMessage(error.response?.data) || error.message || fallbackMessage;
     return createAuthError(message, String(error.response?.status || error.code || 'AUTH_ERROR'));
@@ -160,7 +160,7 @@ export function isAccessTokenValid(token?: string): boolean {
   return payload.exp * 1000 > Date.now() + TOKEN_EXPIRY_LEEWAY_SECONDS * 1000;
 }
 
-function normalizeRole(value: unknown): Role {
+function normalizeRole(value: any): Role {
   const rawRole =
     typeof value === 'object' && value !== null
       ? (value as { nameRole?: string; roleName?: string; role?: string }).nameRole ||

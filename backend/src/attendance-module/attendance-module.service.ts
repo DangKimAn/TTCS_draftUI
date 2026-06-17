@@ -100,7 +100,7 @@ export class AttendanceModuleService {
     try {
       const executeLogic = async (
         dbCtx: Prisma.TransactionClient,
-      ): Promise<ResponseDto<any>> => {
+      ): Promise<ResponseDto<unknown>> => {
         const now = new Date();
         if (now.getHours() < 6) {
           return {
@@ -260,7 +260,7 @@ export class AttendanceModuleService {
 
       const executeLogic = async (
         dbCtx: Prisma.TransactionClient,
-      ): Promise<ResponseDto<any>> => {
+      ): Promise<ResponseDto<unknown>> => {
         const now = new Date();
         const month = now.getMonth() + 1;
         const year = now.getFullYear();
@@ -373,7 +373,7 @@ export class AttendanceModuleService {
         };
       };
 
-      let result: ResponseDto<any>;
+      let result: ResponseDto<unknown>;
       if (tx) {
         result = await executeLogic(tx);
       } else {

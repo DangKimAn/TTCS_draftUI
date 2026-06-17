@@ -82,7 +82,7 @@ function HRTimesheetExport({
   );
   const summary = reportData?.summary || EMPTY_SUMMARY;
 
-  const handleChange = (event: any) => {
+  const handleChange = (event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = event.target;
     setFilters((current) => ({ ...current, [name]: value }));
   };
@@ -93,11 +93,30 @@ function HRTimesheetExport({
       return;
     }
 
+    const currentFilters = reportData?.filters || filters;
+    const employeeName = currentFilters.employeeId === 'all' 
+      ? 'Tat ca nhan vien' 
+      : employees.find(e => e.id === currentFilters.employeeId)?.fullName || currentFilters.employeeId;
+    
+    const departmentName = currentFilters.departmentId === 'all'
+      ? 'Tat ca phong ban'
+      : departments.find(d => (d.id || d.departmentID) === currentFilters.departmentId)?.name || departments.find(d => (d.id || d.departmentID) === currentFilters.departmentId)?.departmentName || currentFilters.departmentId;
+
     try {
+      const exportRows = previewRows.map(row => {
+        const employee = getEmployeeById(employees, row.employeeId);
+        return {
+          ...row,
+          employeeName: row.employeeName || employee?.fullName || row.employeeId,
+          departmentName: row.departmentName || getDepartmentName(departments, row.departmentId || employee?.departmentId) || row.departmentId
+        };
+      });
+
       exportTimesheetReportPdf({
         title: 'Báo cáo timesheet HR',
-        filters: reportData?.filters || filters,
-        rows: previewRows,
+        filters: currentFilters,
+        filterNames: { employeeName, departmentName },
+        rows: exportRows,
         summary,
       });
       onFeedback('success', `Đã mở bản PDF cho ${previewRows.length} dòng timesheet.`);
@@ -208,7 +227,7 @@ function HRTimesheetExport({
                     <tr key={timesheet.id}>
                       <td data-label="Mã bảng công" className="cell-nowrap"><strong>{timesheet.code}</strong></td>
                       <td data-label="Nhân viên">{timesheet.employeeName || employee?.fullName || '--'}</td>
-                      <td data-label="Phòng ban">{(timesheet as any).departmentName || getDepartmentName(departments, timesheet.departmentId || employee?.departmentId)}</td>
+                      <td data-label="Phòng ban">{(timesheet as any).departmentName as string || getDepartmentName(departments, timesheet.departmentId || employee?.departmentId)}</td>
                       <td data-label="Ngày" className="cell-nowrap">{formatDate(timesheet.workDate)}</td>
                       <td data-label="Check-in" className="cell-nowrap">{timesheet.checkIn || '--'}</td>
                       <td data-label="Check-out" className="cell-nowrap">{timesheet.checkOut || '--'}</td>

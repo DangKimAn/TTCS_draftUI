@@ -22,6 +22,26 @@ function LeaveRequestSection({ summary, requests, leaveTypes = [], onSubmitReque
   );
   const selectedLeaveType = leaveTypes.find((item) => item.id === form.typeLeaveID) || null;
 
+  const { todayStr, maxDateStr } = useMemo(() => {
+    const today = new Date();
+    // Use local timezone to prevent offset issues around midnight
+    const offset = today.getTimezoneOffset() * 60000;
+    const localToday = new Date(today.getTime() - offset);
+    const todayString = localToday.toISOString().slice(0, 10);
+    
+    const maxDate = new Date(localToday);
+    maxDate.setDate(localToday.getDate() + 15);
+    
+    // Prevent selecting dates in the next year
+    const currentYear = localToday.getFullYear();
+    if (maxDate.getFullYear() > currentYear) {
+      maxDate.setFullYear(currentYear, 11, 31); // Dec 31 of current year
+    }
+
+    const maxDateString = maxDate.toISOString().slice(0, 10);
+    return { todayStr: todayString, maxDateStr: maxDateString };
+  }, []);
+
   useEffect(() => {
     if (!form.typeLeaveID && leaveTypes.length > 0) {
       setForm((current) => ({
@@ -32,8 +52,6 @@ function LeaveRequestSection({ summary, requests, leaveTypes = [], onSubmitReque
   }, [form.typeLeaveID, leaveTypes]);
 
   const validate = () => {
-    const today = new Date().toISOString().slice(0, 10);
-
     if (!form.typeLeaveID) {
       return 'Chưa có loại nghỉ phép từ API. Vui lòng tải lại dữ liệu nghỉ phép.';
     }
@@ -46,8 +64,12 @@ function LeaveRequestSection({ summary, requests, leaveTypes = [], onSubmitReque
       return 'Ngày kết thúc không được sớm hơn ngày bắt đầu.';
     }
 
-    if (form.startDate < today) {
+    if (form.startDate < todayStr) {
       return 'Không nên tạo đơn nghỉ phép cho ngày trong quá khứ.';
+    }
+
+    if (form.startDate > maxDateStr || form.endDate > maxDateStr) {
+      return 'Chỉ được phép đăng ký trong vòng 15 ngày tới và không vượt quá năm hiện tại.';
     }
 
     if (totalDays <= 0) {
@@ -155,6 +177,8 @@ function LeaveRequestSection({ summary, requests, leaveTypes = [], onSubmitReque
                   id="leave-start-date"
                   type="date"
                   name="startDate"
+                  min={todayStr}
+                  max={maxDateStr}
                   value={form.startDate}
                   onChange={handleChange}
                 />
@@ -166,6 +190,8 @@ function LeaveRequestSection({ summary, requests, leaveTypes = [], onSubmitReque
                   id="leave-end-date"
                   type="date"
                   name="endDate"
+                  min={form.startDate || todayStr}
+                  max={maxDateStr}
                   value={form.endDate}
                   onChange={handleChange}
                 />
@@ -247,6 +273,8 @@ function getLeaveStatusClass(status) {
       return 'dashboard-status-badge--success';
     case 'Rejected':
       return 'dashboard-status-badge--danger';
+    case 'Cancelled':
+      return 'dashboard-status-badge--neutral';
     default:
       return 'dashboard-status-badge--warning';
   }
@@ -258,6 +286,8 @@ function getLeaveStatusLabel(status) {
       return 'Đã duyệt';
     case 'Rejected':
       return 'Từ chối';
+    case 'Cancelled':
+      return 'Đã hủy';
     default:
       return 'Chờ duyệt';
   }

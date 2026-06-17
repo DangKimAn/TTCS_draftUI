@@ -237,10 +237,14 @@ function ManagerDashboard() {
 
     const handleNewNotification = (notification) => {
       if (notification.relatedType === 'LEAVE') {
-        void loadReviewLeaves();
+        setTimeout(() => {
+          void loadReviewLeaves();
+        }, 1500);
       } else if (notification.relatedType === 'TIMESHEET') {
-        void loadReviewTimesheets();
-        void loadReviewCorrections();
+        setTimeout(() => {
+          void loadReviewTimesheets();
+          void loadReviewCorrections();
+        }, 1500);
       }
 
       if (Notification.permission === 'granted') {
@@ -296,13 +300,24 @@ function ManagerDashboard() {
     }
     return departmentIds.map((departmentId: any) => {
       const mockDepartment = API_CONFIG.ENABLE_MOCK_FALLBACK ? mockDepartments.find((department) => department.id === departmentId) : null;
-      const employeeInDepartment = teamEmployees.find((employee) => employee.departmentId === departmentId);
-      return mockDepartment || {
+      if (mockDepartment) return mockDepartment;
+
+      const employeeInDepartment = teamEmployees.find((employee) => employee.departmentId === departmentId && employee.departmentName);
+      if (employeeInDepartment?.departmentName) {
+        return { id: departmentId, name: employeeInDepartment.departmentName };
+      }
+
+      const timesheetInDepartment = timesheets.find((ts) => ts.departmentName && (ts.departmentId === departmentId || teamEmployeeIds.has(ts.employeeId)));
+      if (timesheetInDepartment?.departmentName) {
+        return { id: departmentId, name: timesheetInDepartment.departmentName };
+      }
+
+      return {
         id: departmentId,
-        name: employeeInDepartment?.departmentName || 'Phong ban hien tai',
+        name: 'Phong ban hien tai',
       };
     });
-  }, [currentManager.departmentId, teamEmployees]);
+  }, [currentManager.departmentId, teamEmployees, timesheets, teamEmployeeIds]);
 
   const [processingId, setProcessingId] = useState<string | null>(null);
 
@@ -355,7 +370,6 @@ function ManagerDashboard() {
       await reviewCorrectionRequest(correctionId, 'Approved');
       setCorrectionRequests((current) => current.filter((item) => item.id !== correctionId));
       showFeedback('success', 'Da duyet correction va cap nhat ban ghi cham cong neu co gio de xuat.');
-      void loadReviewTimesheets();
     } catch (error: any) {
       showFeedback('danger', error?.message || 'Khong the duyet correction.');
     } finally {
@@ -407,11 +421,10 @@ function ManagerDashboard() {
         ? `Đã duyệt đơn ${request.code}.`
         : `Đã duyệt đơn ${request.code} và trừ ${request.totalDays} ngày phép.`;
       showFeedback('success', successMessage);
-      void loadReviewLeaves();
     } catch (error: any) {
       showFeedback('danger', error?.message || 'Khong the duyet don nghi phep.');
     } finally {
-      setProcessingId(requestId); // Wait, this should be null. Fix in next block or here: setProcessingId(null);
+      setProcessingId(null);
     }
   };
 
@@ -510,7 +523,6 @@ function ManagerDashboard() {
       );
       showFeedback('success', `Đã từ chối đơn nghỉ phép ${request.code}.`);
       setRejectDialog(null);
-      void loadReviewLeaves();
     } catch (error: any) {
       showFeedback('danger', error?.message || 'Khong the tu choi don nghi phep.');
     } finally {

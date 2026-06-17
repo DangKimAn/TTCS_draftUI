@@ -101,10 +101,10 @@ export function buildCurrentManager(session: any) {
   const fallbackManager = API_CONFIG.ENABLE_MOCK_FALLBACK
     ? mockCurrentUser
     : {
-        id: '',
-        departmentId: '',
-        managedEmployeeIds: [],
-      };
+      id: '',
+      departmentId: '',
+      managedEmployeeIds: [],
+    };
 
   return {
     ...fallbackManager,

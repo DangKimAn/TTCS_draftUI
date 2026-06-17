@@ -117,7 +117,7 @@ export async function importHrUsersExcel(file: File): Promise<HrImportResult> {
       importedCount: Number(result?.importedCount || 0),
       errors: Array.isArray(result?.errors) ? result.errors : [],
       successes: Array.isArray(result?.successes)
-        ? result.successes.map((s: any) => ({
+        ? result.successes.map((s: Record<string, unknown>) => ({
             row: Number(s.row || 0),
             employeeCode: s.userID ? `EMP-${String(s.userID).slice(0, 8).toUpperCase()}` : 'EMP',
             username: String(s.username || ''),
@@ -133,9 +133,9 @@ export async function importHrUsersExcel(file: File): Promise<HrImportResult> {
 
     if (axios.isAxiosError(error)) {
       normalizedError.importErrors = getImportErrors(error.response?.data);
-      const data = error.response?.data as any;
+      const data = error.response?.data as Record<string, unknown>;
       normalizedError.importSuccesses = Array.isArray(data?.successes)
-        ? data.successes.map((s: any) => ({
+        ? data.successes.map((s: Record<string, unknown>) => ({
             row: Number(s.row || 0),
             employeeCode: s.userID ? `EMP-${String(s.userID).slice(0, 8).toUpperCase()}` : 'EMP',
             username: String(s.username || ''),
@@ -371,7 +371,7 @@ export function normalizeHrEmployee(payload: Record<string, any>, departments: A
     payload.departmentId ||
     findDepartmentIdByName(departments, payload.departmentName || payload.department?.departmentName) ||
     '';
-  const role = normalizeRole(payload.role?.nameRole || payload.nameRole || payload.roleName || payload.role);
+  const role = normalizeRole(payload.roleName || payload.role?.nameRole || payload.nameRole || payload.role);
   const fullName = payload.fullName || payload.name || payload.username || payload.email || id;
 
   return {
@@ -381,7 +381,6 @@ export function normalizeHrEmployee(payload: Record<string, any>, departments: A
     fullName,
     email: payload.email || '',
     departmentId,
-    title: payload.title || roleToTitle(role),
     role,
     status: payload.status || (payload.isActive === false ? 'Inactive' : 'Active'),
     isActive: payload.isActive !== false,
@@ -567,7 +566,7 @@ function getImportErrors(data: unknown): HrImportError[] {
     return [];
   }
 
-  const payload = data as Record<string, any>;
+  const payload = data as any;
   const candidates = [
     payload.errors,
     payload.response?.errors,
@@ -611,17 +610,6 @@ function toBackendRoleName(role: string) {
   }
 
   return role;
-}
-
-function roleToTitle(role: string) {
-  switch (role) {
-    case 'manager':
-      return 'Manager';
-    case 'hr':
-      return 'HR';
-    default:
-      return 'Nhân viên';
-  }
 }
 
 function findDepartmentIdByName(departments: Array<Record<string, any>>, departmentName?: string) {

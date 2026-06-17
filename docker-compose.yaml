@@ -7,11 +7,11 @@ services:
       dockerfile: Dockerfile
     container_name: timesheet-backend
     ports:
-      - "3000:3000"
+      - "3001:3000"
     env_file:
       - ./backend/.env
     environment:
-      - TZ=${TZ:-UTC}
+      - TZ=${TZ:-Asia/Ho_Chi_Minh}
     restart: unless-stopped
 
   frontend:
@@ -24,7 +24,7 @@ services:
     env_file:
       - ./frontend/.env
     environment:
-      - VITE_TZ=${VITE_TZ:-UTC}
+      - VITE_TZ=${VITE_TZ:-Asia/Ho_Chi_Minh}
     depends_on:
       - backend
     restart: unless-stopped

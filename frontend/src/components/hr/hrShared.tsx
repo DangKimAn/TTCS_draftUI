@@ -10,7 +10,6 @@ export const emptyEmployeeForm = {
   email: '',
   password: '',
   departmentId: '',
-  title: '',
   role: 'employee',
   salaryCoefficient: '2.0',
   leaveBalance: '12',
@@ -74,7 +73,7 @@ export function FormField({
   value: string;
   error?: string;
   disabled?: boolean;
-  onChange: (event: any) => void;
+  onChange: (event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => void;
 }) {
   return (
     <label>
@@ -135,10 +134,6 @@ export function validateEmployeeForm(
 
   if (!form.departmentId) {
     errors.departmentId = 'Phòng ban không được trống.';
-  }
-
-  if (!form.title.trim()) {
-    errors.title = 'Chức vụ không được trống.';
   }
 
   if (!form.role) {
@@ -249,6 +244,8 @@ export function getStatusClass(status?: string) {
       return 'dashboard-status-badge--warning';
     case 'Rejected':
       return 'dashboard-status-badge--danger';
+    case 'Cancelled':
+      return 'dashboard-status-badge--neutral';
     case 'Inactive':
       return 'dashboard-status-badge--neutral';
     default:
@@ -284,6 +281,8 @@ export function formatHrStatus(status?: string) {
       return 'Đã duyệt';
     case 'Rejected':
       return 'Từ chối';
+    case 'Cancelled':
+      return 'Đã hủy';
     case 'Ready':
       return 'Sẵn sàng';
     default:

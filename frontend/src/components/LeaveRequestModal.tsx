@@ -24,6 +24,8 @@ function LeaveRequestModal({ isOpen, selectedRequest, onClose }) {
         return 'dashboard-status-badge--success';
       case 'Rejected':
         return 'dashboard-status-badge--danger';
+      case 'Cancelled':
+        return 'dashboard-status-badge--neutral';
       default:
         return 'dashboard-status-badge--warning';
     }
@@ -35,6 +37,8 @@ function LeaveRequestModal({ isOpen, selectedRequest, onClose }) {
         return 'Đã duyệt';
       case 'Rejected':
         return 'Từ chối';
+      case 'Cancelled':
+        return 'Đã hủy';
       default:
         return 'Chờ duyệt';
     }
@@ -72,9 +76,9 @@ function LeaveRequestModal({ isOpen, selectedRequest, onClose }) {
             />
           </label>
 
-          {selectedRequest.status === 'Rejected' && selectedRequest.rejectionReason && (
+          {(selectedRequest.status === 'Rejected' || selectedRequest.status === 'Cancelled') && selectedRequest.rejectionReason && (
             <label className="employee-form-grid__full">
-              <span>Lý do từ chối</span>
+              <span>{selectedRequest.status === 'Cancelled' ? 'Lý do hủy' : 'Lý do từ chối'}</span>
               <textarea
                 rows={2}
                 value={selectedRequest.rejectionReason}

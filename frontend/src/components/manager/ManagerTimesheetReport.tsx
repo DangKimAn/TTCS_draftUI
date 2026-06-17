@@ -35,7 +35,7 @@ const DEFAULT_REPORT_FILTERS = {
   status: 'all',
 };
 
-const ReportRowItem = React.memo(({ index, data, style }: any) => {
+const ReportRowItem = React.memo(({ index, data, style }: { index: number, data: any, style: React.CSSProperties }) => {
   const { previewRows, getDepartmentName } = data;
   const row = previewRows[index];
 
@@ -52,7 +52,7 @@ const ReportRowItem = React.memo(({ index, data, style }: any) => {
         <StatusBadge status={row.status} />
       </div>
       <div className="flex-1 px-4 py-4 min-w-[150px]">
-        <WarningList warnings={row.warnings as any} />
+        <WarningList warnings={row.warnings as string[]} />
       </div>
     </div>
   );
@@ -105,6 +105,17 @@ function ManagerTimesheetReport({
   );
   const summary = reportData?.summary || EMPTY_SUMMARY;
 
+  const enrichedDepartments = useMemo(() => {
+    return departments.map(d => {
+      if (d.name !== 'Phong ban hien tai') return d;
+      const realName = reportData?.rows.find(r => r.departmentId === d.id && r.departmentName)?.departmentName;
+      return {
+        ...d,
+        name: realName || d.name
+      };
+    });
+  }, [departments, reportData?.rows]);
+
   const handleChange = (event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = event.target;
     setFilters((current) => ({
@@ -119,11 +130,27 @@ function ManagerTimesheetReport({
       return;
     }
 
+    const currentFilters = reportData?.filters || filters;
+    const employeeName = currentFilters.employeeId === 'all' 
+      ? 'Tat ca nhan vien' 
+      : employees.find(e => e.id === currentFilters.employeeId)?.fullName || currentFilters.employeeId;
+    
+    const departmentName = enrichedDepartments.length > 0
+      ? enrichedDepartments[0].name
+      : 'Phong ban cua toi';
+
     try {
+      const exportRows = previewRows.map(row => ({
+        ...row,
+        employeeName: row.employeeName || employees.find(e => e.id === row.employeeId)?.fullName || row.employeeId,
+        departmentName: row.departmentName || enrichedDepartments[0]?.name || '--'
+      }));
+
       exportTimesheetReportPdf({
         title: 'Bao cao timesheet',
-        filters: reportData?.filters || filters,
-        rows: previewRows,
+        filters: currentFilters,
+        filterNames: { employeeName, departmentName },
+        rows: exportRows,
         summary,
       });
       onFeedback('success', `Da mo ban PDF cho ${previewRows.length} dong timesheet.`);
@@ -132,7 +159,7 @@ function ManagerTimesheetReport({
     }
   };
 
-  const getDepartmentName = (id: string) => departments.find((department) => department.id === id)?.name || '--';
+  const getDepartmentName = (id: string) => enrichedDepartments.find((department) => department.id === id)?.name || '--';
   const rowHeight = 64;
   const listHeight = Math.min(Math.max(previewRows.length, 1) * rowHeight, 600);
 
@@ -171,8 +198,8 @@ function ManagerTimesheetReport({
           </Field>
           <Field label="Phong ban">
             <select name="departmentId" value={filters.departmentId} onChange={handleChange} className="px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-800 outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10 transition-all cursor-pointer">
-              <option value="all">Phong ban cua toi</option>
-              {departments.map((department) => (
+              {enrichedDepartments.length !== 1 && <option value="all">Phong ban cua toi</option>}
+              {enrichedDepartments.map((department) => (
                 <option key={department.id} value={department.id}>{department.name}</option>
               ))}
             </select>

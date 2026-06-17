@@ -1,3 +1,4 @@
+import { FiFileText, FiGrid } from 'react-icons/fi';
 import CorrectionRequestModal from '../CorrectionRequestModal';
 import SubmitTimesheetPanel from '../SubmitTimesheetPanel';
 import TimesheetFilterBar from '../TimesheetFilterBar';
@@ -20,6 +21,8 @@ function TimesheetSection({
   onSubmitTimesheet,
   onCloseCorrection,
   onSubmitCorrection,
+  onExportExcel,
+  onExportPdf,
 }) {
   if (!timesheetData) {
     return (
@@ -40,10 +43,26 @@ function TimesheetSection({
 
   return (
     <section className="employee-section">
-      <div className="employee-section__header">
+      <div className="employee-section__header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <h1>Bảng công của tôi</h1>
           <p>Xem log chấm công, cảnh báo và gửi xác nhận bảng công theo từng kỳ.</p>
+        </div>
+        <div style={{ display: 'flex', gap: '12px' }}>
+          <button 
+            className="dashboard-button"
+            onClick={onExportExcel}
+            style={{ backgroundColor: '#16a34a', color: 'white', borderColor: '#16a34a', display: 'flex', alignItems: 'center', gap: '6px' }}
+          >
+            <FiGrid /> Xuất Excel
+          </button>
+          <button 
+            className="dashboard-button"
+            onClick={onExportPdf}
+            style={{ backgroundColor: '#ea580c', color: 'white', borderColor: '#ea580c', display: 'flex', alignItems: 'center', gap: '6px' }}
+          >
+            <FiFileText /> Xuất PDF
+          </button>
         </div>
       </div>
 
