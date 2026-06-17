@@ -195,27 +195,28 @@ function HRLeaveTypeManagement({
                           <FiEdit3 />
                           Sửa
                         </button>
+                        <button
+                          type="button"
+                          className="dashboard-button hr-button--danger hr-action-button"
+                          onClick={() => setDeleteTarget(type)}
+                          disabled={type.status === 'Inactive' || pendingId === type.id}
+                          style={type.status === 'Inactive' ? { opacity: 0.4, cursor: 'not-allowed' } : {}}
+                        >
+                          <FiTrash2 />
+                          Vô hiệu hóa
+                        </button>
                         {type.status === 'Inactive' ? (
                           <button
                             type="button"
                             className="dashboard-button dashboard-button--ghost hr-action-button"
                             onClick={() => void handleActivateLeaveType(type)}
                             disabled={pendingId === type.id}
+                            style={{ color: '#059669', borderColor: '#a7f3d0', backgroundColor: '#ecfdf5' }}
                           >
                             <FiPower />
-                            Kích hoạt
+                            Kích hoạt lại
                           </button>
-                        ) : (
-                          <button
-                            type="button"
-                            className="dashboard-button hr-button--danger hr-action-button"
-                            onClick={() => setDeleteTarget(type)}
-                            disabled={pendingId === type.id}
-                          >
-                            <FiTrash2 />
-                            Vô hiệu hóa
-                          </button>
-                        )}
+                        ) : null}
                       </div>
                     </td>
                   </tr>

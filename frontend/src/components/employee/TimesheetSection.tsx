@@ -115,7 +115,7 @@ function TimesheetSection({
 
         <aside className="dashboard-content__side">
           <SubmitTimesheetPanel
-            title={`Gửi bảng công Tháng ${new Date(timesheetData.period.startDate).getMonth() + 1}/${new Date(timesheetData.period.startDate).getFullYear()}`}
+            title={`Gửi bảng công Tháng ${timesheetData.period.periodMonth || new Date(timesheetData.period.startDate).getMonth() + 1}/${timesheetData.period.periodYear || new Date(timesheetData.period.startDate).getFullYear()} (${new Date(timesheetData.period.startDate).getDate()}/${new Date(timesheetData.period.startDate).getMonth() + 1} - ${new Date(timesheetData.period.endDate).getDate()}/${new Date(timesheetData.period.endDate).getMonth() + 1})`}
             stats={timesheetData.stats}
             summaryStatus={timesheetData.summary.status}
             submitState={submitState}

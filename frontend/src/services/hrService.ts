@@ -408,7 +408,7 @@ export function normalizeHrLeaveType(payload: Record<string, any>) {
     isPaid: hasSalary > 0,
     hasSalary,
     defaultDaysPerYear: Number(payload.defaultDaysPerYear ?? (hasSalary > 0 ? 12 : 0)),
-    status: payload.status || 'Active',
+    status: payload.status || (payload.isActive === false ? 'Inactive' : 'Active'),
     note: payload.note || '',
     hasUsageHistory: Boolean(payload.hasUsageHistory || payload.applications?.length),
   };

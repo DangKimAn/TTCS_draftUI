@@ -31,6 +31,7 @@ interface BackendAttendanceEntry {
   IPAddress?: string;
   ipAddress?: string;
   canRequestCorrection?: boolean;
+  isWarning?: boolean;
 }
 
 const attendanceCacheByKey = new Map<string, Attendance[]>();
@@ -273,7 +274,7 @@ function normalizeAttendanceEntry(entry: BackendAttendanceEntry, userID: string)
     ipAddressAtCheckOut: null,
     deviceInfoAtCheckIn: null,
     deviceInfoAtCheckOut: null,
-    hasIpWarning: false,
+    hasIpWarning: Boolean(entry.isWarning),
     note: status === 'Missing Out' ? 'Bạn đã quên Check-out. Vui lòng giải trình.' : '',
   };
 }

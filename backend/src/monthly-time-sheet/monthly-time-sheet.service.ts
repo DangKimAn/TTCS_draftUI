@@ -732,25 +732,21 @@ export class MonthlyTimeSheetService {
         const currentMonth = currentDate.getMonth() + 1;
         const currentYear = currentDate.getFullYear();
 
-        if (currentDay < 1 || currentDay > 5) {
+        if (currentDay < 17 || currentDay > 23) {
           throw new BadRequestException(
-            'Bạn chỉ có thể nộp bảng công từ ngày 1 đến ngày 5 hàng tháng.',
+            'Bạn chỉ có thể nộp bảng công từ ngày 17 đến ngày 23 hàng tháng.',
           );
         }
 
-        let expectedMonth = currentMonth - 1;
+        let expectedMonth = currentMonth;
         let expectedYear = currentYear;
-        if (expectedMonth === 0) {
-          expectedMonth = 12;
-          expectedYear = currentYear - 1;
-        }
 
         if (
           monthGet.month !== expectedMonth ||
           monthGet.year !== expectedYear
         ) {
           throw new BadRequestException(
-            `Bạn chỉ được phép nộp bảng công của tháng trước (${expectedMonth}/${expectedYear}).`,
+            `Bạn chỉ được phép nộp bảng công của tháng hiện tại (${expectedMonth}/${expectedYear}).`,
           );
         }
 
@@ -903,6 +899,11 @@ export class MonthlyTimeSheetService {
         if (monthGet.status === MonthlyTimesheetStatus.APPROVED)
           throw new BadRequestException(
             'This monthly timesheet was already approved',
+          );
+
+        if (!accept && monthGet.status === MonthlyTimesheetStatus.REJECTED)
+          throw new BadRequestException(
+            'This monthly timesheet was already rejected',
           );
 
         const now = new Date();

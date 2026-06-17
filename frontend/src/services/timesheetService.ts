@@ -1035,24 +1035,20 @@ export function canSubmitTimesheet(
     const currentMonth = currentDate.getMonth() + 1;
     const currentYear = currentDate.getFullYear();
 
-    if (currentDay < 1 || currentDay > 5) {
+    if (currentDay < 17 || currentDay > 23) {
       return {
         allowed: false,
-        reason: 'Chỉ có thể nộp bảng công từ ngày 1 đến ngày 5 hàng tháng.',
+        reason: 'Chỉ có thể nộp bảng công từ ngày 17 đến ngày 23 hàng tháng.',
       };
     }
 
-    let expectedMonth = currentMonth - 1;
+    let expectedMonth = currentMonth;
     let expectedYear = currentYear;
-    if (expectedMonth === 0) {
-      expectedMonth = 12;
-      expectedYear = currentYear - 1;
-    }
 
     if (tsMonth !== expectedMonth || tsYear !== expectedYear) {
       return {
         allowed: false,
-        reason: `Chỉ được nộp bảng công của tháng trước (${expectedMonth}/${expectedYear}).`,
+        reason: `Chỉ được nộp bảng công của tháng hiện tại (${expectedMonth}/${expectedYear}).`,
       };
     }
   }

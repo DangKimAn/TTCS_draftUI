@@ -29,8 +29,6 @@ export class TypeLeaveService implements OnModuleInit {
           data: [
             { code: 'AL', nameTypeLeave: 'Nghỉ phép năm', hasSalary: 1 },
             { code: 'UP', nameTypeLeave: 'Nghỉ không lương', hasSalary: 0 },
-            { code: 'SL', nameTypeLeave: 'Nghỉ ốm', hasSalary: 1 },
-            { code: 'ML', nameTypeLeave: 'Nghỉ cưới', hasSalary: 1 },
           ],
         });
         console.log('Seeding default TypeLeave data completed.');
