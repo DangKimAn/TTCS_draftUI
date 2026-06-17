@@ -106,7 +106,7 @@ export class AuthService {
       const userGet = await this.userService.updateUser(data?.userID || '', {
         refreshToken: newRefreshToken,
       });
-      if (userGet.statusCode !== OK_CODE) return { statusCode, message };
+      if (userGet.statusCode !== OK_CODE) return { statusCode: userGet.statusCode, message: userGet.message };
 
       return {
         statusCode: CREATED_RESPONE,
@@ -493,8 +493,8 @@ export class AuthService {
 
     if (updateUser.statusCode !== OK_CODE)
       return {
-        statusCode,
-        message,
+        statusCode: updateUser.statusCode,
+        message: updateUser.message,
       };
 
     return {

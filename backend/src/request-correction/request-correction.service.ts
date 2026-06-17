@@ -487,6 +487,7 @@ export class RequestCorrectionService {
         checkIn: nextCheckIn,
         checkOut: nextCheckOut,
         status: TimesheetStatus.PENDING,
+        isWarning: false,
       },
     });
   }

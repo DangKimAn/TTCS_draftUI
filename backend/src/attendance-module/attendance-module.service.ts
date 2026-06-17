@@ -18,6 +18,7 @@ import { MonthlyTimeSheetService } from 'src/monthly-time-sheet/monthly-time-she
 import GetAttendenceDto from './dto/getAttendence.dto';
 import { Prisma } from '@prisma/client';
 import { NotificationService } from 'src/notification/notification.service';
+import { getTimesheetPeriod } from 'src/common/period.helper';
 
 @Injectable()
 export class AttendanceModuleService {
@@ -109,9 +110,8 @@ export class AttendanceModuleService {
           };
         }
 
-        const month = now.getMonth() + 1;
-        const year = now.getFullYear();
-        const currentDateString = `${year}-${String(month).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+        const { month, year } = getTimesheetPeriod(now);
+        const currentDateString = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
         // 1. TỐI ƯU: Chạy song song tìm User và Timesheet + Select
         const [user, timesheet] = await Promise.all([
@@ -262,9 +262,8 @@ export class AttendanceModuleService {
         dbCtx: Prisma.TransactionClient,
       ): Promise<ResponseDto<unknown>> => {
         const now = new Date();
-        const month = now.getMonth() + 1;
-        const year = now.getFullYear();
-        const currentDateString = `${year}-${String(month).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+        const { month, year } = getTimesheetPeriod(now);
+        const currentDateString = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
         // 1. TỐI ƯU: Chạy song song lấy User và Timesheet + Select
         const [user, timesheet] = await Promise.all([

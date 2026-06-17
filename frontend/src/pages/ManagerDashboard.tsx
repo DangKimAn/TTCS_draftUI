@@ -643,6 +643,7 @@ function ManagerDashboard() {
         timesheets={scopedTimesheets}
         leaveRequests={scopedLeaveRequests}
         correctionRequests={scopedCorrectionRequests}
+        isSubmitting={!!processingId}
         onChange={(reason) =>
           setRejectDialog((current: any) => ({
             ...current,

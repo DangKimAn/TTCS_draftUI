@@ -15,6 +15,7 @@ interface RejectDialogProps {
   onChange: (reason: string) => void;
   onClose: () => void;
   onSubmit: () => Promise<void>;
+  isSubmitting?: boolean;
 }
 
 const RejectDialog: React.FC<RejectDialogProps> = ({
@@ -25,6 +26,7 @@ const RejectDialog: React.FC<RejectDialogProps> = ({
   onChange,
   onClose,
   onSubmit,
+  isSubmitting,
 }) => {
   if (!dialog) return null;
 
@@ -58,6 +60,7 @@ const RejectDialog: React.FC<RejectDialogProps> = ({
             value={dialog.reason}
             onChange={(e) => onChange(e.target.value)}
             autoFocus
+            disabled={isSubmitting}
           />
           {dialog.error && <p className="text-xs font-medium text-rose-500">{dialog.error}</p>}
         </div>
@@ -67,16 +70,18 @@ const RejectDialog: React.FC<RejectDialogProps> = ({
             type="button"
             className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-700 font-bold hover:bg-slate-50 transition-all"
             onClick={onClose}
+            disabled={isSubmitting}
           >
             Hủy bỏ
           </button>
           <button
             type="button"
-            className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-rose-500 text-white font-bold hover:bg-rose-600 shadow-lg shadow-rose-500/20 transition-all"
+            className={`flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-rose-500 text-white font-bold hover:bg-rose-600 shadow-lg shadow-rose-500/20 transition-all ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}
             onClick={onSubmit}
+            disabled={isSubmitting}
           >
             <FiCheck />
-            Xác nhận từ chối
+            {isSubmitting ? 'Đang xử lý...' : 'Xác nhận từ chối'}
           </button>
         </div>
       </div>
