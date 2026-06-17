@@ -25,8 +25,18 @@ function ProfileSection({ profile, onSaveProfile, onUploadAvatar, personalStats 
       return;
     }
 
+    let initialPhone = profile.phone || '';
+    if (initialPhone) {
+      let raw = initialPhone;
+      if (raw.startsWith('(+84) ')) raw = raw.slice(6);
+      else if (raw.startsWith('(+84)')) raw = raw.slice(5);
+      raw = raw.replace(/\D/g, '');
+      if (raw.length > 10) raw = raw.slice(0, 10);
+      initialPhone = raw.length > 0 ? `(+84) ${raw}` : '';
+    }
+
     setForm({
-      phone: profile.phone || '',
+      phone: initialPhone,
       address: profile.address || '',
       emergencyContact: profile.emergencyContact || '',
     });
@@ -50,6 +60,14 @@ function ProfileSection({ profile, onSaveProfile, onUploadAvatar, personalStats 
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+    
+    const rawPhone = form.phone.replace(/^\(\+84\)\s*/, '').replace(/\D/g, '');
+    if (rawPhone.length > 0 && rawPhone.length !== 10) {
+      setFeedbackType('danger');
+      setFeedback('Số điện thoại bắt buộc phải có đủ 10 số.');
+      return;
+    }
+    
     try {
       await onSaveProfile(form);
       setFeedbackType('success');
@@ -220,7 +238,32 @@ function ProfileSection({ profile, onSaveProfile, onUploadAvatar, personalStats 
             <form className="employee-form-grid" onSubmit={handleSubmit}>
               <label htmlFor="profile-phone">
                 <span>Số điện thoại</span>
-                <input id="profile-phone" name="phone" value={form.phone} onChange={handleChange} />
+                <input 
+                  id="profile-phone" 
+                  name="phone" 
+                  value={form.phone} 
+                  onChange={(e) => {
+                    let val = e.target.value;
+                    if (val.startsWith('(+84) ')) val = val.slice(6);
+                    else if (val.startsWith('(+84)')) val = val.slice(5);
+                    
+                    let raw = val.replace(/\D/g, '');
+                    if (raw.length > 10) raw = raw.slice(0, 10);
+                    
+                    setForm(curr => ({
+                      ...curr,
+                      phone: raw.length > 0 ? `(+84) ${raw}` : ''
+                    }));
+                  }}
+                  onKeyDown={(e) => {
+                    const allowed = ['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'Tab', 'Home', 'End'];
+                    if (allowed.includes(e.key) || e.ctrlKey || e.metaKey || e.altKey) return;
+                    if (!/^[0-9]$/.test(e.key)) {
+                      e.preventDefault();
+                    }
+                  }}
+                  placeholder="(+84) XXXXXXXXXX"
+                />
               </label>
 
               <label htmlFor="profile-address">

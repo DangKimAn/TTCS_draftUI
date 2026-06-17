@@ -54,6 +54,8 @@ export class MissedCheckoutTask {
 
     for (const entry of missedEntries) {
       try {
+        const employee = entry.monthlyTimesheet.employee;
+
         await this.prismaService.$transaction(async (tx) => {
           // 1. Cập nhật trạng thái entry thành MISSING_OUT
           await tx.timesheetEntry.update({
@@ -64,34 +66,33 @@ export class MissedCheckoutTask {
             },
           });
 
-          // 2. Gửi Warning (trong DB)
-          const employee = entry.monthlyTimesheet.employee;
-          await this.warningService.sendWarning({
-            userID: employee.userID,
-            content: `Hệ thống ghi nhận bạn quên check-out ngày ${entry.date}. Vui lòng tạo yêu cầu giải trình/chỉnh sửa.`,
-          });
-
-          // 3. Gửi Email thông báo (không làm rollback nếu lỗi)
-          try {
-            await this.emailService.send({
-              to: employee.email,
-              subject: '[HRM] Cảnh báo quên Check-out',
-              text: `Xin chào ${employee.username},\n\nHệ thống ghi nhận bạn quên check-out ngày ${entry.date}.\nTrạng thái công ngày này đã được chuyển sang "Missing Out".\nBạn sẽ không thể nộp bảng công tháng này cho đến khi giải trình xong.\nVui lòng truy cập hệ thống để tạo yêu cầu chỉnh sửa (Request Correction).\n\nTrân trọng,\nHệ thống HRM`,
-            });
-          } catch (emailErr) {
-            console.error(
-              `[MissedCheckoutTask] Failed to send email to ${employee.email}`,
-              emailErr,
-            );
-          }
-
-          // 4. Refresh canSubmit của MonthlyTimesheet
+          // 2. Refresh canSubmit của MonthlyTimesheet
           // Lưu ý: attendanceService.GetAllEmployeeDidNotCheckOutBefore đã bao gồm monthlyTimesheet
           await tx.monthlyTimesheet.update({
             where: { monthlyTimesheetID: entry.monthlyTimesheetID },
             data: { canSubmit: false },
           });
         });
+
+        // 3. Gửi Warning (trong DB) - Thực hiện bên ngoài transaction chính để tránh timeout
+        await this.warningService.sendWarning({
+          userID: employee.userID,
+          content: `Hệ thống ghi nhận bạn quên check-out ngày ${entry.date}. Vui lòng tạo yêu cầu giải trình/chỉnh sửa.`,
+        });
+
+        // 4. Gửi Email thông báo (không làm rollback nếu lỗi) - Thực hiện bên ngoài transaction
+        try {
+          await this.emailService.send({
+            to: employee.email,
+            subject: '[HRM] Cảnh báo quên Check-out',
+            text: `Xin chào ${employee.username},\n\nHệ thống ghi nhận bạn quên check-out ngày ${entry.date}.\nTrạng thái công ngày này đã được chuyển sang "Missing Out".\nBạn sẽ không thể nộp bảng công tháng này cho đến khi giải trình xong.\nVui lòng truy cập hệ thống để tạo yêu cầu chỉnh sửa (Request Correction).\n\nTrân trọng,\nHệ thống HRM`,
+          });
+        } catch (emailErr) {
+          console.error(
+            `[MissedCheckoutTask] Failed to send email to ${employee.email}`,
+            emailErr,
+          );
+        }
       } catch (err) {
         console.error(
           `[MissedCheckoutTask] Error processing entry ${entry.timesheetEntryID}:`,

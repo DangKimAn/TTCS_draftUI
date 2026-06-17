@@ -92,6 +92,29 @@ export class LeaveApplicationService {
         };
       }
 
+      // Check for overlapping leave applications
+      const overlappingLeave = await this.prisma.leaveApplication.findFirst({
+        where: {
+          senderID: userID,
+          status: { in: [LeaveStatus.PENDING, LeaveStatus.APPROVED] },
+          startDate: { lte: end },
+          endDate: { gte: start },
+        },
+      });
+
+      if (overlappingLeave) {
+        const overlapStart = `${String(overlappingLeave.startDate.getDate()).padStart(2, '0')}/${String(overlappingLeave.startDate.getMonth() + 1).padStart(2, '0')}/${overlappingLeave.startDate.getFullYear()}`;
+        const overlapEnd = `${String(overlappingLeave.endDate.getDate()).padStart(2, '0')}/${String(overlappingLeave.endDate.getMonth() + 1).padStart(2, '0')}/${overlappingLeave.endDate.getFullYear()}`;
+        const statusStr =
+          overlappingLeave.status === LeaveStatus.APPROVED
+            ? 'Đã duyệt'
+            : 'Chờ duyệt';
+        return {
+          statusCode: BADREQUEST_CODE,
+          message: `Bạn đã có đơn xin nghỉ phép từ ngày ${overlapStart} đến ${overlapEnd} đang ở trạng thái ${statusStr}. Vui lòng chọn khoảng thời gian khác.`,
+        };
+      }
+
       const conflictDates = await this.findWorkLogConflictDates(
         userID,
         start,

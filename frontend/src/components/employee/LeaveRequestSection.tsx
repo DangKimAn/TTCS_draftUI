@@ -241,10 +241,13 @@ function LeaveRequestSection({ summary, requests, leaveTypes = [], onSubmitReque
                   onClick={() => setSelectedRequest(item)}
                   style={{ cursor: 'pointer' }}
                 >
-                  <div>
-                    <strong>{item.type}</strong>
-                    <span>{formatDate(item.startDate)} - {formatDate(item.endDate)} | {item.totalDays} ngày | {item.isUnpaid ? 'Không lương' : 'Có lương'}</span>
-                    <span>{item.reason}</span>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <strong style={{ fontSize: '1.05rem', marginBottom: '2px' }}>{item.type}</strong>
+                    <span style={{ color: '#64748b' }}>{formatDate(item.startDate)} - {formatDate(item.endDate)} | {item.totalDays} ngày</span>
+                    <span style={{ fontWeight: 500, color: item.isUnpaid ? '#64748b' : '#0ea5e9' }}>
+                      {item.isUnpaid ? 'Không lương' : 'Có lương'}
+                    </span>
+                    <span style={{ color: '#475569', fontStyle: 'italic' }}>Lý do: {item.reason}</span>
                   </div>
                   <div className={`dashboard-status-badge ${getLeaveStatusClass(item.status)}`}>
                     {getLeaveStatusLabel(item.status)}
