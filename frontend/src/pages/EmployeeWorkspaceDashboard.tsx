@@ -289,7 +289,10 @@ function EmployeeWorkspaceDashboard() {
 
     const summary = timesheetData.summary as any; // Cast to access MonthlyTimesheetData fields
     
-    if (summary?.status === 'Submitted' || summary?.status === 'Approved') {
+    if (summary?.status === 'Approved') {
+      return { allowed: false, reason: 'Bảng công kỳ này đã được phê duyệt.' };
+    }
+    if (summary?.status === 'Submitted') {
       return { allowed: false, reason: 'Bảng công đã được gửi xác nhận và đang chờ duyệt.' };
     }
 
