@@ -212,6 +212,85 @@
   color: var(--text-soft);
 }
 
+.timesheet-mobile-list {
+  display: none;
+}
+
+.timesheet-mobile-card {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid rgba(220, 231, 242, 0.92);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.92);
+}
+
+.timesheet-mobile-card__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.timesheet-mobile-card__header strong,
+.timesheet-mobile-card__grid strong {
+  color: var(--text-main);
+  overflow-wrap: anywhere;
+}
+
+.timesheet-mobile-card__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.timesheet-mobile-card__grid > div,
+.timesheet-mobile-card__note {
+  display: grid;
+  gap: 4px;
+  padding: 10px;
+  border-radius: 12px;
+  background: rgba(248, 251, 255, 0.92);
+  border: 1px solid rgba(220, 231, 242, 0.82);
+}
+
+.timesheet-mobile-card__grid span,
+.timesheet-mobile-card__note span,
+.timesheet-mobile-card__warnings span {
+  color: var(--text-soft);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.timesheet-mobile-card__note p {
+  margin: 0;
+  color: var(--text-main);
+  overflow-wrap: anywhere;
+}
+
+.timesheet-mobile-card__warnings {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.timesheet-mobile-card__button {
+  min-height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  background: rgba(234, 243, 255, 0.94);
+  border: 1px solid rgba(126, 170, 255, 0.28);
+  color: var(--primary-strong);
+  font-weight: 800;
+}
+
+.timesheet-mobile-card__button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
 .submit-timesheet-panel {
   display: grid;
   gap: 18px;
@@ -366,6 +445,15 @@
   .timesheet-table--api {
     min-width: 0;
   }
+
+  .timesheet-table-panel .dashboard-table-wrap {
+    display: none;
+  }
+
+  .timesheet-mobile-list {
+    display: grid;
+    gap: 12px;
+  }
 }
 
 @media (max-width: 768px) {
@@ -375,6 +463,20 @@
 
   .timesheet-page__hero-actions .dashboard-button {
     width: 100%;
+  }
+
+  .timesheet-mobile-card__header {
+    flex-direction: column;
+  }
+
+  .timesheet-mobile-card__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .modal-backdrop {
+    padding: 12px;
+    align-items: start;
+    overflow-y: auto;
   }
 }
 

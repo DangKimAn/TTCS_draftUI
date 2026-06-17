@@ -14,6 +14,7 @@ function TimesheetApiTable({ rows, isLoading }) {
       ) : rows.length === 0 ? (
         <div className="timesheet-empty-state">Chua co ban ghi timesheet nao.</div>
       ) : (
+        <>
         <div className="dashboard-table-wrap">
           <div className="dashboard-table timesheet-table timesheet-table--api">
             <div className="dashboard-table__head timesheet-table__head timesheet-table__head--api">
@@ -44,6 +45,45 @@ function TimesheetApiTable({ rows, isLoading }) {
             ))}
           </div>
         </div>
+        <div className="timesheet-mobile-list">
+          {rows.map((row) => (
+            <article key={row.id} className="timesheet-mobile-card">
+              <div className="timesheet-mobile-card__header">
+                <strong>{row.employeeName}</strong>
+                <div className={`dashboard-status-badge ${getApiStatusClass(row.status)}`}>
+                  {row.status}
+                </div>
+              </div>
+              <div className="timesheet-mobile-card__grid">
+                <div>
+                  <span>Ma</span>
+                  <strong>{row.id}</strong>
+                </div>
+                <div>
+                  <span>Nhan vien</span>
+                  <strong>{row.employeeId}</strong>
+                </div>
+                <div>
+                  <span>Ngay</span>
+                  <strong>{row.date}</strong>
+                </div>
+                <div>
+                  <span>Check-in</span>
+                  <strong>{row.checkIn || '--'}</strong>
+                </div>
+                <div>
+                  <span>Check-out</span>
+                  <strong>{row.checkOut || '--'}</strong>
+                </div>
+              </div>
+              <div className="timesheet-mobile-card__note">
+                <span>Ghi chu</span>
+                <p>{row.note || '--'}</p>
+              </div>
+            </article>
+          ))}
+        </div>
+        </>
       )}
     </section>
   );

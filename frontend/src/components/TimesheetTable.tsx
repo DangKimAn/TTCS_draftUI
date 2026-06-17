@@ -110,7 +110,8 @@ function TimesheetTable({ rows, onRequestCorrection }: { rows: any[]; onRequestC
       {rows.length === 0 ? (
         <div className="timesheet-empty-state">Chưa có dữ liệu chấm công trong kỳ này.</div>
       ) : (
-        <div className="dashboard-table-wrap">
+        <>
+        <div className="dashboard-table-wrap timesheet-desktop-table">
           <div className="dashboard-table timesheet-table">
             <div className="dashboard-table__head timesheet-table__head">
               <span>Ngày</span>
@@ -135,6 +136,54 @@ function TimesheetTable({ rows, onRequestCorrection }: { rows: any[]; onRequestC
             </List>
           </div>
         </div>
+        <div className="timesheet-mobile-list">
+          {rows.map((row) => (
+            <article key={row.id} className="timesheet-mobile-card">
+              <div className="timesheet-mobile-card__header">
+                <strong>{formatDateShort(row.date)}</strong>
+                <div className={`dashboard-status-badge ${getStatusBadgeClass(row.timesheetStatus || row.status)}`}>
+                  {getStatusLabel(row)}
+                </div>
+              </div>
+              <div className="timesheet-mobile-card__grid">
+                <div>
+                  <span>Vào</span>
+                  <strong>{row.checkInTime || '--'}</strong>
+                </div>
+                <div>
+                  <span>Ra</span>
+                  <strong>{row.checkOutTime || '--'}</strong>
+                </div>
+                <div>
+                  <span>Tổng giờ</span>
+                  <strong>{formatHours(row.totalHours)}</strong>
+                </div>
+                <div>
+                  <span>Chỉnh sửa</span>
+                  <strong>{getCorrectionLabel(row.correction)}</strong>
+                </div>
+              </div>
+              <div className="timesheet-mobile-card__warnings">
+                {row.warnings.length > 0 ? row.warnings.map((warning: string) => (
+                  <WarningBadge key={`${row.id}-${warning}`} label={warning} />
+                )) : <span>Không có cảnh báo</span>}
+              </div>
+              <button
+                type="button"
+                className="timesheet-mobile-card__button"
+                onClick={() => onRequestCorrection(row)}
+                disabled={
+                  row.correction?.status === 'Pending' ||
+                  row.timesheetStatus === 'Submitted' ||
+                  row.timesheetStatus === 'Approved'
+                }
+              >
+                Tạo yêu cầu
+              </button>
+            </article>
+          ))}
+        </div>
+        </>
       )}
     </section>
   );

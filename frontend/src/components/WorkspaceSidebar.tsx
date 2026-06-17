@@ -17,7 +17,7 @@ import {
 } from '../config/managerMenu';
 import { getHrSectionHref, hrLogoutItem, hrMenu, normalizeHrSection } from '../config/hrMenu';
 
-function WorkspaceSidebar({ isCollapsed, onToggleCollapse }) {
+function WorkspaceSidebar({ isCollapsed, onToggleCollapse, onNavigate }) {
   const navigate = useNavigate();
   const location = useLocation();
   const session = getAuthSession();
@@ -31,7 +31,13 @@ function WorkspaceSidebar({ isCollapsed, onToggleCollapse }) {
 
   const handleLogout = async () => {
     await logoutService();
+    onNavigate?.();
     navigate('/', { replace: true });
+  };
+
+  const handleNavigate = (href) => {
+    navigate(href);
+    onNavigate?.();
   };
 
   return (
@@ -42,7 +48,7 @@ function WorkspaceSidebar({ isCollapsed, onToggleCollapse }) {
       <div className="sidebar__header">
         <div 
           className="sidebar__brand" 
-          onClick={() => navigate(roleConfig.getHref(roleConfig.defaultSection))}
+          onClick={() => handleNavigate(roleConfig.getHref(roleConfig.defaultSection))}
           style={{ cursor: 'pointer' }}
           title="Về trang tổng quan"
         >
@@ -82,7 +88,7 @@ function WorkspaceSidebar({ isCollapsed, onToggleCollapse }) {
                 type="button"
                 className={`sidebar__item sidebar__item--button${isCollapsed ? ' sidebar__item--collapsed' : ''}${isActive ? ' is-active' : ''}`}
                 aria-current={isActive ? 'page' : undefined}
-                onClick={() => navigate(roleConfig.getHref(item.key))}
+                onClick={() => handleNavigate(roleConfig.getHref(item.key))}
                 title={isCollapsed ? item.label : undefined}
               >
                 <span className="sidebar__item-icon">

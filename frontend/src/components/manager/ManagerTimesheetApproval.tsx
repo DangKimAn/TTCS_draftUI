@@ -1,9 +1,10 @@
 import React, { useMemo } from 'react';
 import { FixedSizeList as List } from 'react-window';
-import { FiRefreshCw } from 'react-icons/fi';
+import { FiCheck, FiRefreshCw, FiXCircle } from 'react-icons/fi';
 import TimesheetApprovalTable from './TimesheetApprovalTable';
 import { ManagerFeedback } from './SharedComponents';
 import { CorrectionRow } from './TableRows';
+import { formatDate } from '../../utils/dateUtils';
 
 
 interface ManagerTimesheetApprovalProps {
@@ -104,7 +105,7 @@ const ManagerTimesheetApproval: React.FC<ManagerTimesheetApprovalProps> = ({
             <span className="text-[10px] font-black text-blue-500 uppercase tracking-widest block mb-1">Correction</span>
             <h2 className="text-xl font-bold text-slate-800 m-0">Yêu cầu chỉnh sửa đang chờ</h2>
           </div>
-          <div className="overflow-x-auto -mx-6">
+          <div className="manager-desktop-table overflow-x-auto -mx-6">
             <div className="min-w-[900px]">
               {/* Header */}
               <div className="flex bg-slate-50/50 border-y border-slate-100">
@@ -138,6 +139,69 @@ const ManagerTimesheetApproval: React.FC<ManagerTimesheetApprovalProps> = ({
                 </div>
               )}
             </div>
+          </div>
+
+          <div className="manager-mobile-list">
+            {correctionRows.length > 0 ? (
+              correctionRows.map((request) => {
+                const employee = request.employee || {};
+                const isProcessing = processingId === request.id;
+
+                return (
+                  <article key={request.id} className={`manager-mobile-card${isProcessing ? ' is-processing' : ''}`}>
+                    <div className="manager-mobile-card__header">
+                      <div>
+                        <strong>{employee.username || employee.fullName || employee.email || request.userEmail || '--'}</strong>
+                        <span>{employee.email || request.userEmail || '--'}</span>
+                      </div>
+                    </div>
+
+                    <div className="manager-mobile-card__grid">
+                      <div>
+                        <span>Ngày</span>
+                        <strong>{formatDate(request.date)}</strong>
+                      </div>
+                      <div>
+                        <span>Check-in đề xuất</span>
+                        <strong>{request.requestedCheckIn || '--'}</strong>
+                      </div>
+                      <div>
+                        <span>Check-out đề xuất</span>
+                        <strong>{request.requestedCheckOut || '--'}</strong>
+                      </div>
+                    </div>
+
+                    <div className="manager-mobile-card__note">
+                      <span>Lý do</span>
+                      <p>{request.reason || '--'}</p>
+                    </div>
+
+                    <div className="manager-mobile-card__actions">
+                      <button
+                        type="button"
+                        onClick={() => onApproveCorrection(request.id)}
+                        disabled={isProcessing}
+                        className="manager-mobile-card__button manager-mobile-card__button--success"
+                      >
+                        {isProcessing ? <FiRefreshCw className="animate-spin" /> : <FiCheck />} Duyệt
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => onRejectCorrection(request.id)}
+                        disabled={isProcessing}
+                        className="manager-mobile-card__button manager-mobile-card__button--danger"
+                      >
+                        {isProcessing ? <FiRefreshCw className="animate-spin" /> : <FiXCircle />} Từ chối
+                      </button>
+                    </div>
+                  </article>
+                );
+              })
+            ) : (
+              <div className="manager-mobile-empty">
+                {isLoading ? 'Đang tải dữ liệu...' : 'Không có yêu cầu chỉnh sửa nào đang chờ.'}
+              </div>
+            )}
           </div>
         </div>
 

@@ -56,11 +56,15 @@
 
 html {
   scroll-behavior: smooth;
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
 body {
   margin: 0;
   min-width: 320px;
+  max-width: 100%;
+  overflow-x: hidden;
   background:
     radial-gradient(circle at top left, rgba(79, 140, 255, 0.18), transparent 34%),
     radial-gradient(circle at top right, rgba(243, 183, 210, 0.15), transparent 32%),
@@ -99,6 +103,8 @@ textarea::placeholder {
 
 #root {
   min-height: 100vh;
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
 .app-shell {

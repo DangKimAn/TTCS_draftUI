@@ -8,6 +8,7 @@ const SIDEBAR_COLLAPSE_KEY = 'timesheet_pro_sidebar_collapsed';
 
 function MainLayout() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   useEffect(() => {
     const storedValue = localStorage.getItem(SIDEBAR_COLLAPSE_KEY);
@@ -19,13 +20,20 @@ function MainLayout() {
   }, [isSidebarCollapsed]);
 
   return (
-    <div className={`dashboard app-shell${isSidebarCollapsed ? ' dashboard--sidebar-collapsed' : ''}`}>
+    <div className={`dashboard app-shell${isSidebarCollapsed ? ' dashboard--sidebar-collapsed' : ''}${isMobileSidebarOpen ? ' dashboard--mobile-sidebar-open' : ''}`}>
+      <button
+        type="button"
+        className="sidebar-backdrop"
+        aria-label="Dong menu dieu huong"
+        onClick={() => setIsMobileSidebarOpen(false)}
+      />
       <Sidebar
         isCollapsed={isSidebarCollapsed}
         onToggleCollapse={() => setIsSidebarCollapsed((current) => !current)}
+        onNavigate={() => setIsMobileSidebarOpen(false)}
       />
       <div className="main main-area">
-        <Topbar />
+        <Topbar onOpenMenu={() => setIsMobileSidebarOpen(true)} />
         <main className="content page-container">
           <Outlet />
         </main>

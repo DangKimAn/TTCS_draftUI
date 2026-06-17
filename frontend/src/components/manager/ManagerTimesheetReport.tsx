@@ -230,7 +230,7 @@ function ManagerTimesheetReport({
           <StatusMetric label="Rejected" value={summary.rejected} />
         </div>
 
-        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50/30">
+        <div className="manager-report-table overflow-hidden rounded-2xl border border-slate-200 bg-slate-50/30">
           <div className="overflow-x-auto">
             <div className="min-w-[1100px]">
               <div className="flex bg-slate-100/80 border-b border-slate-200">
@@ -256,6 +256,53 @@ function ManagerTimesheetReport({
               )}
             </div>
           </div>
+        </div>
+
+        <div className="manager-mobile-list">
+          {previewRows.length > 0 ? (
+            previewRows.map((row) => (
+              <article key={row.id || `${row.code}-${row.workDate}`} className="manager-mobile-card">
+                <div className="manager-mobile-card__header">
+                  <div>
+                    <strong>{row.employeeName || row.employeeId || '--'}</strong>
+                    <span>{row.code}</span>
+                  </div>
+                  <StatusBadge status={row.status} />
+                </div>
+
+                <div className="manager-mobile-card__grid">
+                  <div>
+                    <span>Phòng ban</span>
+                    <strong>{row.departmentName || getDepartmentName(row.departmentId)}</strong>
+                  </div>
+                  <div>
+                    <span>Ngày</span>
+                    <strong>{formatDate(row.workDate)}</strong>
+                  </div>
+                  <div>
+                    <span>Check-in</span>
+                    <strong>{row.checkIn || '--'}</strong>
+                  </div>
+                  <div>
+                    <span>Check-out</span>
+                    <strong>{row.checkOut || '--'}</strong>
+                  </div>
+                  <div>
+                    <span>Tổng giờ</span>
+                    <strong>{Number(row.totalHours || 0).toFixed(1)}h</strong>
+                  </div>
+                </div>
+
+                <div className="manager-mobile-card__warnings">
+                  <WarningList warnings={row.warnings as any[]} />
+                </div>
+              </article>
+            ))
+          ) : (
+            <div className="manager-mobile-empty">
+              {isLoading ? 'Đang tải báo cáo timesheet...' : 'Không có dữ liệu phù hợp với bộ lọc.'}
+            </div>
+          )}
         </div>
       </div>
     </section>

@@ -2604,6 +2604,190 @@
   font-size: 0.76rem;
 }
 
+.sidebar-backdrop,
+.topbar__menu-button,
+.manager-mobile-list {
+  display: none;
+}
+
+.dashboard,
+.main,
+.main-area,
+.content,
+.page-container,
+.topbar,
+.topbar__start,
+.topbar__actions,
+.sidebar,
+.sidebar__content,
+.manager-responsive-panel,
+.manager-mobile-card,
+.manager-mobile-card * {
+  min-width: 0;
+}
+
+.topbar__menu-button {
+  width: 44px;
+  height: 44px;
+  flex: 0 0 44px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(220, 231, 242, 0.92);
+  color: var(--primary-strong);
+  box-shadow: var(--shadow-sm);
+}
+
+.manager-mobile-list {
+  gap: 12px;
+}
+
+.manager-mobile-card {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid rgba(220, 231, 242, 0.92);
+  border-radius: 18px;
+  background: rgba(248, 251, 255, 0.92);
+}
+
+.manager-mobile-card.is-selected {
+  border-color: rgba(126, 170, 255, 0.5);
+  background: linear-gradient(135deg, rgba(79, 140, 255, 0.12), rgba(255, 255, 255, 0.96));
+}
+
+.manager-mobile-card.is-processing {
+  opacity: 0.72;
+  pointer-events: none;
+}
+
+.manager-mobile-card__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.manager-mobile-card__header > div,
+.manager-mobile-card__note {
+  display: grid;
+  gap: 4px;
+}
+
+.manager-mobile-card__header strong,
+.manager-mobile-card__grid strong {
+  color: var(--text-main);
+  overflow-wrap: anywhere;
+}
+
+.manager-mobile-card__header span,
+.manager-mobile-card__grid span,
+.manager-mobile-card__note span {
+  color: var(--text-soft);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.manager-mobile-card__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.manager-mobile-card__grid > div {
+  display: grid;
+  gap: 4px;
+  padding: 10px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.84);
+  border: 1px solid rgba(220, 231, 242, 0.82);
+}
+
+.manager-mobile-card__note {
+  padding: 12px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.84);
+  border: 1px solid rgba(220, 231, 242, 0.82);
+}
+
+.manager-mobile-card__note p {
+  margin: 0;
+  color: var(--text-main);
+  overflow-wrap: anywhere;
+}
+
+.manager-mobile-card__note small {
+  color: var(--text-soft);
+  font-weight: 800;
+}
+
+.manager-mobile-card__note small.is-danger {
+  color: #b8547b;
+}
+
+.manager-mobile-card__note small.is-success {
+  color: #2e7d5a;
+}
+
+.manager-mobile-card__warnings {
+  display: grid;
+  gap: 8px;
+}
+
+.manager-mobile-card__actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.manager-mobile-card__button {
+  min-height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 12px;
+  border-radius: 12px;
+  background: #ffffff;
+  border: 1px solid rgba(220, 231, 242, 0.92);
+  color: var(--primary-strong);
+  font-size: 0.84rem;
+  font-weight: 800;
+}
+
+.manager-mobile-card__button--success {
+  color: #2e7d5a;
+  background: rgba(142, 217, 182, 0.18);
+  border-color: rgba(142, 217, 182, 0.34);
+}
+
+.manager-mobile-card__button--danger {
+  color: #b8547b;
+  background: rgba(243, 183, 210, 0.2);
+  border-color: rgba(243, 183, 210, 0.34);
+}
+
+.manager-mobile-card__button--warning {
+  color: #a86c1f;
+  background: rgba(242, 194, 123, 0.22);
+  border-color: rgba(242, 194, 123, 0.34);
+}
+
+.manager-mobile-card__button:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+
+.manager-mobile-empty {
+  padding: 22px 14px;
+  border: 1px dashed rgba(186, 206, 226, 0.95);
+  border-radius: 16px;
+  color: var(--text-soft);
+  text-align: center;
+  font-size: 0.9rem;
+}
+
 @media (max-width: 720px) {
   .notification-dropdown__menu {
     position: fixed;
@@ -2612,6 +2796,236 @@
     left: 16px;
     width: auto;
     max-height: calc(100vh - 96px);
+  }
+}
+
+@media (max-width: 768px) {
+  .dashboard.app-shell {
+    position: relative;
+    display: block;
+    width: 100%;
+    min-height: 100vh;
+    height: auto;
+    overflow-x: hidden;
+  }
+
+  .sidebar {
+    position: fixed;
+    inset: 0 auto 0 0;
+    z-index: 90;
+    width: min(86vw, 330px);
+    max-width: calc(100vw - 28px);
+    height: 100dvh;
+    min-height: 0;
+    padding: 18px;
+    overflow-y: auto;
+    border-right: 1px solid rgba(220, 231, 242, 0.92);
+    border-bottom: 0;
+    transform: translateX(calc(-100% - 24px));
+    transition: transform 0.26s ease;
+    box-shadow: var(--shadow-lg);
+  }
+
+  .dashboard--mobile-sidebar-open .sidebar {
+    transform: translateX(0);
+  }
+
+  .sidebar-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 85;
+    width: 100%;
+    min-height: 100%;
+    background: rgba(30, 41, 59, 0.28);
+    backdrop-filter: blur(3px);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+  }
+
+  .dashboard--mobile-sidebar-open .sidebar-backdrop {
+    display: block;
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .dashboard--sidebar-collapsed .sidebar {
+    width: min(86vw, 330px);
+    align-items: stretch;
+  }
+
+  .dashboard--sidebar-collapsed .sidebar__brand-copy,
+  .dashboard--sidebar-collapsed .sidebar__item-copy,
+  .dashboard--sidebar-collapsed .sidebar__footer,
+  .dashboard--sidebar-collapsed .sidebar__section-label {
+    display: block;
+  }
+
+  .dashboard--sidebar-collapsed .sidebar__header {
+    width: 100%;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .dashboard--sidebar-collapsed .sidebar__item,
+  .dashboard--sidebar-collapsed .sidebar__item--button,
+  .dashboard--sidebar-collapsed .sidebar__item--collapsed {
+    width: 100%;
+    min-width: 0;
+    height: auto;
+    min-height: 56px;
+    padding: 10px 14px;
+    justify-content: flex-start;
+  }
+
+  .dashboard--sidebar-collapsed .sidebar__nav {
+    justify-items: stretch;
+  }
+
+  .main,
+  .main-area {
+    width: 100%;
+    min-height: 100vh;
+  }
+
+  .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 60;
+    display: grid;
+    grid-template-columns: 44px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 10px;
+    height: auto;
+    min-height: 68px;
+    padding: 12px;
+  }
+
+  .topbar__menu-button {
+    display: inline-flex;
+  }
+
+  .topbar__start {
+    width: 100%;
+  }
+
+  .topbar__search {
+    width: 100%;
+    min-height: 44px;
+    padding: 0 12px;
+    border-radius: 14px;
+  }
+
+  .topbar__search input {
+    min-width: 0;
+    font-size: 0.9rem;
+  }
+
+  .topbar__actions {
+    justify-content: flex-end;
+    gap: 8px;
+  }
+
+  .topbar__profile {
+    padding: 0;
+    border: 0;
+    background: transparent;
+  }
+
+  .topbar__profile-copy {
+    display: none;
+  }
+
+  .topbar__avatar,
+  .topbar__icon,
+  .notification-dropdown__trigger {
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+  }
+
+  .content,
+  .page-container {
+    width: 100%;
+    max-width: 100%;
+    padding: 16px 12px;
+    overflow-x: hidden;
+  }
+
+  .manager-desktop-table,
+  .manager-report-table {
+    display: none;
+  }
+
+  .manager-mobile-list {
+    display: grid;
+  }
+
+  .manager-responsive-panel {
+    padding: 16px !important;
+    border-radius: 20px !important;
+  }
+
+  .manager-toolbar,
+  .manager-toolbar__filters {
+    width: 100%;
+  }
+
+  .manager-toolbar__search {
+    max-width: none;
+  }
+
+  .manager-toolbar__filters {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .manager-toolbar__filters button,
+  section > .flex.justify-end button {
+    width: 100%;
+    justify-content: center;
+  }
+
+  section > .flex.justify-end {
+    justify-content: stretch;
+  }
+
+  .grid.grid-cols-2.lg\:grid-cols-4,
+  .grid.grid-cols-2.md\:grid-cols-4 {
+    grid-template-columns: 1fr !important;
+  }
+
+  .modal-card,
+  .hr-modal {
+    width: 100%;
+    max-height: calc(100dvh - 28px);
+    border-radius: 20px;
+    padding: 18px;
+  }
+}
+
+@media (max-width: 480px) {
+  .topbar {
+    grid-template-columns: 44px minmax(0, 1fr) auto;
+    gap: 8px;
+  }
+
+  .topbar__search input::placeholder {
+    color: transparent;
+  }
+
+  .manager-mobile-card__header {
+    flex-direction: column;
+  }
+
+  .manager-mobile-card__grid,
+  .manager-mobile-card__actions {
+    grid-template-columns: 1fr;
+  }
+
+  .manager-mobile-card {
+    padding: 14px;
   }
 }
 

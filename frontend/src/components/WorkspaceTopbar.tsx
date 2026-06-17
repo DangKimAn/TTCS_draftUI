@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
-import { FiSearch } from 'react-icons/fi';
+import { FiMenu, FiSearch } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
 import NotificationDropdown from './NotificationDropdown';
 import { getAuthSession, getDashboardPathByRole } from '../utils/storage';
 import { API_CONFIG } from '../config/api';
 
-function WorkspaceTopbar() {
+function WorkspaceTopbar({ onOpenMenu }) {
   const [session, setSession] = useState(() => getAuthSession());
   const navigate = useNavigate();
 
@@ -30,6 +30,15 @@ function WorkspaceTopbar() {
 
   return (
     <header className="topbar" role="banner">
+      <button
+        type="button"
+        className="topbar__menu-button"
+        onClick={onOpenMenu}
+        aria-label="Mo menu dieu huong"
+      >
+        <FiMenu />
+      </button>
+
       <div className="topbar__start">
         <label className="topbar__search" htmlFor="workspace-search">
           <FiSearch />

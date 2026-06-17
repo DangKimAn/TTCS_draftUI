@@ -42,6 +42,51 @@ const EmployeeRowItem = React.memo(({ index, data, style }: { index: number, dat
   );
 });
 
+const EmployeeMobileCard = React.memo(({
+  employee,
+  isSelected,
+  getDepartmentName,
+  onSelect,
+}: {
+  employee: any;
+  isSelected: boolean;
+  getDepartmentName: (id: string) => string;
+  onSelect: (id: string) => void;
+}) => (
+  <article className={`manager-mobile-card${isSelected ? ' is-selected' : ''}`}>
+    <div className="manager-mobile-card__header">
+      <div>
+        <strong>{employee.fullName}</strong>
+        <span>{employee.email}</span>
+      </div>
+      <StatusBadge status={employee.status} />
+    </div>
+
+    <div className="manager-mobile-card__grid">
+      <div>
+        <span>Phòng ban</span>
+        <strong>{getDepartmentName(employee.departmentId)}</strong>
+      </div>
+      <div>
+        <span>Số dư phép</span>
+        <strong>{employee.leaveBalance} ngày</strong>
+      </div>
+      <div>
+        <span>Giờ tháng này</span>
+        <strong>{(employee.monthlyHours || 0).toFixed(1)}h</strong>
+      </div>
+    </div>
+
+    <button
+      type="button"
+      onClick={() => onSelect(employee.id)}
+      className="manager-mobile-card__button"
+    >
+      <FiEye /> Chi tiết
+    </button>
+  </article>
+));
+
 const ManagerEmployees: React.FC<ManagerEmployeesProps> = ({
   employees,
   timesheets,
@@ -121,9 +166,9 @@ const ManagerEmployees: React.FC<ManagerEmployeesProps> = ({
         <p className="text-slate-500 m-0 text-sm max-w-3xl">Danh sách nhân viên thuộc phạm vi quản lý trực tiếp.</p>
       </div>
 
-      <div className="p-6 rounded-[28px] bg-white border border-slate-200 shadow-sm flex flex-col gap-6">
-        <div className="flex items-center justify-between gap-4 flex-wrap">
-          <div className="relative w-full max-w-md">
+      <div className="manager-responsive-panel p-6 rounded-[28px] bg-white border border-slate-200 shadow-sm flex flex-col gap-6">
+        <div className="manager-toolbar flex items-center justify-between gap-4 flex-wrap">
+          <div className="relative w-full max-w-md manager-toolbar__search">
             <FiSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
               type="search"
@@ -133,7 +178,7 @@ const ManagerEmployees: React.FC<ManagerEmployeesProps> = ({
               className="w-full pl-11 pr-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-800 placeholder:text-slate-400 outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10 transition-all"
             />
           </div>
-          <div className="flex gap-2">
+          <div className="manager-toolbar__filters flex gap-2">
             {['all', 'Active', 'Inactive'].map((status) => (
               <button
                 key={status}
@@ -150,7 +195,7 @@ const ManagerEmployees: React.FC<ManagerEmployeesProps> = ({
           </div>
         </div>
 
-        <div className="overflow-x-auto -mx-6">
+        <div className="manager-desktop-table overflow-x-auto -mx-6">
           <div className="min-w-[1200px]">
             {/* Header */}
             <div className="flex bg-slate-50/50 border-y border-slate-100">
@@ -183,6 +228,22 @@ const ManagerEmployees: React.FC<ManagerEmployeesProps> = ({
               <div className="px-4 py-12 text-center text-slate-400 text-sm font-medium italic">Không tìm thấy nhân viên phù hợp.</div>
             )}
           </div>
+        </div>
+
+        <div className="manager-mobile-list">
+          {visibleEmployees.length > 0 ? (
+            visibleEmployees.map((employee) => (
+              <EmployeeMobileCard
+                key={employee.id}
+                employee={employee}
+                isSelected={selectedEmployee?.id === employee.id}
+                getDepartmentName={getDepartmentName}
+                onSelect={setSelectedEmployeeId}
+              />
+            ))
+          ) : (
+            <div className="manager-mobile-empty">Không tìm thấy nhân viên phù hợp.</div>
+          )}
         </div>
       </div>
 
