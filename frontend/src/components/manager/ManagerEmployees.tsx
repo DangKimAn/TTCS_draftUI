@@ -77,12 +77,13 @@ const ManagerEmployees: React.FC<ManagerEmployeesProps> = ({
 
     return [...employeeTimesheet.records]
       .sort((a, b) => new Date(b.date || b.workDate).getTime() - new Date(a.date || a.workDate).getTime())
-      .reverse()
       .slice(0, 4)
       .map((record) => ({
         ...record,
         id: record.id || record.timesheetEntryID,
         workDate: record.date || record.workDate,
+        checkIn: record.checkIn || record.checkInTime || '',
+        checkOut: record.checkOut || record.checkOutTime || '',
       }));
   }, [selectedEmployee, timesheets]);
 

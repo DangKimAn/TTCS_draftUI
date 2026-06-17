@@ -107,6 +107,7 @@ export interface Timesheet {
   totalHours?: number;
   status: RequestStatus | 'On Time' | 'Late' | 'Early Leave' | 'Missing Check-out';
   locked?: boolean;
+  records?: Attendance[];
   warnings?: TimesheetWarning[];
   note?: string;
   rejectionReason?: string;

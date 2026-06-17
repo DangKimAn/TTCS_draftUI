@@ -506,6 +506,7 @@ function buildManagerTimesheet(
     totalHours: Math.round(totalHours * 10) / 10,
     status: monthlyTimesheet.status,
     locked: monthlyTimesheet.status === 'Approved',
+    records: sortedRecords,
     warnings: buildWarningsFromRecords(sortedRecords),
     rejectionReason: monthlyTimesheet.rejectionReason,
     approvedAt: monthlyTimesheet.approvedAt,
