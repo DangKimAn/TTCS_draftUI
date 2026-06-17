@@ -3,6 +3,7 @@ import { FiSearch, FiEye } from 'react-icons/fi';
 import { FixedSizeList as List } from 'react-window';
 import { StatusBadge } from './SharedComponents';
 import EmployeeDetailPanel from './EmployeeDetailPanel';
+import { formatTimeFromIso } from '../../utils/timeUtils';
 
 interface ManagerEmployeesProps {
   employees: any[];
@@ -73,17 +74,29 @@ const ManagerEmployees: React.FC<ManagerEmployeesProps> = ({
     if (!selectedEmployee) return [];
     
     const employeeTimesheet = timesheets.find((ts) => ts.employeeId === selectedEmployee.id);
-    if (!employeeTimesheet || !employeeTimesheet.records) return [];
+    if (!employeeTimesheet) return [];
 
-    return [...employeeTimesheet.records]
+    const sourceRecords =
+      Array.isArray(employeeTimesheet.records) && employeeTimesheet.records.length > 0
+        ? employeeTimesheet.records
+        : Array.isArray(employeeTimesheet.entries) && employeeTimesheet.entries.length > 0
+          ? employeeTimesheet.entries
+          : Array.isArray(employeeTimesheet.rows) && employeeTimesheet.rows.length > 0
+            ? employeeTimesheet.rows
+            : employeeTimesheet.workDate || employeeTimesheet.date
+              ? [employeeTimesheet]
+              : [];
+
+    return [...sourceRecords]
       .sort((a, b) => new Date(b.date || b.workDate).getTime() - new Date(a.date || a.workDate).getTime())
       .slice(0, 4)
       .map((record) => ({
         ...record,
         id: record.id || record.timesheetEntryID,
         workDate: record.date || record.workDate,
-        checkIn: record.checkIn || record.checkInTime || '',
-        checkOut: record.checkOut || record.checkOutTime || '',
+        checkIn: record.checkInTime || formatTimeFromIso(record.checkIn) || record.checkIn || '',
+        checkOut: record.checkOutTime || formatTimeFromIso(record.checkOut) || record.checkOut || '',
+        totalHours: record.totalHours ?? 0,
       }));
   }, [selectedEmployee, timesheets]);
 
