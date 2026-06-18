@@ -30,6 +30,7 @@ import {
   getWorkdayProgressPercent,
 } from '../utils/timeUtils';
 import { getDateKey, getCurrentWeekRange, getPeriodConfig, getDefaultAnchorDate } from '../utils/dateUtils';
+import { getTimesheetPeriod } from '../utils/timeUtils';
 import { exportTimesheetReportPdf } from '../utils/reportPdf';
 import { getAuthSession, getDashboardPathByRole, updateAuthSession } from '../utils/storage';
 import './EmployeeDashboard.css';
@@ -119,7 +120,8 @@ function EmployeeWorkspaceDashboard() {
 
     try {
       const now = new Date();
-      const records = await getMonthlyAttendance(userID, now.getMonth() + 1, now.getFullYear());
+      const period = getTimesheetPeriod(now);
+      const records = await getMonthlyAttendance(userID, period.month, period.year);
       const todayRecord = getTodayAttendance(userKey);
       const recentHistory = getAttendanceHistory(userKey, 7);
       const missingRecords = records.filter((record) => record.status === 'Missing Out');
