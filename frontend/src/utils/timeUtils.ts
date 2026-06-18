@@ -133,3 +133,18 @@ export function getWorkdayProgressPercent(startHour = 8, startMinute = 0, endHou
   const ratio = Math.min(Math.max(current / total, 0), 1);
   return Math.round(ratio * 100);
 }
+
+export function getTimesheetPeriod(date = new Date()) {
+  const d = date.getDate();
+  const m = date.getMonth() + 1;
+  const y = date.getFullYear();
+
+  if (d >= 17) {
+    if (m === 12) {
+      return { month: 1, year: y + 1 };
+    }
+    return { month: m + 1, year: y };
+  }
+
+  return { month: m, year: y };
+}

@@ -5,6 +5,7 @@ import {
   checkOut as checkOutRequest,
   getMonthlyAttendance,
 } from '../services/attendanceService';
+import { getTodayDateKey } from '../utils/timeUtils';
 
 interface AttendanceState {
   records: Attendance[];
@@ -18,7 +19,7 @@ interface AttendanceState {
 }
 
 function getTodayRecord(records: Attendance[]): Attendance | null {
-  const todayKey = new Date().toISOString().slice(0, 10);
+  const todayKey = getTodayDateKey();
   return records.find((record) => record.date === todayKey) || null;
 }
 

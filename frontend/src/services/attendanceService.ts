@@ -7,6 +7,7 @@ import {
   calculateWorkingHours as calculateWorkingHoursValue,
   formatTimeFromIso,
   getTodayDateKey,
+  getTimesheetPeriod,
 } from '../utils/timeUtils';
 
 const ATTENDANCE_IP_KEY = 'timesheet_pro_mock_ip';
@@ -298,7 +299,8 @@ function getTodayRecordFrom(records: Attendance[]): Attendance | null {
 
 async function refreshCurrentMonthAttendance(userID: string): Promise<Attendance[]> {
   const now = new Date();
-  return getMonthlyAttendance(userID, now.getMonth() + 1, now.getFullYear());
+  const period = getTimesheetPeriod(now);
+  return getMonthlyAttendance(userID, period.month, period.year);
 }
 
 export function getCurrentMockIp(): string {
